@@ -1,0 +1,19 @@
+{
+	"name": "eshin-broking-crm-system",
+	"version": "1.0.0",
+	"description": "Eshin Broking Custom CRM System - Independent financial services CRM",
+	"private": true,
+	"type": "module",
+	"workspaces": ["frontend", "frappe-ui"],
+	"scripts": {
+		"postinstall": "cd frontend && yarn install",
+		"dev": "cd frontend && yarn dev",
+		"build": "cd frontend && yarn build",
+		"disable-workspaces": "sed -i '' 's/\"workspaces\"/\"aworkspaces\"/g' package.json",
+		"enable-workspaces": "sed -i '' 's/\"aworkspaces\"/\"workspaces\"/g' package.json && rm -rf node_modules ./frontend/node_modules/ frappe-ui/node_modules/ && yarn install",
+		"upgrade-frappeui": "cd frontend && yarn add frappe-ui@latest && cd ..",
+		"disable-workspaces-and-upgrade-frappeui": "yarn disable-workspaces && yarn upgrade-frappeui"
+	},
+	"author": "Your Company Name",
+	"license": "Proprietary"
+}

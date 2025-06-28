@@ -1,0 +1,34 @@
+# Eshin Broking CRM - Git Ignore File
+
+# System Files
+.DS_Store
+*.log
+.env
+.vscode/settings.json
+.cursor/
+
+# Python
+*.pyc
+*.egg-info
+*.swp
+__pycache__
+
+# Node.js
+node_modules/
+yarn.lock
+npm-debug.log
+
+# Development
+dev-dist/
+tags/
+build/
+
+# CRM Specific  
+crm/public/frontend/
+frontend/yarn.lock
+crm/www/crm.html
+
+# Temporary Files
+*.tmp
+*.bak
+*~
