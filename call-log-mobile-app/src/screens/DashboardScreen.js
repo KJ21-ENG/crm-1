@@ -65,19 +65,29 @@ const DashboardScreen = () => {
     
     setLoading(true);
     try {
-      console.log('Loading call logs...');
-      const response = await apiService.getCallLogs({}, 20);
-      const logs = response.message || [];
-      console.log('Call logs loaded:', logs.length);
-      setCallLogs(logs);
-      setStats(prev => ({
-        ...prev,
-        totalCallLogs: logs.length,
-        lastSync: new Date().toISOString(),
-      }));
+      console.log('Loading user-specific call logs...');
+      // Use getUserCallLogs to get only current user's call logs
+      const response = await apiService.getUserCallLogs(20);
+      
+      // Handle the correct response structure: response.message.success and response.message.data
+      const apiResult = response.message || response;
+      
+      if (apiResult.success) {
+        const logs = apiResult.data || [];
+        console.log('User call logs loaded:', logs.length, 'for user:', user);
+        setCallLogs(logs);
+        setStats(prev => ({
+          ...prev,
+          totalCallLogs: logs.length,
+          lastSync: new Date().toISOString(),
+        }));
+      } else {
+        console.error('Failed to load user call logs:', apiResult.message || apiResult.error);
+        Alert.alert('Error', apiResult.message || apiResult.error || 'Failed to load your call logs from CRM');
+      }
     } catch (error) {
       console.error('Failed to load call logs:', error);
-      Alert.alert('Error', 'Failed to load call logs from CRM');
+      Alert.alert('Error', 'Failed to load your call logs from CRM');
     } finally {
       setLoading(false);
     }
@@ -148,10 +158,11 @@ const DashboardScreen = () => {
         console.log('Latest transformed call log:', JSON.stringify(latestTransformedLog, null, 2));
       }
       
-      // Get latest CRM call log
-      console.log('Fetching latest CRM call log...');
-      const crmResponse = await apiService.getCallLogs({}, 1);
-      const latestCrmLog = crmResponse.message && crmResponse.message[0] ? crmResponse.message[0] : null;
+      // Get latest CRM call log (user-specific)
+      console.log('Fetching latest user CRM call log...');
+      const crmResponse = await apiService.getUserCallLogs(1);
+      const crmResult = crmResponse.message || crmResponse;
+      const latestCrmLog = crmResult.success && crmResult.data && crmResult.data[0] ? crmResult.data[0] : null;
       
       console.log('Latest CRM call log:', JSON.stringify(latestCrmLog, null, 2));
       

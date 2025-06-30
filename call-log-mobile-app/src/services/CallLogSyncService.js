@@ -283,15 +283,11 @@ class CallLogSyncService {
    */
   async checkDuplicateCallLog(callLog) {
     try {
-      // Search for existing call logs with same timestamp and phone number
-      const searchFilters = {
-        from: callLog.from,
-        to: callLog.to,
-        start_time: callLog.start_time,
-      };
-      
-      const existingLogs = await apiService.getCallLogs(searchFilters, 1);
-      return existingLogs.message && existingLogs.message.length > 0 ? existingLogs.message[0] : null;
+      // Search for existing call logs within user's own call logs only
+      // Use the backend duplicate check instead of client-side check
+      // The mobile sync API already handles duplicate detection properly
+      console.log('Duplicate check will be handled by backend mobile sync API');
+      return null; // Let the backend handle duplicate detection
       
     } catch (error) {
       console.log('Error checking for duplicate call log:', error);

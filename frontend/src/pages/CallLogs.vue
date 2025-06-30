@@ -20,6 +20,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Call Log"
+    :filters="{ owner: sessionStore().user }"
   />
   <CallLogsListView
     ref="callLogsListView"
@@ -81,6 +82,7 @@ import CallLogModal from '@/components/Modals/CallLogModal.vue'
 import { getCallLogDetail } from '@/utils/callLog'
 import { createResource } from 'frappe-ui'
 import { computed, ref, onMounted } from 'vue'
+import { sessionStore } from '@/stores/session'
 
 const callLogsListView = ref(null)
 const showCallLogModal = ref(false)
