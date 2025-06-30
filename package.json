@@ -4,7 +4,10 @@
 	"description": "Eshin Broking Custom CRM System - Independent financial services CRM",
 	"private": true,
 	"type": "module",
-	"workspaces": ["frontend", "frappe-ui"],
+	"workspaces": [
+		"frontend",
+		"frappe-ui"
+	],
 	"scripts": {
 		"postinstall": "cd frontend && yarn install",
 		"dev": "cd frontend && yarn dev",
@@ -15,5 +18,8 @@
 		"disable-workspaces-and-upgrade-frappeui": "yarn disable-workspaces && yarn upgrade-frappeui"
 	},
 	"author": "Your Company Name",
-	"license": "Proprietary"
+	"license": "Proprietary",
+	"dependencies": {
+		"react-native-simcard-info": "^1.1.2"
+	}
 }
