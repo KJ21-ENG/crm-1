@@ -289,6 +289,12 @@ def get_data(
 	view=None,
 	default_filters=None,
 ):
+	# Debug logging for call log filtering
+	frappe.logger().info(f"🔍 Backend Debug - Doctype: {doctype}")
+	frappe.logger().info(f"🔍 Backend Debug - Original filters: {filters}")
+	frappe.logger().info(f"🔍 Backend Debug - Default filters: {default_filters}")
+	frappe.logger().info(f"🔍 Backend Debug - Current user: {frappe.session.user}")
+	
 	custom_view = False
 	filters = frappe._dict(filters)
 	rows = frappe.parse_json(rows or "[]")
@@ -314,7 +320,26 @@ def get_data(
 
 	if default_filters:
 		default_filters = frappe.parse_json(default_filters)
+		frappe.logger().info(f"🔍 Backend Debug - Parsed default filters: {default_filters}")
 		filters.update(default_filters)
+		frappe.logger().info(f"🔍 Backend Debug - Final merged filters: {filters}")
+
+	# Special logging for Call Log debugging
+	if doctype == "CRM Call Log":
+		frappe.logger().info(f"🔍 Call Log Debug - Final filters applied: {filters}")
+		frappe.logger().info(f"🔍 Call Log Debug - Owner filter value: {filters.get('owner', 'NOT SET')}")
+		
+		# Ensure owner filter is applied for Call Logs if not already present
+		if 'owner' not in filters and default_filters and 'owner' in default_filters:
+			frappe.logger().info(f"🔍 Call Log Debug - Manually applying owner filter from default_filters")
+			filters['owner'] = default_filters['owner']
+		
+		# If no owner filter but user is not Administrator, force user filter
+		if 'owner' not in filters and frappe.session.user != 'Administrator':
+			frappe.logger().info(f"🔍 Call Log Debug - No owner filter found, forcing current user filter")
+			filters['owner'] = frappe.session.user
+			
+		frappe.logger().info(f"🔍 Call Log Debug - FINAL filters after manual checks: {filters}")
 
 	is_default = True
 	data = []

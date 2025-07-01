@@ -463,6 +463,11 @@ function getParams() {
   const kanban_columns = _view?.kanban_columns || ''
   const kanban_fields = _view?.kanban_fields || ''
 
+  // Debug filters processing
+  console.log('🔍 ViewControls Debug - props.filters:', props.filters)
+  console.log('🔍 ViewControls Debug - view filters:', filters)
+  console.log('🔍 ViewControls Debug - doctype:', props.doctype)
+
   view.value = {
     name: view_name,
     label: _view?.label || getViewType().label,
@@ -483,7 +488,7 @@ function getParams() {
     public: _view?.public || false,
   }
 
-  return {
+  const params = {
     doctype: props.doctype,
     filters: filters,
     order_by: order_by,
@@ -502,6 +507,12 @@ function getParams() {
     page_length: pageLength.value,
     page_length_count: pageLengthCount.value,
   }
+
+  // Debug final parameters
+  console.log('🔍 ViewControls Debug - Final API params:', params)
+  console.log('🔍 ViewControls Debug - default_filters being sent:', params.default_filters)
+
+  return params
 }
 
 list.value = createResource({
