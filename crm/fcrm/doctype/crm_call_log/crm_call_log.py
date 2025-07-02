@@ -65,11 +65,15 @@ class CRMCallLog(Document):
 				'lead_name'
 			)
 			
-			return lead if lead else None
+			if lead:
+				return lead
+			
+			# If no contact or lead found, generate default name
+			return f"Lead from call {phone_number}"
 			
 		except Exception as e:
 			frappe.logger().error(f"Error getting customer name for {phone_number}: {str(e)}")
-			return None
+			return f"Lead from call {phone_number}"
 
 	@staticmethod
 	def default_list_data():
