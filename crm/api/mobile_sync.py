@@ -218,6 +218,28 @@ def prepare_call_log_document(call_log_data):
         else:
             status = 'Completed'
 
+    # Determine employee and customer based on call type
+    employee = current_user  # The mobile app user is always the employee
+    customer = None
+    customer_name = None
+    
+    if call_type == 'Outgoing':
+        # Employee made the call to customer
+        customer = to_number
+        # Legacy fields for backward compatibility
+        caller = current_user
+        receiver = None
+    else:  # Incoming
+        # Customer called employee
+        customer = from_number
+        # Legacy fields for backward compatibility
+        caller = None
+        receiver = current_user
+    
+    # Get customer name from contact/lead info
+    if contact_info and contact_info.get('contact_name'):
+        customer_name = contact_info['contact_name']
+
     doc_data = {
         'doctype': 'CRM Call Log',
         'id': call_log_id,
@@ -231,6 +253,15 @@ def prepare_call_log_document(call_log_data):
         'telephony_medium': 'Manual',  # Indicates mobile app source
         'medium': 'Mobile App',
         'owner': current_user,
+        
+        # New employee/customer fields
+        'employee': employee,
+        'customer': customer,
+        'customer_name': customer_name,
+        
+        # Legacy fields for backward compatibility during migration
+        'caller': caller,
+        'receiver': receiver,
     }
     
     # Add optional fields
@@ -245,7 +276,9 @@ def prepare_call_log_document(call_log_data):
     
     # Add contact/lead references if found
     if contact_info:
-        doc_data.update(contact_info)
+        # Don't overwrite if we already have reference info
+        if not doc_data.get('reference_doctype'):
+            doc_data.update(contact_info)
     
     return doc_data
 
@@ -388,7 +421,8 @@ def get_user_call_logs(limit=50, from_date=None, to_date=None):
         fields = [
             'name', 'from', 'to', 'type', 'status', 'duration',
             'start_time', 'end_time', 'telephony_medium', 'medium',
-            'reference_doctype', 'reference_docname', 'creation'
+            'employee', 'customer', 'customer_name',
+            'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
         ]
         
         call_logs = frappe.get_list(

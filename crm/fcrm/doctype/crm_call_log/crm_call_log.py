@@ -9,21 +9,88 @@ from crm.utils import seconds_to_duration
 
 
 class CRMCallLog(Document):
+	def before_save(self):
+		"""Auto-populate employee and customer fields based on call type"""
+		self.populate_employee_customer_fields()
+	
+	def populate_employee_customer_fields(self):
+		"""Populate employee and customer fields from caller/receiver data"""
+		if self.type == "Outgoing":
+			# Employee made the call
+			self.employee = self.caller or self.employee
+			self.customer = self.to
+		elif self.type == "Incoming":
+			# Employee received the call
+			self.employee = self.receiver or self.employee
+			self.customer = self.get('from')
+		
+		# Auto-populate customer name if not already set
+		if self.customer and not self.customer_name:
+			self.customer_name = self.get_customer_name_from_phone(self.customer)
+	
+	def get_customer_name_from_phone(self, phone_number):
+		"""Get customer name from phone number by searching contacts and leads"""
+		if not phone_number:
+			return None
+			
+		try:
+			# Clean phone number
+			clean_phone = ''.join(filter(str.isdigit, str(phone_number)))
+			
+			# Search in contacts first
+			contact = frappe.db.get_value(
+				'Contact',
+				[
+					['phone', 'like', f'%{clean_phone}%'],
+					'or',
+					['mobile_no', 'like', f'%{clean_phone}%']
+				],
+				['first_name', 'last_name'],
+				as_dict=True
+			)
+			
+			if contact:
+				first_name = contact.get('first_name', '') or ''
+				last_name = contact.get('last_name', '') or ''
+				return f"{first_name} {last_name}".strip()
+			
+			# Search in leads
+			lead = frappe.db.get_value(
+				'Lead', 
+				[
+					['phone', 'like', f'%{clean_phone}%'],
+					'or',
+					['mobile_no', 'like', f'%{clean_phone}%']
+				],
+				'lead_name'
+			)
+			
+			return lead if lead else None
+			
+		except Exception as e:
+			frappe.logger().error(f"Error getting customer name for {phone_number}: {str(e)}")
+			return None
+
 	@staticmethod
 	def default_list_data():
 		columns = [
 			{
-				"label": "Caller",
+				"label": "Employee",
 				"type": "Link",
-				"key": "caller",
+				"key": "employee",
 				"options": "User",
 				"width": "9rem",
 			},
 			{
-				"label": "Receiver",
-				"type": "Link",
-				"key": "receiver",
-				"options": "User",
+				"label": "Customer Name",
+				"type": "Data",
+				"key": "customer_name",
+				"width": "10rem",
+			},
+			{
+				"label": "Customer Phone",
+				"type": "Data", 
+				"key": "customer",
 				"width": "9rem",
 			},
 			{
@@ -45,18 +112,6 @@ class CRMCallLog(Document):
 				"width": "6rem",
 			},
 			{
-				"label": "From (number)",
-				"type": "Data",
-				"key": "from",
-				"width": "9rem",
-			},
-			{
-				"label": "To (number)",
-				"type": "Data",
-				"key": "to",
-				"width": "9rem",
-			},
-			{
 				"label": "Created On",
 				"type": "Datetime",
 				"key": "creation",
@@ -65,13 +120,16 @@ class CRMCallLog(Document):
 		]
 		rows = [
 			"name",
-			"caller",
-			"receiver",
+			"employee",
+			"customer",
+			"customer_name",
 			"type",
 			"status",
 			"duration",
 			"from",
 			"to",
+			"caller",
+			"receiver",
 			"note",
 			"recording_url",
 			"reference_doctype",
@@ -98,38 +156,37 @@ class CRMCallLog(Document):
 def parse_call_log(call):
 	call["show_recording"] = False
 	call["_duration"] = seconds_to_duration(call.get("duration"))
+	
+	# Use the new employee and customer fields for display
+	employee_info = None
+	customer_info = None
+	
+	if call.get("employee"):
+		employee_data = frappe.db.get_values("User", call.get("employee"), ["full_name", "user_image"])[0] if call.get("employee") else [None, None]
+		employee_info = {
+			"label": employee_data[0] or "Unknown Employee",
+			"image": employee_data[1],
+		}
+	
+	# For customer info, prioritize customer_name over contact lookup
+	customer_name = call.get("customer_name")
+	if not customer_name and call.get("customer"):
+		contact = get_contact_by_phone_number(call.get("customer"))
+		customer_name = contact.get("full_name", "Unknown")
+	
+	customer_info = {
+		"label": customer_name or "Unknown Customer",
+		"image": None,  # Could be enhanced to get customer image
+	}
+	
 	if call.get("type") == "Incoming":
 		call["activity_type"] = "incoming_call"
-		contact = get_contact_by_phone_number(call.get("from"))
-		receiver = (
-			frappe.db.get_values("User", call.get("receiver"), ["full_name", "user_image"])[0]
-			if call.get("receiver")
-			else [None, None]
-		)
-		call["_caller"] = {
-			"label": contact.get("full_name", "Unknown"),
-			"image": contact.get("image"),
-		}
-		call["_receiver"] = {
-			"label": receiver[0],
-			"image": receiver[1],
-		}
+		call["_caller"] = customer_info
+		call["_receiver"] = employee_info
 	elif call.get("type") == "Outgoing":
 		call["activity_type"] = "outgoing_call"
-		contact = get_contact_by_phone_number(call.get("to"))
-		caller = (
-			frappe.db.get_values("User", call.get("caller"), ["full_name", "user_image"])[0]
-			if call.get("caller")
-			else [None, None]
-		)
-		call["_caller"] = {
-			"label": caller[0],
-			"image": caller[1],
-		}
-		call["_receiver"] = {
-			"label": contact.get("full_name", "Unknown"),
-			"image": contact.get("image"),
-		}
+		call["_caller"] = employee_info
+		call["_receiver"] = customer_info
 
 	return call
 
@@ -141,6 +198,9 @@ def get_call_log(name):
 		name,
 		fields=[
 			"name",
+			"employee",
+			"customer",
+			"customer_name",
 			"caller",
 			"receiver",
 			"duration",
@@ -197,11 +257,16 @@ def create_lead_from_call_log(call_log, lead_details=None):
 	if not lead_details.get("lead_owner"):
 		lead_details["lead_owner"] = frappe.session.user
 	if not lead_details.get("mobile_no"):
-		lead_details["mobile_no"] = call_log.get("from") or ""
+		# Use customer field instead of from
+		lead_details["mobile_no"] = call_log.get("customer") or call_log.get("from") or ""
 	if not lead_details.get("first_name"):
-		lead_details["first_name"] = "Lead from call " + (
-			lead_details.get("mobile_no") or call_log.get("name")
-		)
+		# Use customer_name if available
+		if call_log.get("customer_name"):
+			lead_details["first_name"] = call_log.get("customer_name")
+		else:
+			lead_details["first_name"] = "Lead from call " + (
+				lead_details.get("mobile_no") or call_log.get("name")
+			)
 
 	lead.update(lead_details)
 	lead.save(ignore_permissions=True)
