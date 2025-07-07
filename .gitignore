@@ -25,6 +25,7 @@ build/
 
 # CRM Specific  
 crm/public/frontend/
+crm/public/node_modules
 frontend/yarn.lock
 crm/www/crm.html
 

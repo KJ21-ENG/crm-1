@@ -18,7 +18,7 @@ import { login, clearError, setServerUrl } from '../store/slices/authSlice';
 const LoginScreen = () => {
   const [username, setUsername] = useState('Administrator');
   const [password, setPassword] = useState('admin');
-  const [serverUrl, setServerUrlLocal] = useState('http://192.168.1.81:8000');
+  const [serverUrl, setServerUrlLocal] = useState('http://192.168.29.183:8001');
   const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useDispatch();

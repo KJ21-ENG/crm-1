@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  serverUrl: 'http://192.168.29.94:8000',
+  serverUrl: 'http://192.168.29.183:8001',
   autoSync: true,
   syncInterval: 15, // minutes
   wifiOnly: false,

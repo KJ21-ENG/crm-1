@@ -56,6 +56,7 @@ class CallLogSyncService {
       telephony_medium: 'Mobile App',
       caller: callLog.type === 'INCOMING' ? callLog.phoneNumber : CRMAuthService.getCurrentUser()?.email,
       receiver: callLog.type === 'OUTGOING' ? callLog.phoneNumber : CRMAuthService.getCurrentUser()?.email,
+      customer_name: callLog.contactName || null // Add contact name from device if available
     };
   }
 

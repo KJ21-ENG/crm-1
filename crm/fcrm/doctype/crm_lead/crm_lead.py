@@ -335,13 +335,6 @@ class CRMLead(Document):
 				"width": "12rem",
 			},
 			{
-				"label": "Organization",
-				"type": "Link",
-				"key": "organization",
-				"options": "CRM Organization",
-				"width": "10rem",
-			},
-			{
 				"label": "Status",
 				"type": "Select",
 				"key": "status",

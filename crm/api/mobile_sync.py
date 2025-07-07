@@ -236,12 +236,12 @@ def prepare_call_log_document(call_log_data):
         caller = None
         receiver = current_user
     
-    # Get customer name from contact/lead info or generate default
-    if contact_info and contact_info.get('contact_name'):
-        customer_name = contact_info['contact_name']
-    else:
-        # Generate default name for unknown customers
-        customer_name = f"Lead from call {customer}"
+    # Get customer name from contact/lead info, custom name, or generate default
+    customer_name = (
+        call_log_data.get('customer_name')  # First try custom name from mobile app
+        or (contact_info.get('contact_name') if contact_info else None)  # Then try contact info
+        or f"Lead from call {customer}"  # Finally use default format
+    )
 
     doc_data = {
         'doctype': 'CRM Call Log',

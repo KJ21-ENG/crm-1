@@ -61,7 +61,26 @@
             </div>
             <div class="flex min-h-7 w-full items-center gap-2">
               <div
-                v-if="field.name == 'receiver'"
+                v-if="field.name == 'customer_name'"
+                class="flex items-center gap-1"
+              >
+                <input
+                  v-model="field.value.customer.label"
+                  type="text"
+                  class="w-full rounded border px-2 py-1 text-base"
+                  :placeholder="__('Enter Customer Name')"
+                  @change="() => updateCustomerName(field.value.customer.label)"
+                />
+                <FeatherIcon
+                  name="arrow-right"
+                  class="mx-1 h-4 w-4 text-ink-gray-5"
+                />
+                <div class="ml-1 flex flex-col gap-1">
+                  {{ field.value.employee.label }}
+                </div>
+              </div>
+              <div
+                v-else-if="field.name === 'receiver'"
                 class="flex items-center gap-1"
               >
                 <Avatar
@@ -177,7 +196,7 @@ import { getCallLogDetail } from '@/utils/callLog'
 import { usersStore } from '@/stores/users'
 import { isMobileView } from '@/composables/settings'
 import { useDocument } from '@/data/document'
-import { FeatherIcon, Dropdown, Avatar, Tooltip, call } from 'frappe-ui'
+import { FeatherIcon, Dropdown, Avatar, Tooltip, Dialog, Button, call } from 'frappe-ui'
 import { ref, computed, h, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -204,10 +223,36 @@ const task = ref({
   priority: 'Low',
 })
 
+const customerName = ref('')
+
+watch(() => callLog.value?.data?.customer_name, (value) => {
+  customerName.value = value || ''
+  console.log(customerName.value);
+}, { immediate: true })
+
+async function updateCustomerName(newName) {
+  console.log(newName, callLog, callLog.value, callLog.value.data, callLog.value.data.name);
+  if (!callLog.value?.data?.name) return
+  
+  try {
+    await call('crm.fcrm.doctype.crm_call_log.crm_call_log.update_customer_name', {
+      call_log: callLog.value.data.name,
+      customer_name: newName
+    })
+    
+    // Refresh the call log data
+    callLog.value.reload()
+  } catch (error) {
+    console.error('Error updating customer name:', error)
+  }
+}
+
 const detailFields = computed(() => {
   if (!callLog.value?.data) return []
 
   let data = JSON.parse(JSON.stringify(callLog.value?.data))
+
+  console.log(data);
 
   for (const key in data) {
     data[key] = getCallLogDetail(key, data)
@@ -216,7 +261,20 @@ const detailFields = computed(() => {
   note.value = data._notes?.[0] ?? null
   task.value = data._tasks?.[0] ?? null
 
-  let details = [
+  const details = [
+    {
+      icon: ContactsIcon,
+      name: 'customer_name',
+      value: {
+        customer: {
+          label: data.customer_name || '',
+          editable: true
+        },
+        employee: {
+          label: data.employee || '',
+        }
+      },
+    },
     {
       icon: h(FeatherIcon, {
         name: data.type.icon,
@@ -224,14 +282,6 @@ const detailFields = computed(() => {
       }),
       name: 'type',
       value: data.type.label + ' Call',
-    },
-    {
-      icon: ContactsIcon,
-      name: 'receiver',
-      value: {
-        receiver: data.receiver,
-        caller: data.caller,
-      },
     },
     {
       icon: data._lead ? LeadsIcon : Dealsicon,
@@ -288,6 +338,8 @@ const detailFields = computed(() => {
       value: data._tasks?.[0] ?? null,
     },
   ]
+
+  console.log(details);
 
   return details
     .filter((detail) => detail.value)
