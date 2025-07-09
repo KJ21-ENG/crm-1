@@ -56,7 +56,7 @@
         </template>
         <template #default="{ label }">
           <div
-            v-if="['modified', 'creation'].includes(column.key)"
+            v-if="['modified', 'creation', 'start_time'].includes(column.key)"
             class="truncate text-base"
             @click="
               (event) =>

@@ -294,6 +294,7 @@ def get_data(
 	frappe.logger().info(f"🔍 Backend Debug - Original filters: {filters}")
 	frappe.logger().info(f"🔍 Backend Debug - Default filters: {default_filters}")
 	frappe.logger().info(f"🔍 Backend Debug - Current user: {frappe.session.user}")
+	frappe.logger().info(f"🔍 Backend Debug - Original order_by: {order_by}")
 	
 	custom_view = False
 	filters = frappe._dict(filters)
@@ -324,7 +325,7 @@ def get_data(
 		filters.update(default_filters)
 		frappe.logger().info(f"🔍 Backend Debug - Final merged filters: {filters}")
 
-	# Special logging for Call Log debugging
+	# Special logging for Call Log debug
 	if doctype == "CRM Call Log":
 		frappe.logger().info(f"🔍 Call Log Debug - Final filters applied: {filters}")
 		frappe.logger().info(f"🔍 Call Log Debug - Owner filter value: {filters.get('owner', 'NOT SET')}")
@@ -345,8 +346,16 @@ def get_data(
 	data = []
 	_list = get_controller(doctype)
 	default_rows = []
+	default_order_by = None
 	if hasattr(_list, "default_list_data"):
-		default_rows = _list.default_list_data().get("rows")
+		default_list_data = _list.default_list_data()
+		default_rows = default_list_data.get("rows")
+		default_order_by = default_list_data.get("order_by")
+
+	# Use default order_by from doctype if no custom order_by is provided or if it's the default
+	if order_by == 'modified desc' and default_order_by:
+		order_by = default_order_by
+		frappe.logger().info(f"🔍 Backend Debug - Using default order_by from doctype: {order_by}")
 
 	meta = frappe.get_meta(doctype)
 
@@ -400,6 +409,7 @@ def get_data(
 		if group_by_field and group_by_field not in rows:
 			rows.append(group_by_field)
 
+		frappe.logger().info(f"🔍 Backend Debug - Final order_by used: {order_by}")
 		data = (
 			frappe.get_list(
 				doctype,

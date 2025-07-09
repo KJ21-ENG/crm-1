@@ -111,36 +111,34 @@ class CRMCallLog(Document):
 			},
 			{
 				"label": "Duration",
-				"type": "Duration",
+				"type": "Data",
 				"key": "duration",
-				"width": "6rem",
+				"width": "8rem",
 			},
 			{
-				"label": "Created On",
+				"label": "Attended On",
 				"type": "Datetime",
-				"key": "creation",
+				"key": "start_time",
 				"width": "8rem",
 			},
 		]
+
 		rows = [
 			"name",
 			"employee",
-			"customer",
 			"customer_name",
+			"customer",
 			"type",
 			"status",
 			"duration",
-			"from",
-			"to",
-			"caller",
-			"receiver",
-			"note",
-			"recording_url",
-			"reference_doctype",
-			"reference_docname",
-			"creation",
+			"start_time",
 		]
-		return {"columns": columns, "rows": rows}
+
+		return {
+			"columns": columns,
+			"rows": rows,
+			"order_by": "start_time desc",
+		}
 
 	def parse_list_data(calls):
 		return [parse_call_log(call) for call in calls] if calls else []

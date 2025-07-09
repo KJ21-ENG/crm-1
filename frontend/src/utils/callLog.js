@@ -32,7 +32,7 @@ export function getCallLogDetail(row, log, columns = []) {
       label: statusLabelMap[log.status],
       color: statusColorMap[log.status],
     }
-  } else if (['modified', 'creation'].includes(row)) {
+  } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
       label: formatDate(log[row]),
       timeAgo: __(timeAgo(log[row])),
@@ -41,7 +41,7 @@ export function getCallLogDetail(row, log, columns = []) {
 
   let fieldType = columns?.find((col) => (col.key || col.value) == row)?.type
 
-  if (fieldType && ['Date', 'Datetime'].includes(fieldType)) {
+  if (fieldType && ['Date', 'Datetime'].includes(fieldType) && !['modified', 'creation', 'start_time'].includes(row)) {
     return formatDate(log[row], '', true, fieldType == 'Datetime')
   }
 
