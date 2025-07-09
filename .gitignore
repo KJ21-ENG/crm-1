@@ -14,9 +14,20 @@
 __pycache__
 
 # Node.js
+node_modules
 node_modules/
+/node_modules
+/node_modules/
+**/node_modules
+**/node_modules/
+crm/public/node_modules
+crm/public/node_modules/
 yarn.lock
 npm-debug.log
+
+# TypeScript
+components.d.ts
+*.tsbuildinfo
 
 # Development
 dev-dist/
