@@ -9,8 +9,6 @@ import {
   Alert,
   RefreshControl,
   FlatList,
-  TextInput,
-  Modal,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
@@ -28,25 +26,15 @@ const DashboardScreen = () => {
     lastSync: null,
     pendingSync: 0,
   });
-  const [userMobileNumber, setUserMobileNumber] = useState('');
-  const [showMobileConfig, setShowMobileConfig] = useState(false);
-  const [tempMobileNumber, setTempMobileNumber] = useState('');
-  const [debugInfo, setDebugInfo] = useState({
-    latestDeviceLog: null,
-    latestTransformedLog: null,
-    latestCrmLog: null,
-    debugVisible: false,
-  });
 
   const dispatch = useDispatch();
   const { user, serverUrl, sessionId } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    console.log('Dashboard mounted with user:', user);
-    initializeApiService();
     loadCallLogs();
-    loadUserMobileNumber();
-  }, [sessionId, serverUrl]);
+    // Set hardcoded mobile number
+    AsyncStorage.setItem('userMobileNumber', '1111111111');
+  }, []);
 
   const initializeApiService = async () => {
     if (serverUrl && sessionId) {
@@ -74,8 +62,14 @@ const DashboardScreen = () => {
       
       if (apiResult.success) {
         const logs = apiResult.data || [];
-        console.log('User call logs loaded:', logs.length, 'for user:', user);
-        setCallLogs(logs);
+        // Sort logs by start_time in descending order
+        const sortedLogs = logs.sort((a, b) => {
+          const dateA = new Date(a.start_time);
+          const dateB = new Date(b.start_time);
+          return dateB - dateA;
+        });
+        
+        setCallLogs(sortedLogs);
         setStats(prev => ({
           ...prev,
           totalCallLogs: logs.length,
@@ -97,7 +91,6 @@ const DashboardScreen = () => {
     try {
       const storedNumber = await AsyncStorage.getItem('userMobileNumber');
       if (storedNumber) {
-        setUserMobileNumber(storedNumber);
         deviceCallLogService.setUserMobileNumber(storedNumber);
         console.log('Loaded user mobile number:', storedNumber);
       }
@@ -115,86 +108,12 @@ const DashboardScreen = () => {
       }
       
       await AsyncStorage.setItem('userMobileNumber', cleanNumber);
-      setUserMobileNumber(cleanNumber);
       deviceCallLogService.setUserMobileNumber(cleanNumber);
-      setShowMobileConfig(false);
-      setTempMobileNumber('');
-      
-      Alert.alert(
-        'Success', 
-        'Mobile number saved! This will be used to correctly identify incoming vs outgoing calls.',
-        [{ text: 'OK' }]
-      );
       console.log('Saved user mobile number:', cleanNumber);
     } catch (error) {
       console.error('Error saving mobile number:', error);
       Alert.alert('Error', 'Failed to save mobile number');
     }
-  };
-
-  const openMobileConfig = () => {
-    setTempMobileNumber(userMobileNumber);
-    setShowMobileConfig(true);
-  };
-
-  const handleDebugLatestLog = async () => {
-    try {
-      console.log('=== DEBUG: Getting latest call logs ===');
-      
-      // Initialize device service
-      await callLogSyncService.init();
-      
-      // Get latest device call log
-      console.log('Fetching latest device call log...');
-      const deviceLogs = await deviceCallLogService.getDeviceCallLogs({ limit: 1 });
-      const latestDeviceLog = deviceLogs[0] || null;
-      
-      console.log('Latest device call log:', JSON.stringify(latestDeviceLog, null, 2));
-      
-      // Transform it to CRM format
-      let latestTransformedLog = null;
-      if (latestDeviceLog) {
-        latestTransformedLog = deviceCallLogService.transformCallLogToCRM(latestDeviceLog);
-        console.log('Latest transformed call log:', JSON.stringify(latestTransformedLog, null, 2));
-      }
-      
-      // Get latest CRM call log (user-specific)
-      console.log('Fetching latest user CRM call log...');
-      const crmResponse = await apiService.getUserCallLogs(1);
-      const crmResult = crmResponse.message || crmResponse;
-      const latestCrmLog = crmResult.success && crmResult.data && crmResult.data[0] ? crmResult.data[0] : null;
-      
-      console.log('Latest CRM call log:', JSON.stringify(latestCrmLog, null, 2));
-      
-      // Update debug state
-      setDebugInfo({
-        latestDeviceLog,
-        latestTransformedLog,
-        latestCrmLog,
-        debugVisible: true,
-      });
-      
-      Alert.alert(
-        'Debug Information Captured',
-        'Latest call log information has been captured. Check the debug section for details.',
-        [{ text: 'OK' }]
-      );
-      
-    } catch (error) {
-      console.error('Debug error:', error);
-      Alert.alert(
-        'Debug Error',
-        `Failed to get debug information: ${error.message}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const toggleDebugVisibility = () => {
-    setDebugInfo(prev => ({
-      ...prev,
-      debugVisible: !prev.debugVisible,
-    }));
   };
 
   const handleRefresh = async () => {
@@ -222,212 +141,13 @@ const DashboardScreen = () => {
     );
   };
 
-  const handleTestDeviceAccess = async () => {
-    try {
-      console.log('Testing device call log access...');
-      
-      // First check current permission status
-      const { PermissionsAndroid, Platform } = require('react-native');
-      
-      if (Platform.OS === 'android') {
-        console.log('Checking current permission status...');
-        const currentStatus = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.READ_CALL_LOG
-        );
-        console.log('Current call log permission status:', currentStatus);
-        
-        if (!currentStatus) {
-          Alert.alert(
-            'Permission Status',
-            'Call log permission is not granted. Let\'s request it now.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Request Permission', 
-                onPress: async () => {
-                  console.log('Requesting permission directly...');
-                  try {
-                    const result = await PermissionsAndroid.request(
-                      PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-                      {
-                        title: 'Call Log Access',
-                        message: 'This app needs access to your call logs to sync with CRM.',
-                        buttonNeutral: 'Ask Me Later',
-                        buttonNegative: 'Cancel',
-                        buttonPositive: 'OK',
-                      }
-                    );
-                    console.log('Direct permission request result:', result);
-                    
-                    if (result === PermissionsAndroid.RESULTS.GRANTED) {
-                      Alert.alert('Success', 'Permission granted! Now testing call log access...');
-                      // Continue with device test
-                      await callLogSyncService.init();
-                      const testResult = await callLogSyncService.testDeviceAccess();
-                      if (testResult.success) {
-                        Alert.alert(
-                          'Device Access Successful',
-                          `${testResult.message}\nCall logs found: ${testResult.count}`,
-                          [{ text: 'OK' }]
-                        );
-                      }
-                    } else {
-                      Alert.alert('Permission Denied', `Permission result: ${result}`);
-                    }
-                  } catch (permError) {
-                    console.error('Direct permission request failed:', permError);
-                    Alert.alert('Permission Error', `Failed to request permission: ${permError.message}`);
-                  }
-                }
-              }
-            ]
-          );
-          return;
-        } else {
-          console.log('Permission already granted, testing access...');
-        }
-      }
-      
-      // Initialize sync service if needed
-      await callLogSyncService.init();
-      
-      // Test device access
-      const result = await callLogSyncService.testDeviceAccess();
-      
-      if (result.success) {
-        Alert.alert(
-          'Device Access Test Successful',
-          `${result.message}\n\nCall logs found: ${result.count}\n\n${result.sampleLog ? `Sample log: ${result.sampleLog.phoneNumber || 'Unknown'} (${new Date(result.sampleLog.timestamp).toLocaleString()})` : 'No call logs available'}`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'Device Access Test Failed',
-          result.message,
-          [{ text: 'OK' }]
-        );
-      }
-      
-    } catch (error) {
-      console.error('Device access test error:', error);
-      Alert.alert(
-        'Test Error',
-        `Failed to test device access: ${error.message}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const handleTestCRMAPI = async () => {
-    try {
-      console.log('Testing CRM API endpoints...');
-      
-      // Test the mobile sync API
-      const result = await apiService.testMobileSync();
-      
-      if (result.success) {
-        Alert.alert(
-          'CRM API Test Successful',
-          `${result.message}\n\nTest Result: ${result.test_result?.status}\nUser: ${result.user}\nTime: ${new Date(result.timestamp).toLocaleString()}`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'CRM API Test Failed',
-          result.message,
-          [{ text: 'OK' }]
-        );
-      }
-      
-    } catch (error) {
-      console.error('CRM API test error:', error);
-      Alert.alert(
-        'API Test Error',
-        `Failed to test CRM API: ${error.message}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
   const handleSyncCallLogs = async () => {
     try {
-      console.log('Starting device call log sync...');
-      
-      // Initialize sync service if needed
+      console.log('Starting call log sync...');
       await callLogSyncService.init();
-      
-      // Check readiness
-      const readiness = await callLogSyncService.isReadyForSync();
-      
-      if (!readiness.isSupported) {
-        Alert.alert(
-          'Not Supported',
-          'Device call log sync is only available on Android devices.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-      
-      if (!readiness.hasPermission) {
-        Alert.alert(
-          'Permission Required',
-          'This app needs permission to access your call logs to sync them with the CRM system. Would you like to grant permission?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Grant Permission', 
-              onPress: async () => {
-                const granted = await callLogSyncService.requestPermissions();
-                if (granted) {
-                  // Try sync again after permission granted
-                  handleSyncCallLogs();
-                }
-              }
-            }
-          ]
-        );
-        return;
-      }
-      
-      // Show sync in progress
-      Alert.alert(
-        'Syncing Call Logs',
-        'Syncing your device call logs with the CRM system...',
-        [],
-        { cancelable: false }
-      );
-      
-      // Perform sync
-      const result = await callLogSyncService.syncCallLogs();
-      
-              // Show result
-        if (result.success) {
-          const details = [
-            `Synced: ${result.synced}`,
-            `Total processed: ${result.total}`,
-            result.duplicates > 0 ? `Duplicates skipped: ${result.duplicates}` : null,
-            result.failed > 0 ? `Failed: ${result.failed}` : null
-          ].filter(Boolean).join('\n');
-          
-          Alert.alert(
-            'Sync Successful',
-            `${result.message}\n\n${details}`,
-            [{ 
-              text: 'OK',
-              onPress: () => {
-                // Refresh call logs display
-                loadCallLogs();
-              }
-            }]
-          );
-        } else {
-          Alert.alert(
-            'Sync Failed',
-            `${result.message}\n\n${result.errors?.length > 0 ? 'Errors:\n' + result.errors.join('\n') : ''}`,
-            [{ text: 'OK' }]
-          );
-        }
-      
+      await callLogSyncService.syncCallLogs();
+      await loadCallLogs();
+      Alert.alert('Success', 'Call logs synced successfully!');
     } catch (error) {
       console.error('Sync error:', error);
       Alert.alert(
@@ -440,8 +160,24 @@ const DashboardScreen = () => {
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      // Format: "DD/MM/YYYY HH:MM AM/PM"
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = date.getHours();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const formattedHours = (hours % 12 || 12).toString().padStart(2, '0');
+      
+      return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Invalid Date';
+    }
   };
 
   const formatDuration = (duration) => {
@@ -514,30 +250,6 @@ const DashboardScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Mobile Number Configuration */}
-        <View style={styles.configSection}>
-          <Text style={styles.sectionTitle}>Mobile Number Configuration</Text>
-          <View style={styles.configCard}>
-            <View style={styles.configInfo}>
-              <Text style={styles.configLabel}>Your Mobile Number:</Text>
-              <Text style={styles.configValue}>
-                {userMobileNumber || 'Not Set'}
-              </Text>
-              <Text style={styles.configDescription}>
-                Set your mobile number to correctly identify incoming vs outgoing calls
-              </Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.configButton}
-              onPress={openMobileConfig}
-            >
-              <Text style={styles.configButtonText}>
-                {userMobileNumber ? 'Update' : 'Set'} Number
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
@@ -561,36 +273,6 @@ const DashboardScreen = () => {
               </Text>
             </View>
             <View style={styles.buttonContainer}>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                  style={[styles.syncButton, styles.testButton]}
-                  onPress={handleTestDeviceAccess}
-                >
-                  <Text style={styles.syncButtonText}>Test Device</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.syncButton, styles.apiTestButton]}
-                  onPress={handleTestCRMAPI}
-                >
-                  <Text style={styles.syncButtonText}>Test API</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                  style={[styles.syncButton, styles.debugButton]}
-                  onPress={handleDebugLatestLog}
-                >
-                  <Text style={styles.syncButtonText}>Debug Latest Log</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.syncButton, styles.toggleButton]}
-                  onPress={toggleDebugVisibility}
-                >
-                  <Text style={styles.syncButtonText}>
-                    {debugInfo.debugVisible ? 'Hide' : 'Show'} Debug
-                  </Text>
-                </TouchableOpacity>
-              </View>
               <TouchableOpacity 
                 style={[styles.syncButton, styles.fullWidthButton]}
                 onPress={handleSyncCallLogs}
@@ -600,106 +282,6 @@ const DashboardScreen = () => {
             </View>
           </View>
         </View>
-
-        {/* Debug Information Section */}
-        {debugInfo.debugVisible && (
-          <View style={styles.debugSection}>
-            <Text style={styles.sectionTitle}>Debug Information</Text>
-            
-            {/* Latest Device Call Log */}
-            <View style={styles.debugCard}>
-              <Text style={styles.debugTitle}>Latest Device Call Log:</Text>
-              {debugInfo.latestDeviceLog ? (
-                <View style={styles.debugContent}>
-                  <Text style={styles.debugText}>
-                    Phone: {debugInfo.latestDeviceLog.phoneNumber || 'Unknown'}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Type: {debugInfo.latestDeviceLog.type} 
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Timestamp: {debugInfo.latestDeviceLog.timestamp} 
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Date: {debugInfo.latestDeviceLog.timestamp ? new Date(debugInfo.latestDeviceLog.timestamp).toLocaleString() : 'Invalid'}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Duration: {debugInfo.latestDeviceLog.duration}s
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Name: {debugInfo.latestDeviceLog.name || 'No name'}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.debugText}>No device call log found</Text>
-              )}
-            </View>
-
-            {/* Latest Transformed Call Log */}
-            <View style={styles.debugCard}>
-              <Text style={styles.debugTitle}>Latest Transformed Call Log:</Text>
-              {debugInfo.latestTransformedLog ? (
-                <View style={styles.debugContent}>
-                  <Text style={styles.debugText}>
-                    From: {debugInfo.latestTransformedLog.from}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    To: {debugInfo.latestTransformedLog.to}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Type: {debugInfo.latestTransformedLog.type}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Status: {debugInfo.latestTransformedLog.status}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Start Time: {debugInfo.latestTransformedLog.start_time}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Duration: {debugInfo.latestTransformedLog.duration}s
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.debugText}>No transformed call log</Text>
-              )}
-            </View>
-
-            {/* Latest CRM Call Log */}
-            <View style={styles.debugCard}>
-              <Text style={styles.debugTitle}>Latest CRM Call Log:</Text>
-              {debugInfo.latestCrmLog ? (
-                <View style={styles.debugContent}>
-                  <Text style={styles.debugText}>
-                    From: {debugInfo.latestCrmLog.from}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    To: {debugInfo.latestCrmLog.to}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Type: {debugInfo.latestCrmLog.type}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Status: {debugInfo.latestCrmLog.status}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Start Time: {debugInfo.latestCrmLog.start_time}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Duration: {debugInfo.latestCrmLog.duration}s
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Created: {debugInfo.latestCrmLog.creation}
-                  </Text>
-                  <Text style={styles.debugText}>
-                    Modified: {debugInfo.latestCrmLog.modified}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.debugText}>No CRM call log found</Text>
-              )}
-            </View>
-          </View>
-        )}
 
         {/* Call Logs Section */}
         <View style={styles.callLogsSection}>
@@ -737,48 +319,6 @@ const DashboardScreen = () => {
           </View>
         </View>
       </ScrollView>
-
-      {/* Mobile Number Configuration Modal */}
-      <Modal
-        visible={showMobileConfig}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowMobileConfig(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Configure Mobile Number</Text>
-            <Text style={styles.modalDescription}>
-              Enter your mobile number (with country code) to correctly identify call directions
-            </Text>
-            
-            <TextInput
-              style={styles.mobileInput}
-              value={tempMobileNumber}
-              onChangeText={setTempMobileNumber}
-              placeholder="+1234567890"
-              keyboardType="phone-pad"
-              autoFocus={true}
-            />
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowMobileConfig(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={() => saveMobileNumber(tempMobileNumber)}
-              >
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

@@ -266,9 +266,14 @@ class DeviceCallLogService {
 
       // Validate and sanitize timestamp - be less aggressive with validation
       let validTimestamp = deviceCallLog.timestamp;
-      
-      console.log('Original timestamp:', validTimestamp, 'Date:', new Date(validTimestamp));
-      
+
+      // Convert to number if it's a string
+      if (typeof validTimestamp === 'string') {
+        validTimestamp = parseInt(validTimestamp, 10);
+      }
+
+      console.log('Original timestamp:', deviceCallLog.timestamp, 'Converted:', validTimestamp, 'Date test:', new Date(validTimestamp));
+
       // Check if timestamp is valid - only fallback for truly invalid values
       if (!validTimestamp || isNaN(validTimestamp) || validTimestamp < 0) {
         console.warn('Invalid timestamp detected, using current time:', validTimestamp);
