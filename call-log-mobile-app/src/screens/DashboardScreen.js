@@ -31,6 +31,7 @@ const DashboardScreen = () => {
   const { user, serverUrl, sessionId } = useSelector((state) => state.auth);
 
   useEffect(() => {
+    initializeApiService();
     loadCallLogs();
     // Set hardcoded mobile number
     AsyncStorage.setItem('userMobileNumber', '1111111111');
