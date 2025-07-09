@@ -298,10 +298,18 @@ const d = ref({})
 const leadDetails = ref({})
 
 async function createLead() {
+  // Get customer's number based on call type
+  const customerNumber = callLog.value?.data?.type === 'Incoming' 
+    ? callLog.value?.data?.from  // For incoming calls, customer is the 'from' number
+    : callLog.value?.data?.to    // For outgoing calls, customer is the 'to' number
+
   show.value = false
   router.push({ 
     name: 'Leads',
-    query: { showLeadModal: true }
+    query: { 
+      showLeadModal: true,
+      mobile_no: customerNumber
+    }
   })
 }
 

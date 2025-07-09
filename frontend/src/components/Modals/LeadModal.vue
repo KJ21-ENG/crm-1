@@ -198,16 +198,20 @@ function openQuickEntryModal() {
 }
 
 onMounted(() => {
+  // Initialize with default values
   lead.doc = { 
     no_of_employees: '1-10',
     lead_type: 'Sales', // Set default lead type
     account_type: 'Individual', // Set default account type
+    ...props.defaults, // Spread defaults after base values
   }
-  Object.assign(lead.doc, props.defaults)
 
+  // Set default lead owner if not provided
   if (!lead.doc?.lead_owner) {
     lead.doc.lead_owner = getUser().name
   }
+
+  // Set default status if not provided
   if (!lead.doc?.status && leadStatuses.value[0]?.value) {
     lead.doc.status = leadStatuses.value[0].value
   }

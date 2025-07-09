@@ -325,11 +325,19 @@ const router = useRouter()
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
 
+const defaults = reactive({
+  mobile_no: route.query.mobile_no || '',  // Get mobile number from query param if available
+})
+
 // Watch for query parameter to open lead modal
 watch(() => route.query.showLeadModal, (value) => {
   if (value === 'true') {
+    // Update mobile number in defaults if provided in query
+    if (route.query.mobile_no) {
+      defaults.mobile_no = route.query.mobile_no
+    }
     showLeadModal.value = true
-    // Remove the query parameter after opening the modal
+    // Remove the query parameters after opening the modal
     router.replace({ query: {} })
   }
 })
@@ -337,12 +345,14 @@ watch(() => route.query.showLeadModal, (value) => {
 // Also check on mount in case user refreshes the page
 onMounted(() => {
   if (route.query.showLeadModal === 'true') {
+    // Update mobile number in defaults if provided in query
+    if (route.query.mobile_no) {
+      defaults.mobile_no = route.query.mobile_no
+    }
     showLeadModal.value = true
     router.replace({ query: {} })
   }
 })
-
-const defaults = reactive({})
 
 // leads data is loaded in the ViewControls component
 const leads = ref({})
