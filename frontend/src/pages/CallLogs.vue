@@ -11,15 +11,6 @@
       <Button variant="solid" :label="__('Create')" @click="createCallLog">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
-      <!-- Debug button for testing user filtering -->
-      <Button 
-        variant="ghost" 
-        :label="`Debug: ${session.user || 'No User'}`" 
-        @click="debugUserFiltering"
-        class="text-xs"
-      >
-        <template #prefix><FeatherIcon name="user" class="h-4" /></template>
-      </Button>
     </template>
   </LayoutHeader>
   <ViewControls
@@ -106,15 +97,6 @@ const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
 
-// Debug current user and filters
-const currentUserFilters = computed(() => {
-  const filters = { owner: session.user }
-  console.log('🔍 Call Logs Debug - Current User:', session.user)
-  console.log('🔍 Call Logs Debug - Filters:', filters)
-  console.log('🔍 Call Logs Debug - Session isLoggedIn:', session.isLoggedIn)
-  return filters
-})
-
 // Create a more robust user filter that waits for session
 const userOwnerFilter = computed(() => {
   // Only apply filter if user is logged in and session is available
@@ -123,8 +105,14 @@ const userOwnerFilter = computed(() => {
     return {}
   }
   
+  // If user is Administrator, don't apply owner filter
+  if (session.user === 'Administrator') {
+    console.log('🔍 Call Logs Debug - Administrator user, showing all logs')
+    return {}
+  }
+  
   const filters = { owner: session.user }
-  console.log('🔍 Call Logs Debug - User logged in, applying owner filter:', filters)
+  console.log('🔍 Call Logs Debug - Regular user, applying owner filter:', filters)
   return filters
 })
 
@@ -156,7 +144,19 @@ const filteredRows = computed(() => {
     return []
   }
   
-  // Manual client-side filtering as backup
+  // Skip filtering for Administrator
+  if (session.user === 'Administrator') {
+    console.log('🔍 Administrator: Showing all logs without filtering')
+    return callLogs.value.data.data.map((callLog) => {
+      let _rows = {}
+      callLogs.value?.data.rows.forEach((row) => {
+        _rows[row] = getCallLogDetail(row, callLog, callLogs.value?.data.columns)
+      })
+      return _rows
+    })
+  }
+  
+  // Manual client-side filtering as backup for regular users
   const userCallLogs = callLogs.value.data.data.filter(log => {
     const isUserLog = log.owner === session.user || log._owner === session.user
     if (!isUserLog) {
@@ -192,32 +192,6 @@ function showCallLog(name) {
 function createCallLog() {
   callLog.value = {}
   showCallLogModal.value = true
-}
-
-// Debug function to test user filtering
-function debugUserFiltering() {
-  console.log('🔍 MANUAL DEBUG - Current session state:', {
-    user: session.user,
-    isLoggedIn: session.isLoggedIn,
-    userOwnerFilter: userOwnerFilter.value,
-    currentUserFilters: currentUserFilters.value,
-    viewControlsRef: !!viewControls.value
-  })
-  
-  // Force reload with current filters
-  if (viewControls.value) {
-    console.log('🔍 MANUAL DEBUG - Forcing reload...')
-    viewControls.value.reload()
-  } else {
-    console.log('🔍 MANUAL DEBUG - ViewControls ref not available')
-  }
-  
-  alert(`Debug Info:
-User: ${session.user || 'Not logged in'}
-Filter: ${JSON.stringify(userOwnerFilter.value)}
-Logged In: ${session.isLoggedIn}
-
-Check console for detailed logs.`)
 }
 
 const openCallLogFromURL = () => {
