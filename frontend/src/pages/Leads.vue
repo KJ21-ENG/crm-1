@@ -310,8 +310,8 @@ import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/settings'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
-import { useRoute } from 'vue-router'
-import { ref, computed, reactive, h } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, reactive, watch, onMounted, h } from 'vue'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -320,9 +320,27 @@ const { getUser } = usersStore()
 const { getLeadStatus } = statusesStore()
 
 const route = useRoute()
+const router = useRouter()
 
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
+
+// Watch for query parameter to open lead modal
+watch(() => route.query.showLeadModal, (value) => {
+  if (value === 'true') {
+    showLeadModal.value = true
+    // Remove the query parameter after opening the modal
+    router.replace({ query: {} })
+  }
+})
+
+// Also check on mount in case user refreshes the page
+onMounted(() => {
+  if (route.query.showLeadModal === 'true') {
+    showLeadModal.value = true
+    router.replace({ query: {} })
+  }
+})
 
 const defaults = reactive({})
 

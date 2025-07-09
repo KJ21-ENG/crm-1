@@ -298,19 +298,10 @@ const d = ref({})
 const leadDetails = ref({})
 
 async function createLead() {
-  await d.value.triggerOnCreateLead?.(
-    callLog.value?.data,
-    leadDetails.value,
-    () => (show.value = false),
-  )
-
-  call('crm.fcrm.doctype.crm_call_log.crm_call_log.create_lead_from_call_log', {
-    call_log: callLog.value?.data,
-    lead_details: leadDetails.value,
-  }).then((d) => {
-    if (d) {
-      router.push({ name: 'Lead', params: { leadId: d } })
-    }
+  show.value = false
+  router.push({ 
+    name: 'Leads',
+    query: { showLeadModal: true }
   })
 }
 
