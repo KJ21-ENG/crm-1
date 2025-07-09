@@ -28,6 +28,16 @@
           </div>
         </div>
         <div v-if="tabs.data">
+          <!-- Add datetime picker before the FieldLayout -->
+          <div class="mb-4">
+            <div class="mb-1.5 text-xs text-ink-gray-5">{{ __('Call Time') }}</div>
+            <DateTimePicker
+              v-model="callTime"
+              :placeholder="__('Select date and time')"
+              :formatter="formatDateTime"
+              input-class="w-full"
+            />
+          </div>
           <FieldLayout
             :tabs="tabs.data"
             :data="callLog.doc"
@@ -61,8 +71,10 @@ import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { getRandom } from '@/utils'
 import { capture } from '@/telemetry'
 import { useDocument } from '@/data/document'
-import { FeatherIcon, createResource, ErrorMessage, Badge } from 'frappe-ui'
-import { ref, nextTick, computed, onMounted } from 'vue'
+import { FeatherIcon, createResource, ErrorMessage, Badge, DateTimePicker } from 'frappe-ui'
+import { ref, nextTick, computed, onMounted, watch } from 'vue'
+import { sessionStore } from '@/stores/session'
+import { getFormat } from '@/utils'
 
 const props = defineProps({
   data: {
@@ -135,17 +147,80 @@ async function updateCallLog() {
   await callLog.save.submit(null, callBacks)
 }
 
+const session = sessionStore()
+
+// Add callTime ref - initialize with current date/time
+const callTime = ref(new Date())
+
+// Add watch to ensure callTime is always in correct format when changed
+watch(callTime, (newValue) => {
+  if (!newValue) {
+    callTime.value = new Date()
+  }
+})
+
+// Add onMounted hook to ensure default time is set
+onMounted(() => {
+  callTime.value = new Date()
+})
+
+// Format datetime with 12-hour format for display
+const formatDateTime = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
+const formatDateForServer = (date) => {
+  if (!date) return null
+  const d = new Date(date)
+  return d.toISOString().slice(0, 19).replace('T', ' ')
+}
+
 const createCallLog = createResource({
   url: 'frappe.client.insert',
   makeParams() {
-    return {
-      doc: {
-        doctype: 'CRM Call Log',
-        id: getRandom(6),
-        telephony_medium: 'Manual',
-        ...callLog.doc,
-      },
+    // First create the base doc with required fields
+    const baseDoc = {
+      doctype: 'CRM Call Log',
+      id: getRandom(6),
+      telephony_medium: 'Manual',
+      employee: session.user,
+      start_time: formatDateForServer(callTime.value), // Format date for server
+      end_time: formatDateForServer(callTime.value), // Format date for server
+      owner: session.user,
+      status: 'Completed',
+      type: callLog.doc?.type || 'Outgoing',
     }
+
+    // Then add the call log specific data
+    const doc = {
+      ...baseDoc,
+      ...callLog.doc,
+      // Override any fields that should not be taken from callLog.doc
+      start_time: formatDateForServer(callTime.value),
+      end_time: formatDateForServer(callTime.value),
+      employee: session.user,
+      owner: session.user,
+    }
+
+    // Set from/to based on call type
+    if (doc.type === 'Outgoing') {
+      doc.from = session.user // Employee is the caller
+      doc.caller = session.user
+    } else {
+      doc.to = session.user // Employee is the receiver
+      doc.receiver = session.user
+    }
+
+    return { doc }
   },
   onSuccess(doc) {
     loading.value = false
