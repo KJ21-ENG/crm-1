@@ -39,7 +39,15 @@ crm/public/frontend/
 frontend/yarn.lock
 crm/www/crm.html
 
+# Shell Scripts
+start_crm_dev.sh
+stop_crm_dev.sh
+status_crm_dev.sh
+
 # Temporary Files
 *.tmp
 *.bak
 *~
+
+#document
+project_analysis.md

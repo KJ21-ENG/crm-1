@@ -15,3 +15,4 @@ crm.patches.v1_0.move_twilio_agent_to_telephony_agent
 crm.patches.v1_0.create_default_scripts # 13-06-2025
 crm.patches.v1_0.migrate_caller_receiver_to_employee_customer # 04-01-2025
 crm.patches.v1_0.update_empty_customer_names # 04-01-2025
+crm.patches.v1_0.update_lead_layouts

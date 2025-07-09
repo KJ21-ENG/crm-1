@@ -11,6 +11,10 @@
  "engine": "InnoDB",
  "field_order": [
   "details",
+  "lead_type",
+  "description",
+  "issue_type",
+  "account_type",
   "organization",
   "website",
   "territory",
@@ -92,6 +96,32 @@
    "fieldtype": "Link",
    "label": "Gender",
    "options": "Gender"
+  },
+  {
+   "fieldname": "lead_type",
+   "fieldtype": "Select",
+   "label": "Lead Type",
+   "options": "Support\nSales",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "issue_type",
+   "fieldtype": "Select",
+   "label": "Issue Type",
+   "options": "Technical\nBilling\nGeneral",
+   "depends_on": "eval:doc.lead_type=='Support'"
+  },
+  {
+   "fieldname": "account_type",
+   "fieldtype": "Select",
+   "label": "Account Type",
+   "options": "Individual\nBusiness\nEnterprise",
+   "depends_on": "eval:doc.lead_type=='Sales'"
   },
   {
    "default": "New",
