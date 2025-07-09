@@ -2,19 +2,21 @@
   <div @click="showCallLogDetailModal = true" class="cursor-pointer">
     <div class="mb-1 flex items-center justify-stretch gap-2 py-1 text-base">
       <div class="inline-flex items-center flex-wrap gap-1 text-ink-gray-5">
-        <Avatar
-          :image="activity._caller.image"
-          :label="activity._caller.label"
-          size="md"
-        />
-        <span class="font-medium text-ink-gray-8 ml-1">
-          {{ activity._caller.label }}
-        </span>
-        <span>{{
-          activity.type == 'Incoming'
-            ? __('has reached out')
-            : __('has made a call')
-        }}</span>
+        <template v-if="activity._caller">
+          <Avatar
+            :image="activity._caller.image"
+            :label="activity._caller.label"
+            size="md"
+          />
+          <span class="font-medium text-ink-gray-8 ml-1">
+            {{ activity._caller.label }}
+          </span>
+          <span>{{
+            activity.type == 'Incoming'
+              ? __('has reached out')
+              : __('has made a call')
+          }}</span>
+        </template>
       </div>
       <div class="ml-auto whitespace-nowrap">
         <Tooltip :text="formatDate(activity.creation)">
@@ -39,6 +41,7 @@
         </div>
         <div>
           <MultipleAvatar
+            v-if="activity._caller && activity._receiver"
             :avatars="[
               {
                 image: activity._caller.image,

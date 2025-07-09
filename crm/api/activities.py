@@ -372,6 +372,9 @@ def get_linked_calls(name):
 			"recording_url",
 			"creation",
 			"note",
+			"customer_name",
+			"employee",
+			"customer"
 		],
 	)
 
@@ -401,6 +404,9 @@ def get_linked_calls(name):
 				CallLog.recording_url,
 				CallLog.creation,
 				CallLog.note,
+				CallLog.customer_name,
+				CallLog.employee,
+				CallLog.customer,
 				Link.link_doctype,
 				Link.link_name,
 			)
