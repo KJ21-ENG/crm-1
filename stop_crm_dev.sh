@@ -116,11 +116,11 @@ fi
 # Kill any remaining frappe processes more thoroughly
 echo -e "${BLUE}🔄 Stopping Frappe processes...${NC}"
 frappe_patterns=(
-    "frappe.*serve"
+    "frappe.*serve.*8001"
     "frappe.*worker"
     "frappe.*schedule"
     "frappe.*socketio"
-    "bench.*start"
+    "bench.*serve"
 )
 
 for pattern in "${frappe_patterns[@]}"; do
@@ -131,24 +131,24 @@ for pattern in "${frappe_patterns[@]}"; do
 done
 
 # Additional cleanup for any remaining bench processes
-if check_service "bench start"; then
-    pkill -f "bench start"
+if check_service "bench serve"; then
+    pkill -f "bench serve"
     sleep 1
 fi
 
-if ! check_service "frappe.*serve.*8000" && ! check_service "frappe.*socketio" && ! check_service "bench.*start"; then
+if ! check_service "frappe.*serve.*8001" && ! check_service "frappe.*socketio" && ! check_service "bench.*serve"; then
     print_status "Frappe Bench stopped"
 else
     print_warning "Some Frappe processes still running"
 fi
 
-# 3. Stop Redis Queue (port 11000)
+# 3. Stop Redis Queue (port 11001)
 echo -e "${BLUE}📋 Stopping Redis Queue...${NC}"
-stop_redis_port 11000 "Redis Queue"
+stop_redis_port 11001 "Redis Queue"
 
-# 4. Stop Redis Cache (port 13000)  
+# 4. Stop Redis Cache (port 13001)  
 echo -e "${BLUE}💾 Stopping Redis Cache...${NC}"
-stop_redis_port 13000 "Redis Cache"
+stop_redis_port 13001 "Redis Cache"
 
 # 5. Optionally stop default Redis and MariaDB
 read -p "$(echo -e ${YELLOW}🔄 Stop Redis and MariaDB services too? [y/N]: ${NC})" -n 1 -r
@@ -183,9 +183,9 @@ echo -e "\n${BLUE}🔍 Verifying services are stopped...${NC}"
 
 crm_services=(
     "node.*vite:Frontend Dev Server"
-    "frappe.*serve.*8000|frappe.*socketio|bench.*start:Frappe Bench"
-    "redis-server.*11000:Redis Queue"
-    "redis-server.*13000:Redis Cache"
+    "frappe.*serve.*8001|frappe.*socketio|bench.*serve:Frappe Bench"
+    "redis-server.*11001:Redis Queue"
+    "redis-server.*13001:Redis Cache"
 )
 
 all_stopped=true
@@ -234,6 +234,6 @@ else
     
     # Show what's still running
     echo -e "${YELLOW}🔍 Currently running processes:${NC}"
-    ps aux | grep -E "(frappe|vite|esbuild|redis-server.*1[13]000)" | grep -v grep || echo "  None found"
+    ps aux | grep -E "(frappe|vite|esbuild|redis-server.*1[13]001)" | grep -v grep || echo "  None found"
     echo
 fi 
