@@ -48,3 +48,6 @@ status_crm_dev.sh
 *.tmp
 *.bak
 *~
+
+#document
+project_analysis.md

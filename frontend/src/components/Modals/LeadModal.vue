@@ -134,6 +134,18 @@ function createNewLead() {
         error.value = __('First Name is mandatory')
         return error.value
       }
+      if (!lead.doc.lead_type) {
+        error.value = __('Lead Type is mandatory')
+        return error.value
+      }
+      if (lead.doc.lead_type === 'Support' && !lead.doc.issue_type) {
+        error.value = __('Issue Type is mandatory for Support leads')
+        return error.value
+      }
+      if (lead.doc.lead_type === 'Sales' && !lead.doc.account_type) {
+        error.value = __('Account Type is mandatory for Sales leads')
+        return error.value
+      }
       if (lead.doc.annual_revenue) {
         if (typeof lead.doc.annual_revenue === 'string') {
           lead.doc.annual_revenue = lead.doc.annual_revenue.replace(/,/g, '')
@@ -186,7 +198,11 @@ function openQuickEntryModal() {
 }
 
 onMounted(() => {
-  lead.doc = { no_of_employees: '1-10' }
+  lead.doc = { 
+    no_of_employees: '1-10',
+    lead_type: 'Sales', // Set default lead type
+    account_type: 'Individual', // Set default account type
+  }
   Object.assign(lead.doc, props.defaults)
 
   if (!lead.doc?.lead_owner) {
