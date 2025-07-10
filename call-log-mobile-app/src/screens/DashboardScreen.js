@@ -146,9 +146,27 @@ const DashboardScreen = () => {
     try {
       console.log('Starting call log sync...');
       await callLogSyncService.init();
-      await callLogSyncService.syncCallLogs();
+      const result = await callLogSyncService.syncCallLogs();
+      
+      if (!result.success) {
+        if (result.error === 'PERMISSION_DENIED') {
+          Alert.alert(
+            'Permission Required',
+            'Call log permission is required to sync call logs. Please grant permission in app settings.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Sync Error',
+            result.message || 'Failed to sync call logs',
+            [{ text: 'OK' }]
+          );
+        }
+        return;
+      }
+      
       await loadCallLogs();
-      Alert.alert('Success', 'Call logs synced successfully!');
+      Alert.alert('Success', result.message || 'Call logs synced successfully!');
     } catch (error) {
       console.error('Sync error:', error);
       Alert.alert(

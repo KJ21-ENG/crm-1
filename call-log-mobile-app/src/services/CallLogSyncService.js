@@ -87,13 +87,42 @@ class CallLogSyncService {
       // Check if ready
       const readiness = await this.isReadyForSync();
       if (!readiness.ready) {
-        const missingItems = [];
-        if (!readiness.deviceInitialized) missingItems.push('Device service not initialized');
-        if (!readiness.hasPermission) missingItems.push('Call log permission not granted');
-        if (!readiness.apiAuthenticated) missingItems.push('Not authenticated with CRM');
-        if (!readiness.isSupported) missingItems.push('Platform not supported');
-        
-        throw new Error(`Not ready for sync: ${missingItems.join(', ')}`);
+        // If permission is not granted, request it
+        if (!readiness.hasPermission) {
+          const granted = await deviceCallLogService.requestPermissions();
+          if (!granted) {
+            return {
+              success: false,
+              message: 'Call log permission is required to sync call logs. Please grant permission in app settings.',
+              error: 'PERMISSION_DENIED'
+            };
+          }
+          // Recheck readiness after permission granted
+          const newReadiness = await this.isReadyForSync();
+          if (!newReadiness.ready) {
+            const missingItems = [];
+            if (!newReadiness.deviceInitialized) missingItems.push('Device service not initialized');
+            if (!newReadiness.apiAuthenticated) missingItems.push('Not authenticated with CRM');
+            if (!newReadiness.isSupported) missingItems.push('Platform not supported');
+            
+            return {
+              success: false,
+              message: `Cannot sync: ${missingItems.join(', ')}`,
+              error: 'SYNC_PREREQUISITES_FAILED'
+            };
+          }
+        } else {
+          const missingItems = [];
+          if (!readiness.deviceInitialized) missingItems.push('Device service not initialized');
+          if (!readiness.apiAuthenticated) missingItems.push('Not authenticated with CRM');
+          if (!readiness.isSupported) missingItems.push('Platform not supported');
+          
+          return {
+            success: false,
+            message: `Cannot sync: ${missingItems.join(', ')}`,
+            error: 'SYNC_PREREQUISITES_FAILED'
+          };
+        }
       }
 
       // Get new call logs from device
@@ -123,12 +152,12 @@ class CallLogSyncService {
       const errorCount = results.failure_count || 0;
       const duplicateCount = results.duplicate_count || 0;
       
-              await this.updateSyncStats({
-          totalSynced: this.syncStats.totalSynced + successCount,
-          lastSyncTime: Date.now(),
-          errors: results.errors || [],
-          pending: errorCount,
-        });
+      await this.updateSyncStats({
+        totalSynced: this.syncStats.totalSynced + successCount,
+        lastSyncTime: Date.now(),
+        errors: results.errors || [],
+        pending: errorCount,
+      });
 
       // Update device service last sync timestamp
       if (successCount > 0) {
@@ -137,15 +166,15 @@ class CallLogSyncService {
 
       console.log(`Sync completed: ${successCount} synced, ${errorCount} failed`);
       
-              return {
-          success: errorCount === 0,
-          message: `Synced ${successCount} call logs${duplicateCount > 0 ? `, ${duplicateCount} duplicates skipped` : ''}${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
-          synced: successCount,
-          failed: errorCount,
-          duplicates: duplicateCount,
-          total: transformedLogs.length,
-          errors: results.errors || []
-        };
+      return {
+        success: errorCount === 0,
+        message: `Synced ${successCount} call logs${duplicateCount > 0 ? `, ${duplicateCount} duplicates skipped` : ''}${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        synced: successCount,
+        failed: errorCount,
+        duplicates: duplicateCount,
+        total: transformedLogs.length,
+        errors: results.errors || []
+      };
 
     } catch (error) {
       console.error('Sync failed:', error);

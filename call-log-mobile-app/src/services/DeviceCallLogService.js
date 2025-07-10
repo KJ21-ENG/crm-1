@@ -104,34 +104,49 @@ class DeviceCallLogService {
     try {
       console.log('Requesting call log permissions...');
       
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-        {
-          title: 'Call Log Access Permission',
-          message: 'CRM Call Log Sync needs access to your call logs to sync them with your CRM system.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-
-      const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
-      this.hasPermission = isGranted;
-      
-      console.log('Call log permission result:', granted, 'isGranted:', isGranted);
-      
-      if (!isGranted) {
+      // Show our custom permission dialog first
+      return new Promise((resolve) => {
         Alert.alert(
-          'Permission Required',
-          'Call log access is required to sync your call logs with the CRM system. Please enable it in app settings.',
+          'Call Log Access Permission',
+          'CRM Call Log Sync needs access to your call logs to sync them with your CRM system.',
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: this.openAppSettings }
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                this.hasPermission = false;
+                resolve(false);
+              }
+            },
+            {
+              text: 'OK',
+              onPress: async () => {
+                const granted = await PermissionsAndroid.request(
+                  PermissionsAndroid.PERMISSIONS.READ_CALL_LOG
+                );
+
+                const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+                this.hasPermission = isGranted;
+                
+                // Only show settings dialog if permission is permanently denied
+                if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+                  Alert.alert(
+                    'Permission Required',
+                    'Call log access is required. Please enable it in app settings.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Open Settings', onPress: this.openAppSettings }
+                    ]
+                  );
+                }
+                
+                resolve(isGranted);
+              }
+            }
           ]
         );
-      }
+      });
       
-      return isGranted;
     } catch (error) {
       console.error('Error requesting call log permissions:', error);
       Alert.alert('Error', 'Failed to request call log permissions.');
@@ -156,11 +171,8 @@ class DeviceCallLogService {
    */
   async getDeviceCallLogs(options = {}) {
     if (!this.hasPermission) {
-      console.log('No call log permission, requesting...');
-      const granted = await this.requestPermissions();
-      if (!granted) {
-        throw new Error('Call log permission not granted');
-      }
+      console.log('No call log permission');
+      throw new Error('PERMISSION_REQUIRED');
     }
 
     try {
@@ -190,6 +202,9 @@ class DeviceCallLogService {
       
     } catch (error) {
       console.error('Error fetching device call logs:', error);
+      if (error.message.includes('permission')) {
+        throw new Error('PERMISSION_REQUIRED');
+      }
       throw new Error(`Failed to fetch call logs: ${error.message}`);
     }
   }
