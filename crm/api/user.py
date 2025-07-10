@@ -18,11 +18,13 @@ def add_existing_users(users, role="Sales User"):
 def update_user_role(user, new_role):
 	"""
 	Update the role of the user to Sales Manager, Sales User, System Manager, or Support User.
+	Only Administrator can change user roles.
 	:param user: The name of the user
 	:param new_role: The new role to assign
 	"""
 
-	frappe.only_for(["System Manager", "Sales Manager"])
+	if frappe.session.user != "Administrator":
+		frappe.throw("Only Administrator can change user roles")
 
 	if new_role not in ["System Manager", "Sales Manager", "Sales User", "Support User"]:
 		frappe.throw("Cannot assign this role")

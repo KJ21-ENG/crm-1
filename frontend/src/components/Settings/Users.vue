@@ -120,7 +120,19 @@
                 }"
                 placement="right"
               />
+              <div v-if="!isAdmin()">
+                <Button :label="roleMap[user.role]" :icon-left="
+                  user.role === 'System Manager'
+                    ? 'shield'
+                    : user.role === 'Sales Manager'
+                      ? 'briefcase'
+                      : user.role === 'Support User'
+                        ? 'headphones'
+                        : 'user-check'
+                " />
+              </div>
               <Dropdown
+                v-else
                 :options="getDropdownOptions(user)"
                 :button="{
                   label: roleMap[user.role],
@@ -130,7 +142,9 @@
                       ? 'shield'
                       : user.role === 'Sales Manager'
                         ? 'briefcase'
-                        : 'user-check',
+                        : user.role === 'Support User'
+                          ? 'headphones'
+                          : 'user-check',
                 }"
                 placement="right"
               />
