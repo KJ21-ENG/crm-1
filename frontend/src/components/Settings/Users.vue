@@ -86,6 +86,7 @@
             { label: __('Admin'), value: 'System Manager' },
             { label: __('Manager'), value: 'Sales Manager' },
             { label: __('Sales User'), value: 'Sales User' },
+            { label: __('Support User'), value: 'Support User' },
           ]"
         />
       </div>
@@ -119,14 +120,7 @@
                 }"
                 placement="right"
               />
-              <Tooltip
-                v-if="isManager() && user.role == 'System Manager'"
-                :text="__('Cannot change role of user with Admin access')"
-              >
-                <Button :label="__('Admin')" icon-left="shield" />
-              </Tooltip>
               <Dropdown
-                v-else
                 :options="getDropdownOptions(user)"
                 :button="{
                   label: roleMap[user.role],
@@ -184,6 +178,7 @@ const roleMap = {
   'System Manager': __('Admin'),
   'Sales Manager': __('Manager'),
   'Sales User': __('Sales User'),
+  'Support User': __('Support User'),
 }
 
 const usersList = computed(() => {
@@ -273,6 +268,17 @@ function getDropdownOptions(user) {
           active: props.active,
           selected: user.role === 'Sales User',
           onClick: () => updateRole(user, 'Sales User'),
+        }),
+    },
+    {
+      label: __('Support User'),
+      component: (props) =>
+        DropdownOption({
+          option: __('Support User'),
+          icon: 'headphones',
+          active: props.active,
+          selected: user.role === 'Support User',
+          onClick: () => updateRole(user, 'Support User'),
         }),
     },
   ]

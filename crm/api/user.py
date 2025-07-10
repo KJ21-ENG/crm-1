@@ -17,27 +17,32 @@ def add_existing_users(users, role="Sales User"):
 @frappe.whitelist()
 def update_user_role(user, new_role):
 	"""
-	Update the role of the user to Sales Manager, Sales User, or System Manager.
+	Update the role of the user to Sales Manager, Sales User, System Manager, or Support User.
 	:param user: The name of the user
-	:param new_role: The new role to assign (Sales Manager or Sales User)
+	:param new_role: The new role to assign
 	"""
 
 	frappe.only_for(["System Manager", "Sales Manager"])
 
-	if new_role not in ["System Manager", "Sales Manager", "Sales User"]:
+	if new_role not in ["System Manager", "Sales Manager", "Sales User", "Support User"]:
 		frappe.throw("Cannot assign this role")
 
 	user_doc = frappe.get_doc("User", user)
 
+	# Remove all CRM roles first
+	user_doc.remove_roles("System Manager", "Sales Manager", "Sales User", "Support User")
+
+	# Then add the new role and its dependencies
 	if new_role == "System Manager":
-		user_doc.append_roles("System Manager", "Sales Manager", "Sales User")
+		user_doc.append_roles("System Manager", "Sales Manager", "Sales User", "Support User")
 		user_doc.set("block_modules", [])
-	if new_role == "Sales Manager":
+	elif new_role == "Sales Manager":
 		user_doc.append_roles("Sales Manager", "Sales User")
-		user_doc.remove_roles("System Manager")
-	if new_role == "Sales User":
+	elif new_role == "Sales User":
 		user_doc.append_roles("Sales User")
-		user_doc.remove_roles("Sales Manager", "System Manager")
+		update_module_in_user(user_doc, "FCRM")
+	elif new_role == "Support User":
+		user_doc.append_roles("Support User")
 		update_module_in_user(user_doc, "FCRM")
 
 	user_doc.save(ignore_permissions=True)
