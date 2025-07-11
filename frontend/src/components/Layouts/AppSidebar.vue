@@ -198,6 +198,11 @@ const isDemoSite = ref(window.is_demo_site)
 
 const links = [
   {
+    label: 'Tickets',
+    icon: SquareAsterisk,
+    to: 'Tickets',
+  },
+  {
     label: 'Leads',
     icon: LeadsIcon,
     to: 'Leads',

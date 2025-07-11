@@ -14,6 +14,18 @@ const routes = [
     component: () => import('@/pages/MobileNotification.vue'),
   },
   {
+    alias: '/tickets',
+    path: '/tickets/view/:viewType?',
+    name: 'Tickets',
+    component: () => import('@/pages/Tickets.vue'),
+  },
+  {
+    path: '/tickets/:ticketId',
+    name: 'Ticket',
+    component: () => import(`@/pages/${handleMobileView('Ticket')}.vue`),
+    props: true,
+  },
+  {
     alias: '/leads',
     path: '/leads/view/:viewType?',
     name: 'Leads',

@@ -143,20 +143,41 @@
         </div>
       </div>
       <div
-        v-if="!callLog?.data?._lead && !callLog?.data?._deal"
+        v-if="!callLog?.data?._lead && !callLog?.data?._deal && !callLog?.data?._ticket"
         class="px-4 pb-7 pt-4 sm:px-6"
       >
-        <Button
-          class="w-full"
-          variant="solid"
-          :label="__('Create lead')"
-          @click="createLead"
-        />
+        <div class="flex gap-2">
+          <Button
+            class="flex-1"
+            variant="outline"
+            :label="__('Create Ticket')"
+            @click="createTicket"
+          >
+            <template #prefix>
+              <TicketIcon class="h-4 w-4" />
+            </template>
+          </Button>
+          <Button
+            class="flex-1"
+            variant="solid"
+            :label="__('Create Lead')"
+            @click="createLead"
+          >
+            <template #prefix>
+              <LeadsIcon class="h-4 w-4" />
+            </template>
+          </Button>
+        </div>
       </div>
     </template>
   </Dialog>
   <NoteModal v-model="showNoteModal" :note="note" @after="addNoteToCallLog" />
   <TaskModal v-model="showTaskModal" :task="task" @after="addTaskToCallLog" />
+  <TicketModal 
+    v-model="showTicketModal" 
+    :defaults="ticketDefaults"
+    :call-log="callLog?.data"
+  />
 </template>
 
 <script setup>
@@ -170,8 +191,10 @@ import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import CheckCircleIcon from '@/components/Icons/CheckCircleIcon.vue'
+import TicketIcon from '@/components/Icons/TicketIcon.vue'
 import NoteModal from '@/components/Modals/NoteModal.vue'
 import TaskModal from '@/components/Modals/TaskModal.vue'
+import TicketModal from '@/components/Modals/TicketModal.vue'
 import FadedScrollableDiv from '@/components/FadedScrollableDiv.vue'
 import { getCallLogDetail } from '@/utils/callLog'
 import { usersStore } from '@/stores/users'
@@ -187,6 +210,7 @@ const router = useRouter()
 const show = defineModel()
 const showNoteModal = ref(false)
 const showTaskModal = ref(false)
+const showTicketModal = ref(false)
 
 const callLog = defineModel('callLog')
 
@@ -296,6 +320,39 @@ const detailFields = computed(() => {
 
 const d = ref({})
 const leadDetails = ref({})
+
+// Ticket defaults computed from call log data
+const ticketDefaults = computed(() => {
+  if (!callLog.value?.data) return {}
+  
+  const customerNumber = callLog.value.data.type === 'Incoming' 
+    ? callLog.value.data.from 
+    : callLog.value.data.to
+    
+  return {
+    mobile_no: customerNumber,
+    first_name: callLog.value.data.customer_name || `Customer from call ${customerNumber}`,
+    ticket_subject: `Support request from call ${customerNumber}`,
+    description: `Customer called on ${new Date(callLog.value.data.start_time).toLocaleString()}`,
+    priority: 'Medium',
+    issue_type: 'General',
+    department: 'Support'
+  }
+})
+
+async function createTicket() {
+  show.value = false
+  router.push({ 
+    name: 'Tickets',
+    query: { 
+      showTicketModal: true,
+      mobile_no: callLog.value?.data?.type === 'Incoming' 
+        ? callLog.value?.data?.from 
+        : callLog.value?.data?.to,
+      call_log: callLog.value?.data?.name
+    }
+  })
+}
 
 async function createLead() {
   // Get customer's number based on call type
