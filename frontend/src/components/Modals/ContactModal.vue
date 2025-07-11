@@ -29,8 +29,8 @@
         <FieldLayout
           v-if="tabs.data?.length"
           :tabs="tabs.data"
-          :data="_contact.doc"
-          doctype="Contact"
+          v-model="_contact.doc"
+          :doctype="'Contact'"
         />
       </div>
       <div class="px-4 pb-7 pt-4 sm:px-6">
@@ -129,7 +129,7 @@ const tabs = createResource({
   params: { doctype: 'Contact', type: 'Quick Entry' },
   auto: true,
   transform: (_tabs) => {
-    return _tabs.forEach((tab) => {
+    _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field) => {
@@ -151,11 +151,23 @@ const tabs = createResource({
         })
       })
     })
+    return _tabs
   },
 })
 
 onMounted(() => {
-  _contact.doc = {}
+  // Initialize contact document with required properties
+  _contact.doc = {
+    doctype: 'Contact',
+    name: '', // Required for Field.vue
+    first_name: '',
+    last_name: '',
+    email_id: '',
+    mobile_no: '',
+    // ... other default values
+  }
+  
+  // Merge with any provided contact data
   Object.assign(_contact.doc, props.contact.data || props.contact)
 })
 

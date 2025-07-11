@@ -27,7 +27,7 @@
           </div>
         </div>
         <div>
-          <FieldLayout v-if="tabs.data" :tabs="tabs.data" :data="lead.doc" />
+          <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
           <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
         </div>
       </div>
@@ -76,6 +76,34 @@ const isLeadCreating = ref(false)
 
 const { document: lead, triggerOnChange } = useDocument('CRM Lead')
 
+// Initialize document properly
+onMounted(() => {
+  // Initialize lead document with required properties
+  lead.doc = {
+    doctype: 'CRM Lead',
+    name: '', // Required for Field.vue
+    first_name: '',
+    last_name: '',
+    email: '',
+    mobile_no: '',
+    lead_type: 'Sales', // Set default lead type
+    account_type: 'Individual', // Set default account type
+    no_of_employees: '1-10',
+    status: '',
+    // ... other default values
+  }
+
+  // Merge with any provided defaults
+  if (props.defaults) {
+    Object.assign(lead.doc, props.defaults)
+  }
+
+  // Set default lead owner if not provided
+  if (!lead.doc?.lead_owner) {
+    lead.doc.lead_owner = user
+  }
+})
+
 const leadStatuses = computed(() => {
   let statuses = statusOptions('lead', null, [], triggerOnChange)
   if (!lead.doc.status) {
@@ -90,7 +118,7 @@ const tabs = createResource({
   params: { doctype: 'CRM Lead', type: 'Quick Entry' },
   auto: true,
   transform: (_tabs) => {
-    return _tabs.forEach((tab) => {
+    _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field) => {
@@ -107,6 +135,7 @@ const tabs = createResource({
         })
       })
     })
+    return _tabs
   },
 })
 
@@ -198,14 +227,6 @@ function openQuickEntryModal() {
 }
 
 onMounted(() => {
-  // Initialize with default values
-  lead.doc = { 
-    no_of_employees: '1-10',
-    lead_type: 'Sales', // Set default lead type
-    account_type: 'Individual', // Set default account type
-    ...props.defaults, // Spread defaults after base values
-  }
-
   // Set default lead owner if not provided
   if (!lead.doc?.lead_owner) {
     lead.doc.lead_owner = getUser().name

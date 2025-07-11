@@ -40,8 +40,8 @@
           </div>
           <FieldLayout
             :tabs="tabs.data"
-            :data="callLog.doc"
-            doctype="CRM Call Log"
+            v-model="callLog.doc"
+            :doctype="'CRM Call Log'"
           />
           <ErrorMessage class="mt-8" :message="error" />
         </div>
@@ -162,6 +162,23 @@ watch(callTime, (newValue) => {
 // Add onMounted hook to ensure default time is set
 onMounted(() => {
   callTime.value = new Date()
+  
+  // Initialize callLog document with required properties
+  if (!callLog.doc || !callLog.doc.name) {
+    callLog.doc = {
+      doctype: 'CRM Call Log',
+      name: '', // Required for Field.vue
+      type: 'Outgoing',
+      duration: 0,
+      status: 'Completed',
+      // ... other default values
+    }
+    
+    // Merge with any provided data
+    if (props.data) {
+      Object.assign(callLog.doc, props.data)
+    }
+  }
 })
 
 // Format datetime with 12-hour format for display

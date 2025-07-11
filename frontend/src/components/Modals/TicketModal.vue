@@ -309,7 +309,7 @@ const tabs = createResource({
   params: { doctype: 'CRM Ticket', type: 'Quick Entry' },
   auto: true,
   transform: (_tabs) => {
-    return _tabs.forEach((tab) => {
+    _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field) => {
@@ -387,6 +387,7 @@ const tabs = createResource({
         })
       })
     })
+    return _tabs
   },
 })
 

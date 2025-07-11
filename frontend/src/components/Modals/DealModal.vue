@@ -54,8 +54,8 @@
             ref="fieldLayoutRef"
             v-if="tabs.data?.length"
             :tabs="tabs.data"
-            :data="deal.doc"
-            doctype="CRM Deal"
+            v-model="deal.doc"
+            :doctype="'CRM Deal'"
           />
           <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
         </div>
@@ -100,6 +100,28 @@ const error = ref(null)
 
 const { document: deal, triggerOnChange } = useDocument('CRM Deal')
 
+// Initialize document properly
+onMounted(() => {
+  // Initialize deal document with required properties
+  deal.doc = {
+    doctype: 'CRM Deal',
+    name: '', // Required for Field.vue
+    first_name: '',
+    last_name: '',
+    email: '',
+    mobile_no: '',
+    organization: '',
+    status: '',
+    annual_revenue: '',
+    // ... other default values
+  }
+
+  // Merge with any provided defaults
+  if (props.defaults) {
+    Object.assign(deal.doc, props.defaults)
+  }
+})
+
 const hasOrganizationSections = ref(true)
 const hasContactSections = ref(true)
 
@@ -134,7 +156,7 @@ const tabs = createResource({
   auto: true,
   transform: (_tabs) => {
     hasOrganizationSections.value = false
-    return _tabs.forEach((tab) => {
+    _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           if (
@@ -164,6 +186,7 @@ const tabs = createResource({
         })
       })
     })
+    return _tabs
   },
 })
 
