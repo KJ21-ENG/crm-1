@@ -19,9 +19,9 @@
         </template>
       </div>
       <div class="ml-auto whitespace-nowrap">
-        <Tooltip :text="formatDate(activity.creation)">
+        <Tooltip :text="formatDate(activity.start_time || activity.creation)">
           <div class="text-sm text-ink-gray-5">
-            {{ __(timeAgo(activity.creation)) }}
+            {{ __(timeAgo(activity.start_time || activity.creation)) }}
           </div>
         </Tooltip>
       </div>
@@ -38,6 +38,22 @@
                 : __('Outbound Call')
             }}
           </div>
+          <!-- Special indicator for original call that created ticket -->
+          <Badge
+            v-if="activity.data?.is_original"
+            label="Original"
+            theme="blue"
+            variant="subtle"
+            class="text-xs"
+          />
+          <!-- Indicator for calls during ticket lifecycle -->
+          <Badge
+            v-else-if="activity.data?.description"
+            label="Lifecycle"
+            theme="gray"
+            variant="subtle"
+            class="text-xs"
+          />
         </div>
         <div>
           <MultipleAvatar
@@ -59,7 +75,7 @@
         </div>
       </div>
       <div class="flex items-center flex-wrap gap-2">
-        <Badge :label="formatDate(activity.creation, 'MMM D, dddd')">
+        <Badge :label="formatDate(activity.start_time || activity.creation, 'MMM D, h:mm A')">
           <template #prefix>
             <CalendarIcon class="size-3" />
           </template>

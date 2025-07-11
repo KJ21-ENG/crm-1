@@ -467,6 +467,7 @@ import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import WhatsAppArea from '@/components/Activities/WhatsAppArea.vue'
 import WhatsAppBox from '@/components/Activities/WhatsAppBox.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
@@ -639,7 +640,8 @@ const activities = computed(() => {
   }
 
   _activities.forEach((activity) => {
-    activity.icon = timelineIcon(activity.activity_type, activity.is_lead)
+    // Handle ticket activities with proper icon assignment
+    activity.icon = timelineIcon(activity.activity_type, activity.is_lead, activity.is_ticket)
 
     if (
       activity.activity_type == 'incoming_call' ||
@@ -732,11 +734,17 @@ const emptyTextIcon = computed(() => {
   return h(icon, { class: 'text-ink-gray-4' })
 })
 
-function timelineIcon(activity_type, is_lead) {
+function timelineIcon(activity_type, is_lead, is_ticket) {
   let icon
   switch (activity_type) {
     case 'creation':
-      icon = is_lead ? LeadsIcon : DealsIcon
+      if (is_ticket) {
+        icon = SquareAsterisk // Ticket creation
+      } else if (is_lead) {
+        icon = LeadsIcon
+      } else {
+        icon = DealsIcon
+      }
       break
     case 'deal':
       icon = DealsIcon
@@ -752,6 +760,48 @@ function timelineIcon(activity_type, is_lead) {
       break
     case 'attachment_log':
       icon = AttachmentIcon
+      break
+    case 'escalation':
+      icon = SelectIcon // Using select icon for escalation
+      break
+    case 'assignment':
+    case 'auto_assignment':
+      icon = SelectIcon // Using select icon for assignments
+      break
+    case 'status_update':
+    case 'priority_update':
+    case 'sla_update':
+      icon = DotIcon
+      break
+    case 'call_log':
+      icon = PhoneIcon
+      break
+    case 'resolution':
+      icon = SquareAsterisk
+      break
+    case 'reopening':
+      icon = SelectIcon
+      break
+    case 'sla_breach':
+      icon = SelectIcon
+      break
+    case 'customer_response':
+      icon = Email2Icon
+      break
+    case 'internal_note':
+      icon = NoteIcon
+      break
+    case 'department_transfer':
+      icon = SelectIcon
+      break
+    case 'customer_feedback':
+      icon = CommentIcon
+      break
+    case 'follow-up_scheduled':
+      icon = TaskIcon
+      break
+    case 'bulk_update':
+      icon = DotIcon
       break
     default:
       icon = DotIcon

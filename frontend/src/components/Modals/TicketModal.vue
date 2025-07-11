@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="show" :options="{ size: '3xl' }">
+  <Dialog v-model="show" :options="{ size: '4xl' }">
     <template #body>
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
         <div class="mb-5 flex items-center justify-between">
@@ -26,7 +26,10 @@
             </Button>
           </div>
         </div>
-        <div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Ticket Form (Left Side) -->
+          <div class="lg:col-span-2">
           <FieldLayout 
             v-if="tabs.data" 
             :tabs="tabs.data" 
@@ -34,15 +37,145 @@
             :doctype="'CRM Ticket'"
           />
           <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
+          </div>
+
+          <!-- Customer History (Right Side) -->
+          <div class="lg:col-span-1">
+            <div class="sticky top-4">
+              <div class="rounded-lg border bg-white p-4">
+                <h4 class="mb-4 text-lg font-semibold text-ink-gray-9">
+                  {{ __('Customer History') }}
+                </h4>
+                
+                <!-- Show message when no contact info -->
+                <div v-if="!customerSearchKey" class="text-center py-6">
+                  <div class="text-ink-gray-6 text-sm">
+                    {{ __('Enter mobile number or email to see customer history') }}
+                  </div>
+                </div>
+                
+                <!-- Loading state -->
+                <div v-else-if="customerHistory.loading" class="text-center py-6">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                  <div class="text-sm text-ink-gray-6">{{ __('Loading history...') }}</div>
+                </div>
+                
+                <!-- Customer History Results -->
+                <div v-else-if="customerHistory.data" class="space-y-4">
+                  <!-- Existing Tickets -->
+                  <div v-if="customerHistory.data.tickets?.length">
+                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
+                      <TicketIcon class="h-4 w-4" />
+                      {{ __('Existing Tickets') }} ({{ customerHistory.data.tickets.length }})
+                    </h5>
+                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                      <div
+                        v-for="existingTicket in customerHistory.data.tickets"
+                        :key="existingTicket.name"
+                        class="p-3 rounded border bg-orange-50 hover:bg-orange-100 transition-colors cursor-pointer"
+                        @click="router.push({ name: 'Ticket', params: { ticketId: existingTicket.name } })"
+                      >
+                        <div class="font-medium text-sm text-ink-gray-9">
+                          {{ existingTicket.ticket_subject }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1">
+                          <Badge 
+                            :label="existingTicket.status" 
+                            :theme="getStatusColor(existingTicket.status)"
+                            variant="subtle"
+                            class="mr-2"
+                          />
+                          {{ formatDate(existingTicket.creation) }}
+                        </div>
+                        <div v-if="existingTicket.status !== 'Closed'" class="text-xs text-orange-600 mt-1">
+                          ⚠️ {{ __('Open ticket exists') }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Existing Leads -->
+                  <div v-if="customerHistory.data.leads?.length">
+                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
+                      <LeadsIcon class="h-4 w-4" />
+                      {{ __('Existing Leads') }} ({{ customerHistory.data.leads.length }})
+                    </h5>
+                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                      <div
+                        v-for="existingLead in customerHistory.data.leads"
+                        :key="existingLead.name"
+                        class="p-3 rounded border bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                        @click="router.push({ name: 'Lead', params: { leadId: existingLead.name } })"
+                      >
+                        <div class="font-medium text-sm text-ink-gray-9">
+                          {{ existingLead.lead_name }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1">
+                          <Badge 
+                            :label="existingLead.status" 
+                            :theme="getStatusColor(existingLead.status)"
+                            variant="subtle"
+                            class="mr-2"
+                          />
+                          {{ formatDate(existingLead.creation) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Customer Contact Summary -->
+                  <div v-if="customerHistory.data.summary" class="pt-4 border-t">
+                    <h5 class="font-medium text-ink-gray-8 mb-2">{{ __('Customer Summary') }}</h5>
+                    <div class="text-sm space-y-1">
+                      <div><strong>Total Tickets:</strong> {{ customerHistory.data.summary.total_tickets }}</div>
+                      <div><strong>Open Tickets:</strong> {{ customerHistory.data.summary.open_tickets }}</div>
+                      <div><strong>Total Leads:</strong> {{ customerHistory.data.summary.total_leads }}</div>
+                      <div v-if="customerHistory.data.summary.last_interaction">
+                        <strong>Last Contact:</strong> {{ formatDate(customerHistory.data.summary.last_interaction) }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Warning for open tickets -->
+                  <div v-if="hasOpenTickets" class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <div class="flex items-center gap-2 text-yellow-700">
+                      <FeatherIcon name="alert-triangle" class="h-4 w-4" />
+                      <span class="font-medium text-sm">{{ __('Warning') }}</span>
+                    </div>
+                    <div class="text-xs text-yellow-600 mt-1">
+                      {{ __('Customer has open tickets. Consider updating existing ticket instead of creating new one.') }}
+                    </div>
+                  </div>
+
+                  <!-- No history found -->
+                  <div v-if="!customerHistory.data.tickets?.length && !customerHistory.data.leads?.length" class="text-center py-4">
+                    <div class="text-ink-gray-6 text-sm">
+                      {{ __('No previous tickets or leads found for this customer') }}
+                    </div>
+                    <div class="text-ink-gray-5 text-xs mt-1">
+                      {{ __('This appears to be a new customer') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      
       <div class="px-4 pb-7 pt-4 sm:px-6">
         <div class="flex flex-row-reverse gap-2">
           <Button
             variant="solid"
-            :label="__('Create')"
+            :label="__('Create Ticket')"
             :loading="isTicketCreating"
             @click="createNewTicket"
+          />
+          <Button
+            v-if="hasOpenTickets"
+            variant="outline"
+            :label="__('View Open Tickets')"
+            @click="viewOpenTickets"
           />
         </div>
       </div>
@@ -52,13 +185,16 @@
 
 <script setup>
 import EditIcon from '@/components/Icons/EditIcon.vue'
+import TicketIcon from '@/components/Icons/TaskIcon.vue'
+import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { capture } from '@/telemetry'
-import { createResource } from 'frappe-ui'
+import { formatDate } from '@/utils'
+import { createResource, Badge } from 'frappe-ui'
 import { useDocument } from '@/data/document'
 import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -89,6 +225,42 @@ const error = ref(null)
 const isTicketCreating = ref(false)
 
 const { document: ticket, triggerOnChange } = useDocument('CRM Ticket')
+
+// Customer search key for history lookup
+const customerSearchKey = computed(() => {
+  return ticket.doc?.mobile_no || ticket.doc?.email
+})
+
+// Check if customer has open tickets
+const hasOpenTickets = computed(() => {
+  return customerHistory.data?.tickets?.some(t => 
+    ['New', 'Open', 'In Progress', 'Pending Customer'].includes(t.status)
+  ) || false
+})
+
+// Customer history resource
+const customerHistory = createResource({
+  url: 'crm.api.ticket.get_customer_history',
+  makeParams() {
+    const mobile = ticket.doc?.mobile_no
+    const email = ticket.doc?.email
+    
+    if (!mobile && !email) return null
+    
+    return {
+      mobile_no: mobile,
+      email: email
+    }
+  },
+  auto: false,
+})
+
+// Watch for customer contact changes to fetch history
+watch([() => ticket.doc?.mobile_no, () => ticket.doc?.email], ([mobile, email]) => {
+  if (mobile || email) {
+    customerHistory.reload()
+  }
+}, { immediate: false })
 
 // Initialize ticket with defaults
 onMounted(() => {
@@ -121,13 +293,15 @@ onMounted(() => {
       ticket_subject: `Support request from call ${customerNumber}`,
       description: `Customer called on ${props.callLog.start_time}`
     })
+    
+    // Fetch customer history immediately for call log tickets
+    nextTick(() => {
+      if (customerNumber) {
+        customerHistory.reload()
+      }
+    })
   }
 })
-
-// Watch for changes to update the form
-watch(() => ticket.doc, (newVal) => {
-  console.log('Ticket doc updated:', newVal)
-}, { deep: true })
 
 const tabs = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
@@ -184,25 +358,26 @@ const tabs = createResource({
             }
 
             // Configure contact information fields
-            if (field.fieldname == 'first_name') {
+            if (field.fieldname == 'mobile_no') {
               field.fieldtype = 'Data'
-              field.required = true
-              field.label = 'First Name'
-            }
-
-            if (field.fieldname == 'last_name') {
-              field.fieldtype = 'Data'
-              field.label = 'Last Name'
+              field.label = 'Mobile No'
+              // Add change handler to trigger customer history lookup
+              field.onChange = () => {
+                if (ticket.doc.mobile_no) {
+                  customerHistory.reload()
+                }
+              }
             }
 
             if (field.fieldname == 'email') {
               field.fieldtype = 'Data'
               field.label = 'Email'
+              // Add change handler to trigger customer history lookup
+              field.onChange = () => {
+                if (ticket.doc.email) {
+                  customerHistory.reload()
+                }
             }
-
-            if (field.fieldname == 'mobile_no') {
-              field.fieldtype = 'Data'
-              field.label = 'Mobile No'
             }
 
             if (field.fieldtype === 'Table') {
@@ -216,13 +391,8 @@ const tabs = createResource({
 })
 
 const createTicket = createResource({
-  url: 'crm.api.ticket.create_ticket',  // Changed to a more generic endpoint
+  url: 'crm.api.ticket.create_ticket',
   makeParams(values) {
-    // Debug logs for initial data
-    console.log('=== TICKET CREATION DEBUG ===')
-    console.log('Call Log Props:', props.callLog)
-    console.log('Ticket Doc State:', ticket.doc)
-    
     // If we have a call log, include it in the request
     if (props.callLog) {
       return {
@@ -249,40 +419,38 @@ async function createNewTicket() {
     isTicketCreating.value = true
     error.value = null
 
-    // Debug logs
-    console.log('=== TICKET CREATION DEBUG ===')
-    console.log('Call Log Props:', props.callLog)
-    console.log('Ticket Doc State:', ticket.doc)
-
     // Validate required fields
-    if (!validateFields()) {
+    const validation = validateFields()
+    if (!validation.isValid) {
+      error.value = validation.error
       isTicketCreating.value = false
       return
     }
 
     // Create ticket
     const response = await createTicket.submit(ticket.doc)
-    
-    // Debug logs
-    console.log('Final Submit Data:', ticket.doc)
-    console.log('First Name Value:', ticket.doc.first_name)
-    console.log('Form Values:', ticket.doc)
 
     if (response) {
       show.value = false
       emit('ticket-created', response)
       emit('update:modelValue', false)
+      
+      // Capture analytics
+      capture('ticket_created', {
+        source: props.callLog ? 'call_log' : 'manual',
+        department: ticket.doc.department,
+        priority: ticket.doc.priority,
+        has_customer_history: !!(customerHistory.data?.tickets?.length || customerHistory.data?.leads?.length)
+      })
     }
   } catch (e) {
-    console.log('=== ERROR ===')
-    console.log('Error Object:', e)
-    error.value = e
+    console.error('Error creating ticket:', e)
+    error.value = e.messages?.[0] || 'Error creating ticket'
   } finally {
     isTicketCreating.value = false
   }
 }
 
-// Add field validation function
 function validateFields() {
   const requiredFields = {
     first_name: 'First Name',
@@ -291,17 +459,9 @@ function validateFields() {
     issue_type: 'Issue Type',
     status: 'Status'
   }
-
-  // Debug validation
-  console.log('=== VALIDATION DEBUG ===')
   
   for (const [field, label] of Object.entries(requiredFields)) {
     const value = ticket.doc[field]
-    console.log(`Validating ${label}:`, {
-      value,
-      type: typeof value,
-      isEmpty: !value || value.trim() === ''
-    })
     
     if (!value || value.trim() === '') {
       return {
@@ -311,8 +471,38 @@ function validateFields() {
     }
   }
 
-  console.log('All Validations Passed')
   return { isValid: true }
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'New': 'blue',
+    'Open': 'orange', 
+    'In Progress': 'yellow',
+    'Pending Customer': 'purple',
+    'Resolved': 'green',
+    'Closed': 'gray'
+  }
+  return colors[status] || 'gray'
+}
+
+function viewOpenTickets() {
+  // Navigate to tickets list filtered by this customer
+  const filters = {}
+  if (ticket.doc.mobile_no) {
+    filters.mobile_no = ticket.doc.mobile_no
+  } else if (ticket.doc.email) {
+    filters.email = ticket.doc.email
+  }
+  
+  router.push({
+    name: 'Tickets',
+    query: { 
+      filters: JSON.stringify(filters),
+      status: 'Open'
+    }
+  })
+  show.value = false
 }
 
 function openQuickEntryModal() {
