@@ -144,7 +144,7 @@
                         ? 'briefcase'
                         : user.role === 'Support User'
                           ? 'headphones'
-                          : 'user-check',
+                        : 'user-check',
                 }"
                 placement="right"
               />
