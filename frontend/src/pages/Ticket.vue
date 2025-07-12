@@ -838,24 +838,25 @@ const tabs = computed(() => {
       icon: ActivityIcon,
     },
     {
-      name: 'Emails',
-      label: __('Emails'),
-      icon: EmailIcon,
-    },
-    {
-      name: 'Comments',
-      label: __('Comments'),
-      icon: CommentIcon,
-    },
-    {
-      name: 'Data',
-      label: __('Data'),
-      icon: DetailsIcon,
+      name: 'WhatsApp Support',
+      label: __('WhatsApp Support'),
+      icon: WhatsAppIcon,
+      condition: () => whatsappSupportEnabled.value,
     },
     {
       name: 'Calls',
       label: __('Calls'),
       icon: PhoneIcon,
+    },
+    {
+      name: 'Attachments',
+      label: __('Attachments'),
+      icon: AttachmentIcon,
+    },
+    {
+      name: 'Comments',
+      label: __('Comments'),
+      icon: CommentIcon,
     },
     {
       name: 'Tasks',
@@ -868,10 +869,11 @@ const tabs = computed(() => {
       icon: NoteIcon,
     },
     {
-      name: 'Attachments',
-      label: __('Attachments'),
-      icon: AttachmentIcon,
+      name: 'Data',
+      label: __('Data'),
+      icon: DetailsIcon,
     },
+    // Keep WhatsApp and Emails at the end if needed
     {
       name: 'WhatsApp',
       label: __('WhatsApp'),
@@ -879,10 +881,9 @@ const tabs = computed(() => {
       condition: () => whatsappEnabled.value,
     },
     {
-      name: 'WhatsApp Support',
-      label: __('WhatsApp Support'),
-      icon: WhatsAppIcon,
-      condition: () => whatsappSupportEnabled.value,
+      name: 'Emails',
+      label: __('Emails'),
+      icon: EmailIcon,
     },
   ]
   return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))
