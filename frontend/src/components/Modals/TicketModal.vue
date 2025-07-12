@@ -266,19 +266,34 @@
       </div>
       
       <div class="px-4 pb-7 pt-4 sm:px-6">
-        <div class="flex flex-row-reverse gap-2">
-          <Button
-            variant="solid"
-            :label="__('Create Ticket')"
-            :loading="isTicketCreating"
-            @click="createNewTicket"
-          />
-          <Button
-            v-if="hasOpenTickets"
-            variant="outline"
-            :label="__('View Open Tickets')"
-            @click="viewOpenTickets"
-          />
+        <div class="flex items-center justify-between">
+          <!-- Issue Solved Checkbox -->
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="issueSolved"
+              v-model="issueSolved"
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label for="issueSolved" class="text-sm text-ink-gray-7">
+              {{ __('Issue Solved') }}
+            </label>
+          </div>
+          
+          <div class="flex flex-row-reverse gap-2">
+            <Button
+              variant="solid"
+              :label="__('Create Ticket')"
+              :loading="isTicketCreating"
+              @click="createNewTicket"
+            />
+            <Button
+              v-if="hasOpenTickets"
+              variant="outline"
+              :label="__('View Open Tickets')"
+              @click="viewOpenTickets"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -305,6 +320,7 @@ import { useDocument } from '@/data/document'
 import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import WhatsAppSetupModal from '@/components/Modals/WhatsAppSetupModal.vue'
+import { format } from 'date-fns' // Add this import if not already present
 
 const props = defineProps({
   modelValue: {
@@ -330,6 +346,7 @@ const show = defineModel()
 const router = useRouter()
 const error = ref(null)
 const isTicketCreating = ref(false)
+const issueSolved = ref(false)  // Add issueSolved ref
 
 const { document: ticket, triggerOnChange } = useDocument('CRM Ticket')
 
@@ -533,6 +550,15 @@ async function createNewTicket() {
       error.value = validation.error
       isTicketCreating.value = false
       return
+    }
+
+    // If issue is solved, set status to Closed
+    if (issueSolved.value) {
+      ticket.doc.status = 'Closed'
+      ticket.doc.resolved = 1
+      ticket.doc.resolved_on = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+      ticket.doc.resolution_time = 0 // Since it was resolved immediately
+      ticket.doc.resolution_details = 'Ticket closed at creation as issue was already resolved.'
     }
 
     // Create ticket
