@@ -290,6 +290,61 @@ def send_support_pages(doctype, docname, customer_mobile, support_pages, message
         return {"success": False, "message": f"Error: {str(e)}"}
 
 @frappe.whitelist()
+def send_support_pages_without_ticket(customer_mobile, support_pages, message=None):
+    """Send multiple support pages to customer via WhatsApp without requiring a ticket"""
+    try:
+        # Validate inputs
+        if not customer_mobile:
+            return {"success": False, "message": "Customer mobile number is required"}
+        
+        if not support_pages:
+            return {"success": False, "message": "At least one support page is required"}
+        
+        # Get support page details
+        support_page_details = []
+        for page_name in support_pages:
+            page = frappe.get_doc('CRM Support Pages', page_name)
+            if page.is_active:
+                support_page_details.append({
+                    'name': page.page_name,
+                    'link': page.support_link,
+                    'description': page.description
+                })
+        
+        if not support_page_details:
+            return {"success": False, "message": "No active support pages found"}
+        
+        # Generate message if not provided
+        if not message:
+            message = "Hi! Here are some helpful support pages:\n\n"
+            for page in support_page_details:
+                message += f"📋 *{page['name']}*\n"
+                if page['description']:
+                    message += f"{page['description']}\n"
+                message += f"🔗 {page['link']}\n\n"
+            message = message.strip()
+        
+        # Send message via WhatsApp service
+        service_url = get_whatsapp_service_url()
+        response = requests.post(f"{service_url}/send-message", json={
+            'to': customer_mobile,
+            'message': message
+        }, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success'):
+                return {"success": True, "message": "Support pages sent successfully"}
+            else:
+                return {"success": False, "message": result.get('message', 'Failed to send message')}
+        else:
+            return {"success": False, "message": "WhatsApp service unavailable"}
+    
+    except Exception as e:
+        frappe.log_error(f"WhatsApp Support Error: {str(e)}")
+        return {"success": False, "message": f"Error: {str(e)}"}
+
+@frappe.whitelist()
 def get_qr_code():
     """Get QR code for WhatsApp login"""
     try:
