@@ -1,7 +1,20 @@
+<!-- WhatsApp Support Area Component -->
 <template>
   <div class="flex h-full flex-col">
-
-
+    <!-- Activity Section -->
+    <div class="border-b p-4">
+      <div v-if="whatsappActivities.loading" class="flex justify-center py-4">
+        <FeatherIcon name="loader" class="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+      <div v-else-if="whatsappActivities.data?.length" class="space-y-4">
+        <div v-for="activity in whatsappActivities.data" :key="activity.name">
+          <WhatsAppActivityArea :activity="activity" />
+        </div>
+      </div>
+      <div v-else class="py-4 text-center text-gray-500">
+        No WhatsApp support activities yet
+      </div>
+    </div>
 
     <!-- Search and Results -->
     <div class="flex-1 overflow-auto p-4">
@@ -183,6 +196,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { createResource, Button, Dialog, toast } from 'frappe-ui'
 import { FeatherIcon } from 'frappe-ui'
+import WhatsAppActivityArea from '@/components/Activities/WhatsAppActivityArea.vue'
 
 const props = defineProps({
   doctype: {
@@ -210,6 +224,16 @@ const qrCode = ref('')
 const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
+})
+
+// WhatsApp activities resource
+const whatsappActivities = createResource({
+  url: 'crm.api.activities.get_activities',
+  params: { name: props.docname },
+  transform: ([versions, calls, notes, tasks, attachments]) => {
+    return versions.filter(activity => activity.activity_type === 'whatsapp_support')
+  },
+  auto: true,
 })
 
 // Support pages resource
@@ -267,8 +291,6 @@ const togglePageSelection = (page) => {
   }
 }
 
-
-
 const sendSupportPages = async () => {
   if (!whatsappStatus.value.connected) {
     toast.error('WhatsApp is not connected')
@@ -300,6 +322,7 @@ const sendSupportPages = async () => {
       toast.success('Support pages sent successfully!')
       selectedPages.value = []
       searchQuery.value = ''
+      whatsappActivities.reload()
     } else {
       toast.error(response.message || 'Failed to send support pages')
     }
