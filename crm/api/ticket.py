@@ -1,11 +1,22 @@
 import frappe
 from frappe import _
-from datetime import datetime
+from frappe.utils import now, time_diff_in_seconds
+
+from crm.api.doc import get_assigned_users, get_fields_meta
+from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
 
 @frappe.whitelist()
 def get_ticket(name):
-    """Get ticket details by name"""
-    return frappe.get_doc("CRM Ticket", name)
+    ticket = frappe.get_doc("CRM Ticket", name)
+    ticket.check_permission("read")
+
+    ticket = ticket.as_dict()
+
+    ticket["fields_meta"] = get_fields_meta("CRM Ticket")
+    ticket["_form_script"] = get_form_script("CRM Ticket")
+    ticket["_assign"] = get_assigned_users("CRM Ticket", name)
+
+    return ticket
 
 @frappe.whitelist()
 def get_tickets(filters=None, order_by="creation desc"):
@@ -26,10 +37,6 @@ def create_ticket(doc):
     if not doc:
         frappe.throw(_("Ticket data is required"))
         
-    # Debug logs
-    print("=== TICKET API DEBUG ===")
-    print("Incoming doc data:", doc)
-    
     try:
         # Parse the doc data if it's a string
         if isinstance(doc, str):
@@ -52,6 +59,16 @@ def create_ticket(doc):
                     call_log_doc.from_number if call_log_doc.type == "Incoming" 
                     else call_log_doc.to_number
                 )
+
+        # Handle resolved state
+        if ticket_doc.status == "Resolved":
+            ticket_doc.resolved = 1
+            ticket_doc.resolved_on = now()
+            # Calculate resolution time (in seconds)
+            ticket_doc.resolution_time = time_diff_in_seconds(
+                ticket_doc.resolved_on,
+                ticket_doc.creation or now()
+            )
                 
         # Insert the ticket
         ticket_doc.insert(ignore_permissions=True)
@@ -232,7 +249,7 @@ def bulk_close_tickets(ticket_names, resolution=None):
             old_status = ticket.status
             ticket.status = "Closed"
             ticket.resolved = 1
-            ticket.resolved_on = datetime.now()
+            ticket.resolved_on = now()
             
             if resolution:
                 ticket.resolution = resolution
@@ -442,7 +459,7 @@ def escalate_ticket(ticket_name, escalation_reason=None, escalate_to=None):
     # Add escalation flag
     ticket.escalated = 1
     ticket.escalation_reason = escalation_reason or "Manual escalation"
-    ticket.escalated_on = datetime.now()
+    ticket.escalated_on = now()
     
     ticket.save(ignore_permissions=True)
     
@@ -513,7 +530,7 @@ def auto_assign_ticket(ticket_name):
         ticket.save(ignore_permissions=True)
         
         # Update user's last assignment timestamp
-        frappe.db.set_value("User", assigned_user.name, "last_assigned_ticket", datetime.now())
+        frappe.db.set_value("User", assigned_user.name, "last_assigned_ticket", now())
         
         # Add activity log
         add_ticket_activity(
@@ -544,7 +561,7 @@ def check_sla_breaches():
     
     for ticket_data in open_tickets:
         # Check if response time is breached
-        if ticket_data.response_by and datetime.now() > ticket_data.response_by:
+        if ticket_data.response_by and now() > ticket_data.response_by:
             # Auto-escalate
             escalate_ticket(
                 ticket_data.name,
@@ -615,7 +632,7 @@ def add_ticket_activity(ticket, activity_type, description):
         "reference_doctype": "CRM Ticket",
         "reference_name": ticket,
         "user": frappe.session.user,
-        "creation": datetime.now()
+        "creation": now()
     })
     
     activity.insert() 
@@ -630,7 +647,7 @@ def log_ticket_resolution(ticket_name, resolution_notes=None, resolution_time=No
     
     # Update resolution fields
     ticket.resolved = 1
-    ticket.resolved_on = datetime.now()
+    ticket.resolved_on = now()
     if resolution_notes:
         ticket.resolution = resolution_notes
     if resolution_time:
@@ -789,7 +806,7 @@ def auto_log_ticket_events():
         "CRM Ticket",
         filters={
             "status": ["not in", ["Closed", "Resolved"]],
-            "response_by": ["<", datetime.now()],
+            "response_by": ["<", now()],
             "sla_breach_logged": 0
         },
         fields=["name", "response_by", "sla"],
@@ -802,7 +819,7 @@ def auto_log_ticket_events():
                 ticket.name,
                 "Response Time",
                 ticket.response_by,
-                datetime.now()
+                now()
             )
             # Mark as logged to avoid duplicate logs
             frappe.db.set_value("CRM Ticket", ticket.name, "sla_breach_logged", 1)

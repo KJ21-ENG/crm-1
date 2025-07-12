@@ -30,13 +30,13 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Ticket Form (Left Side) -->
           <div class="lg:col-span-2">
-          <FieldLayout 
-            v-if="tabs.data" 
-            :tabs="tabs.data" 
-            v-model="ticket.doc" 
-            :doctype="'CRM Ticket'"
-          />
-          <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
+            <FieldLayout 
+              v-if="tabs.data" 
+              :tabs="tabs.data" 
+              v-model="ticket.doc" 
+              :doctype="'CRM Ticket'"
+            />
+            <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
           </div>
 
           <!-- Customer History (Right Side) -->
@@ -61,93 +61,66 @@
                 </div>
                 
                 <!-- Customer History Results -->
-                <div v-else-if="customerHistory.data" class="space-y-4">
-                  <!-- Existing Tickets -->
-                  <div v-if="customerHistory.data.tickets?.length">
-                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
-                      <TicketIcon class="h-4 w-4" />
-                      {{ __('Existing Tickets') }} ({{ customerHistory.data.tickets.length }})
-                    </h5>
-                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                <div v-else>
+                  <!-- Previous Tickets -->
+                  <div v-if="customerHistory.data?.tickets?.length" class="mb-6">
+                    <div class="mb-2 text-sm font-medium text-ink-gray-7">
+                      {{ __('Previous Tickets') }}
+                    </div>
+                    <div class="space-y-3">
                       <div
-                        v-for="existingTicket in customerHistory.data.tickets"
-                        :key="existingTicket.name"
-                        class="p-3 rounded border bg-orange-50 hover:bg-orange-100 transition-colors cursor-pointer"
-                        @click="router.push({ name: 'Ticket', params: { ticketId: existingTicket.name } })"
+                        v-for="ticket in customerHistory.data.tickets"
+                        :key="ticket.name"
+                        class="flex items-start gap-2 rounded-lg border p-2"
                       >
-                        <div class="font-medium text-sm text-ink-gray-9">
-                          {{ existingTicket.ticket_subject }}
-                        </div>
-                        <div class="text-xs text-ink-gray-6 mt-1">
-                          <Badge 
-                            :label="existingTicket.status" 
-                            :theme="getStatusColor(existingTicket.status)"
-                            variant="subtle"
-                            class="mr-2"
-                          />
-                          {{ formatDate(existingTicket.creation) }}
-                        </div>
-                        <div v-if="existingTicket.status !== 'Closed'" class="text-xs text-orange-600 mt-1">
-                          ⚠️ {{ __('Open ticket exists') }}
+                        <TicketIcon class="mt-0.5 h-4 w-4 text-ink-gray-6" />
+                        <div class="flex-1 text-sm">
+                          <div class="mb-1 font-medium text-ink-gray-9">
+                            {{ ticket.ticket_subject }}
+                          </div>
+                          <div class="flex items-center gap-2 text-xs text-ink-gray-6">
+                            <Badge 
+                              :label="ticket.status" 
+                              :theme="getStatusColor(ticket.status)"
+                              variant="subtle"
+                            />
+                            <span>{{ formatDate(ticket.creation) }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Existing Leads -->
-                  <div v-if="customerHistory.data.leads?.length">
-                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
-                      <LeadsIcon class="h-4 w-4" />
-                      {{ __('Existing Leads') }} ({{ customerHistory.data.leads.length }})
-                    </h5>
-                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                  <!-- Previous Leads -->
+                  <div v-if="customerHistory.data?.leads?.length">
+                    <div class="mb-2 text-sm font-medium text-ink-gray-7">
+                      {{ __('Previous Leads') }}
+                    </div>
+                    <div class="space-y-3">
                       <div
-                        v-for="existingLead in customerHistory.data.leads"
-                        :key="existingLead.name"
-                        class="p-3 rounded border bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
-                        @click="router.push({ name: 'Lead', params: { leadId: existingLead.name } })"
+                        v-for="lead in customerHistory.data.leads"
+                        :key="lead.name"
+                        class="flex items-start gap-2 rounded-lg border p-2"
                       >
-                        <div class="font-medium text-sm text-ink-gray-9">
-                          {{ existingLead.lead_name }}
-                        </div>
-                        <div class="text-xs text-ink-gray-6 mt-1">
-                          <Badge 
-                            :label="existingLead.status" 
-                            :theme="getStatusColor(existingLead.status)"
-                            variant="subtle"
-                            class="mr-2"
-                          />
-                          {{ formatDate(existingLead.creation) }}
+                        <LeadsIcon class="mt-0.5 h-4 w-4 text-ink-gray-6" />
+                        <div class="flex-1 text-sm">
+                          <div class="mb-1 font-medium text-ink-gray-9">
+                            {{ lead.lead_name }}
+                          </div>
+                          <div class="flex items-center gap-2 text-xs text-ink-gray-6">
+                            <Badge 
+                              :label="lead.status" 
+                              :theme="getStatusColor(lead.status)"
+                              variant="subtle"
+                            />
+                            <span>{{ formatDate(lead.creation) }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Customer Contact Summary -->
-                  <div v-if="customerHistory.data.summary" class="pt-4 border-t">
-                    <h5 class="font-medium text-ink-gray-8 mb-2">{{ __('Customer Summary') }}</h5>
-                    <div class="text-sm space-y-1">
-                      <div><strong>Total Tickets:</strong> {{ customerHistory.data.summary.total_tickets }}</div>
-                      <div><strong>Open Tickets:</strong> {{ customerHistory.data.summary.open_tickets }}</div>
-                      <div><strong>Total Leads:</strong> {{ customerHistory.data.summary.total_leads }}</div>
-                      <div v-if="customerHistory.data.summary.last_interaction">
-                        <strong>Last Contact:</strong> {{ formatDate(customerHistory.data.summary.last_interaction) }}
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Warning for open tickets -->
-                  <div v-if="hasOpenTickets" class="p-3 bg-yellow-50 border border-yellow-200 rounded">
-                    <div class="flex items-center gap-2 text-yellow-700">
-                      <FeatherIcon name="alert-triangle" class="h-4 w-4" />
-                      <span class="font-medium text-sm">{{ __('Warning') }}</span>
-                    </div>
-                    <div class="text-xs text-yellow-600 mt-1">
-                      {{ __('Customer has open tickets. Consider updating existing ticket instead of creating new one.') }}
-                    </div>
-                  </div>
-
-                  <!-- No history found -->
+                  <!-- No History Found -->
                   <div v-if="!customerHistory.data.tickets?.length && !customerHistory.data.leads?.length" class="text-center py-4">
                     <div class="text-ink-gray-6 text-sm">
                       {{ __('No previous tickets or leads found for this customer') }}
@@ -164,19 +137,34 @@
       </div>
       
       <div class="px-4 pb-7 pt-4 sm:px-6">
-        <div class="flex flex-row-reverse gap-2">
-          <Button
-            variant="solid"
-            :label="__('Create Ticket')"
-            :loading="isTicketCreating"
-            @click="createNewTicket"
-          />
-          <Button
-            v-if="hasOpenTickets"
-            variant="outline"
-            :label="__('View Open Tickets')"
-            @click="viewOpenTickets"
-          />
+        <div class="flex items-center justify-between">
+          <!-- Issue Solved Checkbox -->
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="issueSolved"
+              v-model="issueSolved"
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label for="issueSolved" class="text-sm text-ink-gray-7">
+              {{ __('Issue Solved') }}
+            </label>
+          </div>
+          
+          <div class="flex flex-row-reverse gap-2">
+            <Button
+              variant="solid"
+              :label="__('Create Ticket')"
+              :loading="isTicketCreating"
+              @click="createNewTicket"
+            />
+            <Button
+              v-if="hasOpenTickets"
+              variant="outline"
+              :label="__('View Open Tickets')"
+              @click="viewOpenTickets"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -223,6 +211,7 @@ const show = defineModel()
 const router = useRouter()
 const error = ref(null)
 const isTicketCreating = ref(false)
+const issueSolved = ref(false)  // New ref for Issue Solved checkbox
 
 const { document: ticket, triggerOnChange } = useDocument('CRM Ticket')
 
@@ -277,7 +266,9 @@ onMounted(() => {
     status: 'New',
     department: 'Support',
     issue_type: 'Account',
-    assigned_to: user
+    assigned_to: user,
+    resolved: 0,
+    resolved_on: null
   }
 
   // Then merge with defaults if provided
@@ -377,7 +368,7 @@ const tabs = createResource({
                 if (ticket.doc.email) {
                   customerHistory.reload()
                 }
-            }
+              }
             }
 
             if (field.fieldtype === 'Table') {
@@ -394,6 +385,13 @@ const tabs = createResource({
 const createTicket = createResource({
   url: 'crm.api.ticket.create_ticket',
   makeParams(values) {
+    // If issue is solved, set appropriate fields
+    if (issueSolved.value) {
+      ticket.doc.status = 'Resolved'
+      ticket.doc.resolved = 1
+      ticket.doc.resolved_on = new Date().toISOString()
+    }
+
     // If we have a call log, include it in the request
     if (props.callLog) {
       return {
@@ -441,7 +439,8 @@ async function createNewTicket() {
         source: props.callLog ? 'call_log' : 'manual',
         department: ticket.doc.department,
         priority: ticket.doc.priority,
-        has_customer_history: !!(customerHistory.data?.tickets?.length || customerHistory.data?.leads?.length)
+        has_customer_history: !!(customerHistory.data?.tickets?.length || customerHistory.data?.leads?.length),
+        issue_solved: issueSolved.value
       })
     }
   } catch (e) {
