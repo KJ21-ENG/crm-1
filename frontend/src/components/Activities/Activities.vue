@@ -223,6 +223,9 @@
         >
           <CallArea :activity="activity" />
         </div>
+        <div v-else-if="activity.activity_type == 'whatsapp_support'" class="mb-4">
+          <WhatsAppActivityArea :activity="activity" />
+        </div>
         <div v-else class="mb-4 flex flex-col gap-2 py-1.5">
           <div class="flex items-center justify-stretch gap-2 text-base">
             <div
@@ -515,6 +518,7 @@ import {
   onBeforeUnmount,
 } from 'vue'
 import { useRoute } from 'vue-router'
+import WhatsAppActivityArea from '@/components/Activities/WhatsAppActivityArea.vue'
 
 const { makeCall, $socket } = globalStore()
 const { getUser } = usersStore()
@@ -588,6 +592,7 @@ const whatsappMessages = createResource({
 
 onBeforeUnmount(() => {
   $socket.off('whatsapp_message')
+  $socket.off('activity_update')
 })
 
 onMounted(() => {
@@ -597,6 +602,15 @@ onMounted(() => {
       data.reference_name === doc.value.data.name
     ) {
       whatsappMessages.reload()
+    }
+  })
+
+  $socket.on('activity_update', (data) => {
+    if (
+      data.reference_doctype === props.doctype &&
+      data.reference_name === doc.value.data.name
+    ) {
+      all_activities.reload()
     }
   })
 
@@ -816,14 +830,8 @@ function timelineIcon(activity_type, is_lead, is_ticket) {
     case 'department_transfer':
       icon = SelectIcon
       break
-    case 'customer_feedback':
-      icon = CommentIcon
-      break
-    case 'follow-up_scheduled':
-      icon = TaskIcon
-      break
-    case 'bulk_update':
-      icon = DotIcon
+    case 'whatsapp_support':
+      icon = WhatsAppIcon
       break
     default:
       icon = DotIcon

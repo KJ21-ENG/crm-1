@@ -181,12 +181,25 @@ def prepare_activity_content(support_page_name, customer_phone, status, error_me
     """Prepare activity content for logging"""
     
     if status == "success":
-        return f"📱 WhatsApp Support: Sent '{support_page_name}' to {customer_phone}"
+        content = [
+            "📱 *WhatsApp Support Activity*",
+            f"*Status*: ✅ Sent successfully",
+            f"*Support Page*: {support_page_name}",
+            f"*Customer Phone*: {customer_phone}",
+            f"*Sent by*: {frappe.session.user}"
+        ]
+        return "\n".join(content)
     else:
-        content = f"❌ WhatsApp Support: Failed to send '{support_page_name}' to {customer_phone}"
+        content = [
+            "📱 *WhatsApp Support Activity*",
+            f"*Status*: ❌ Failed to send",
+            f"*Support Page*: {support_page_name}",
+            f"*Customer Phone*: {customer_phone}",
+            f"*Attempted by*: {frappe.session.user}"
+        ]
         if error_message:
-            content += f"\nError: {error_message}"
-        return content
+            content.append(f"*Error*: {error_message}")
+        return "\n".join(content)
 
 
 def create_whatsapp_message_record(ticket, support_page, customer_phone, message):

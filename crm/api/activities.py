@@ -9,6 +9,17 @@ from frappe.query_builder import JoinType
 from crm.fcrm.doctype.crm_call_log.crm_call_log import parse_call_log
 
 
+def emit_activity_update(doctype, docname):
+	"""Emit socket event for activity updates"""
+	frappe.publish_realtime(
+		"activity_update",
+		{
+			"reference_doctype": doctype,
+			"reference_name": docname,
+		},
+	)
+
+
 @frappe.whitelist()
 def get_activities(name):
 	if frappe.db.exists("CRM Deal", name):
@@ -121,6 +132,7 @@ def get_deal_activities(name):
 			"is_lead": False,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Deal", name)
 
 	for communication in docinfo.communications + docinfo.automated_messages:
 		activity = {
@@ -143,6 +155,7 @@ def get_deal_activities(name):
 			"is_lead": False,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Deal", name)
 
 	for attachment_log in docinfo.attachment_logs:
 		activity = {
@@ -154,6 +167,7 @@ def get_deal_activities(name):
 			"is_lead": False,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Deal", name)
 
 	calls = calls + get_linked_calls(name).get("calls", [])
 	notes = notes + get_linked_notes(name) + get_linked_calls(name).get("notes", [])
@@ -253,6 +267,7 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Lead", name)
 
 	for communication in docinfo.communications + docinfo.automated_messages:
 		activity = {
@@ -275,6 +290,7 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Lead", name)
 
 	for attachment_log in docinfo.attachment_logs:
 		activity = {
@@ -286,6 +302,7 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
+		emit_activity_update("CRM Lead", name)
 
 	calls = get_linked_calls(name).get("calls", [])
 	notes = get_linked_notes(name) + get_linked_calls(name).get("notes", [])
@@ -401,15 +418,20 @@ def get_ticket_activities(name):
 	if docinfo.comments:
 		for comment in docinfo.comments:
 			# Skip auto-generated comments and comments without meaningful content
-			if (comment.comment_type in ["Deleted", "Like", "Assignment", "Updated", "Info"] or 
+			if (comment.comment_type in ["Deleted", "Like", "Assignment", "Updated"] or 
 				not comment.content or 
 				"has made a call" in (comment.content or "") or
 				"has reached out" in (comment.content or "")):
 				continue
 				
+			# Determine activity type based on content
+			activity_type = "comment"
+			if "📱 WhatsApp Support" in comment.content:
+				activity_type = "whatsapp_support"
+				
 			activity = {
 				"name": comment.name,
-				"activity_type": "comment",
+				"activity_type": activity_type,
 				"creation": comment.creation,
 				"owner": comment.owner,
 				"content": comment.content,
@@ -417,6 +439,7 @@ def get_ticket_activities(name):
 				"is_ticket": True,
 			}
 			activities.append(activity)
+			emit_activity_update("CRM Ticket", name)
 
 	# Add communications (emails)
 	if docinfo.communications:
@@ -441,6 +464,7 @@ def get_ticket_activities(name):
 				"is_ticket": True,
 			}
 			activities.append(activity)
+			emit_activity_update("CRM Ticket", name)
 
 	# Add attachment logs
 	if docinfo.attachment_logs:
@@ -454,6 +478,7 @@ def get_ticket_activities(name):
 				"is_ticket": True,
 			}
 			activities.append(activity)
+			emit_activity_update("CRM Ticket", name)
 
 	# Get linked items with proper lifecycle logic
 	# Get calls using the lifecycle logic to avoid duplicates
@@ -658,55 +683,62 @@ def get_custom_ticket_activities(ticket_name):
 	"""Get custom ticket activities like escalations, assignments, etc."""
 	activities = []
 	
-	# Since escalation fields don't exist yet, skip escalation activities for now
-	# This can be added later when escalation fields are properly added to CRM Ticket doctype
-	
-	# Get any custom activity logs from CRM Activity (if this doctype exists)
-	try:
-		if frappe.db.exists("DocType", "CRM Activity"):
-			custom_activities = frappe.get_list(
-				"CRM Activity",
-				filters={"reference_doctype": "CRM Ticket", "reference_name": ticket_name},
-				fields=["name", "activity_type", "description", "creation", "user"],
-				order_by="creation desc"
-			)
+	# Get WhatsApp activities from Comment DocType
+	whatsapp_comments = frappe.get_list(
+		"Comment",
+		filters={
+			"reference_doctype": "CRM Ticket", 
+			"reference_name": ticket_name,
+			"content": ["like", "%📱 WhatsApp Support%"]
+		},
+		fields=["name", "content", "creation", "owner", "comment_email"],
+		order_by="creation desc"
+	)
 			
-			for activity in custom_activities:
-				activities.append({
-					"activity_type": activity.activity_type.lower().replace(" ", "_"),
-					"creation": activity.creation,
-					"owner": activity.user,
-					"data": {
-						"description": activity.description
-					},
-					"is_ticket": True,
-				})
-	except Exception as e:
-		# If CRM Activity doesn't exist, just continue
-		pass
+	for comment in whatsapp_comments:
+		# Parse the content to extract details
+		content_lines = comment.content.split("\n")
+		data = {
+			"title": "WhatsApp Support Activity",
+			"status": "Success" if "✅" in comment.content else "Failed",
+			"support_page": next((line.split(": ")[1] for line in content_lines if "*Support Page*:" in line), ""),
+			"customer_phone": next((line.split(": ")[1] for line in content_lines if "*Customer Phone*:" in line), ""),
+			"sent_by": comment.comment_email,
+			"error": next((line.split(": ")[1] for line in content_lines if "*Error*:" in line), None)
+		}
+		
+		activities.append({
+			"activity_type": "whatsapp_support",
+			"creation": comment.creation,
+			"owner": comment.owner,
+			"data": data,
+			"is_ticket": True,
+		})
 	
 	return activities
 
 
 def get_attachments(doctype, name):
-	return (
-		frappe.db.get_all(
-			"File",
-			filters={"attached_to_doctype": doctype, "attached_to_name": name},
-			fields=[
-				"name",
-				"file_name",
-				"file_type",
-				"file_url",
-				"file_size",
-				"is_private",
-				"modified",
-				"creation",
-				"owner",
-			],
-		)
-		or []
-	)
+	attachments = frappe.db.get_all(
+		"File",
+		filters={"attached_to_doctype": doctype, "attached_to_name": name},
+		fields=[
+			"name",
+			"file_name",
+			"file_type",
+			"file_url",
+			"file_size",
+			"is_private",
+			"modified",
+			"creation",
+			"owner",
+		],
+	) or []
+	
+	if attachments:
+		emit_activity_update(doctype, name)
+	
+	return attachments
 
 
 def handle_multiple_versions(versions):
@@ -843,6 +875,13 @@ def get_linked_calls(name):
 
 	calls = [parse_call_log(call) for call in calls] if calls else []
 
+	if calls or notes or tasks:
+		# Get the doctype from the first call's reference_doctype
+		if calls:
+			doctype = frappe.db.get_value("CRM Call Log", calls[0]["name"], "reference_doctype")
+			if doctype:
+				emit_activity_update(doctype, name)
+
 	return {"calls": calls, "notes": notes, "tasks": tasks}
 
 
@@ -852,6 +891,13 @@ def get_linked_notes(name):
 		filters={"reference_docname": name},
 		fields=["name", "title", "content", "owner", "modified"],
 	)
+	
+	if notes:
+		# Get the doctype from the first note's reference_doctype
+		doctype = frappe.db.get_value("FCRM Note", notes[0]["name"], "reference_doctype")
+		if doctype:
+			emit_activity_update(doctype, name)
+	
 	return notes or []
 
 
@@ -870,6 +916,13 @@ def get_linked_tasks(name):
 			"modified",
 		],
 	)
+	
+	if tasks:
+		# Get the doctype from the first task's reference_doctype
+		doctype = frappe.db.get_value("CRM Task", tasks[0]["name"], "reference_doctype")
+		if doctype:
+			emit_activity_update(doctype, name)
+	
 	return tasks or []
 
 
