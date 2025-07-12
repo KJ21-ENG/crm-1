@@ -51,3 +51,12 @@ status_crm_dev.sh
 
 #document
 project_analysis.md
+
+#whatsapp
+.wwebjs_cache/
+.wwebjs_cache
+.wwebjs_cache/
+.wwebjs_cache/
+.wwebjs
+.wwebjs_auth
+.wwebjs_auth/

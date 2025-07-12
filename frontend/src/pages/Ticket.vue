@@ -622,7 +622,7 @@ import TaskModal from '@/components/Modals/TaskModal.vue'
 import { statusesStore } from '@/stores/statuses'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
 import { useDocument } from '@/data/document'
-import { whatsappEnabled, callEnabled } from '@/composables/settings'
+import { whatsappEnabled, whatsappSupportEnabled, callEnabled } from '@/composables/settings'
 import { usersStore } from '@/stores/users'
 import { globalStore } from '@/stores/global'
 import { getSettings } from '@/stores/settings'
@@ -877,6 +877,12 @@ const tabs = computed(() => {
       label: __('WhatsApp'),
       icon: WhatsAppIcon,
       condition: () => whatsappEnabled.value,
+    },
+    {
+      name: 'WhatsApp Support',
+      label: __('WhatsApp Support'),
+      icon: WhatsAppIcon,
+      condition: () => whatsappSupportEnabled.value,
     },
   ]
   return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))

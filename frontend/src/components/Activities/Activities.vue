@@ -9,6 +9,8 @@
     :emailBox="emailBox"
     :whatsappBox="whatsappBox"
     :modalRef="modalRef"
+    :whatsappStatus="whatsappStatus"
+    @openWhatsAppSetup="openWhatsAppSetup"
   />
   <FadedScrollableDiv
     :maskHeight="30"
@@ -423,6 +425,14 @@
       :doctype="doctype"
       @scroll="scroll"
     />
+    <WhatsAppSupportArea
+      v-if="title == 'WhatsApp Support'"
+      :doctype="doctype"
+      :docname="doc.data.name"
+      :customer="doc.data"
+      ref="whatsappSupportRef"
+      @statusUpdate="whatsappStatus = $event"
+    />
   </div>
   <WhatsappTemplateSelectorModal
     v-if="whatsappEnabled"
@@ -469,6 +479,7 @@ import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import WhatsAppArea from '@/components/Activities/WhatsAppArea.vue'
+import WhatsAppSupportArea from '@/components/Activities/WhatsAppSupportArea.vue'
 import WhatsAppBox from '@/components/Activities/WhatsAppBox.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import MultiActionButton from '@/components/MultiActionButton.vue'
@@ -530,6 +541,11 @@ const tabIndex = defineModel('tabIndex')
 const reload_email = ref(false)
 const modalRef = ref(null)
 const showFilesUploader = ref(false)
+const whatsappSupportRef = ref(null)
+const whatsappStatus = ref({
+  connected: false,
+  phoneNumber: null,
+})
 
 const title = computed(() => props.tabs?.[tabIndex.value]?.name || 'Activity')
 
@@ -538,6 +554,12 @@ const changeTabTo = (tabName) => {
   const index = tabNames?.indexOf(tabName)
   if (index == -1) return
   tabIndex.value = index
+}
+
+const openWhatsAppSetup = () => {
+  if (whatsappSupportRef.value) {
+    whatsappSupportRef.value.openSetupModal()
+  }
 }
 
 const all_activities = createResource({

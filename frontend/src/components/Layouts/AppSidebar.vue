@@ -157,6 +157,7 @@ import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
 import CollapseSidebar from '@/components/Icons/CollapseSidebar.vue'
 import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import HelpIcon from '@/components/Icons/HelpIcon.vue'
@@ -221,6 +222,11 @@ const links = [
     label: 'Organizations',
     icon: OrganizationsIcon,
     to: 'Organizations',
+  },
+  {
+    label: 'Support Pages',
+    icon: SupportPagesIcon,
+    to: 'Support Pages',
   },
   {
     label: 'Notes',

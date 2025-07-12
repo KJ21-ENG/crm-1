@@ -80,6 +80,12 @@ const routes = [
     component: () => import('@/pages/Organizations.vue'),
   },
   {
+    alias: '/support-pages',
+    path: '/support-pages/view/:viewType?',
+    name: 'Support Pages',
+    component: () => import('@/pages/SupportPages.vue'),
+  },
+  {
     path: '/organizations/:organizationId',
     name: 'Organization',
     component: () => import(`@/pages/${handleMobileView('Organization')}.vue`),

@@ -5,6 +5,18 @@
   >
     <div class="flex h-8 items-center text-xl font-semibold text-ink-gray-8">
       {{ __(title) }}
+      <div v-if="title == 'WhatsApp Support'" class="ml-3 flex items-center space-x-2">
+        <div 
+          class="h-2 w-2 rounded-full"
+          :class="whatsappStatus?.connected ? 'bg-green-500' : 'bg-red-500'"
+        ></div>
+        <span class="text-sm font-normal text-gray-600">
+          {{ whatsappStatus?.connected ? 'Connected' : 'Disconnected' }}
+        </span>
+        <span v-if="whatsappStatus?.connected && whatsappStatus?.phoneNumber" class="text-sm font-normal text-gray-500">
+          - {{ whatsappStatus?.phoneNumber }}
+        </span>
+      </div>
     </div>
     <Button
       v-if="title == 'Emails'"
@@ -73,6 +85,16 @@
         <span>{{ __('New Message') }}</span>
       </Button>
     </div>
+    <Button
+      v-else-if="title == 'WhatsApp Support'"
+      variant="solid"
+      @click="openWhatsAppSetup"
+    >
+      <template #prefix>
+        <FeatherIcon name="settings" class="h-4 w-4" />
+      </template>
+      <span>{{ __('Setup WhatsApp') }}</span>
+    </Button>
     <Dropdown v-else :options="defaultActions" @click.stop>
       <template v-slot="{ open }">
         <Button variant="solid" class="flex items-center gap-1">
@@ -112,7 +134,10 @@ const props = defineProps({
   modalRef: Object,
   emailBox: Object,
   whatsappBox: Object,
+  whatsappStatus: Object,
 })
+
+const emit = defineEmits(['openWhatsAppSetup'])
 
 const { makeCall } = globalStore()
 
@@ -172,6 +197,10 @@ const defaultActions = computed(() => {
 
 function getTabIndex(name) {
   return props.tabs.findIndex((tab) => tab.name === name)
+}
+
+function openWhatsAppSetup() {
+  emit('openWhatsAppSetup')
 }
 
 const callActions = computed(() => {
