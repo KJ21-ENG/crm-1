@@ -28,6 +28,27 @@
             />
           </template>
         </SidebarLink>
+        <SidebarLink
+          id="task-notifications-btn"
+          :label="__('Task Reminders')"
+          :icon="TaskIcon"
+          :isCollapsed="isSidebarCollapsed"
+          @click="() => toggleTaskNotificationPanel()"
+          class="relative mx-2 my-0.5"
+        >
+          <template #right>
+            <Badge
+              v-if="!isSidebarCollapsed && unreadTaskNotificationsCount"
+              :label="unreadTaskNotificationsCount"
+              variant="subtle"
+              theme="orange"
+            />
+            <div
+              v-else-if="unreadTaskNotificationsCount"
+              class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-orange-500 ring-1 ring-white"
+            />
+          </template>
+        </SidebarLink>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div
@@ -120,6 +141,7 @@
       </SidebarLink>
     </div>
     <Notifications />
+    <TaskNotifications />
     <Settings />
     <HelpModal
       v-if="showHelpModal"
@@ -163,12 +185,17 @@ import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import HelpIcon from '@/components/Icons/HelpIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import Notifications from '@/components/Notifications.vue'
+import TaskNotifications from '@/components/TaskNotifications.vue'
 import Settings from '@/components/Settings/Settings.vue'
 import { viewsStore } from '@/stores/views'
 import {
   unreadNotificationsCount,
   notificationsStore,
 } from '@/stores/notifications'
+import {
+  unreadTaskNotificationsCount,
+  taskNotificationsStore,
+} from '@/stores/taskNotifications'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { showSettings, activeSettingsPage } from '@/composables/settings'
@@ -191,6 +218,7 @@ import { ref, reactive, computed, h, markRaw, onMounted } from 'vue'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
 const { toggle: toggleNotificationPanel } = notificationsStore()
+const { toggle: toggleTaskNotificationPanel } = taskNotificationsStore()
 
 const isSidebarCollapsed = useStorage('isSidebarCollapsed', false)
 

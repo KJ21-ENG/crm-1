@@ -167,23 +167,17 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# "all": [
-# "crm.tasks.all"
-# ],
-# "daily": [
-# "crm.tasks.daily"
-# ],
-# "hourly": [
-# "crm.tasks.hourly"
-# ],
-# "weekly": [
-# "crm.tasks.weekly"
-# ],
-# "monthly": [
-# "crm.tasks.monthly"
-# ],
-# }
+scheduler_events = {
+	"cron": {
+		# Task notification check every minute (closest to 5 seconds we can get with Frappe scheduler)
+		"* * * * *": [
+			"crm.api.task_notifications.check_and_send_task_notifications"
+		]
+	},
+	"daily": [
+		"crm.api.task_notifications.get_notification_stats"
+	],
+}
 
 # Testing
 # -------

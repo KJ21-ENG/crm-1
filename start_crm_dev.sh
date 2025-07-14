@@ -132,7 +132,37 @@ if [ "$BENCH_RUNNING" = false ]; then
     fi
 fi
 
-# 7. Start Frontend Development Server
+# 7. Start Frappe Scheduler
+echo -e "${BLUE}⏰ Starting Frappe Scheduler...${NC}"
+if check_service "frappe.*schedule"; then
+    print_warning "Frappe Scheduler already running"
+else
+    screen -dmS frappe_scheduler bash -c "cd '$BENCH_PATH' && bench schedule"
+    sleep 3
+    if check_service "frappe.*schedule"; then
+        print_status "Frappe Scheduler started in background (screen session: frappe_scheduler)"
+    else
+        print_error "Failed to start Frappe Scheduler"
+        exit 1
+    fi
+fi
+
+# 8. Start Task Notification Worker
+echo -e "${BLUE}🔔 Starting Task Notification Worker...${NC}"
+if check_service "frappe.*worker.*default"; then
+    print_warning "Task Notification Worker already running"
+else
+    screen -dmS crm_worker bash -c "cd '$BENCH_PATH' && bench worker --queue default"
+    sleep 3
+    if check_service "frappe.*worker.*default"; then
+        print_status "Task Notification Worker started in background (screen session: crm_worker)"
+    else
+        print_error "Failed to start Task Notification Worker"
+        exit 1
+    fi
+fi
+
+# 9. Start Frontend Development Server
 echo -e "${BLUE}🎨 Starting Frontend Dev Server...${NC}"
 if check_service "yarn.*dev"; then
     print_warning "Frontend Dev Server already running"
@@ -153,13 +183,15 @@ else
     fi
 fi
 
-# 8. Verify all services are running
+# 10. Verify all services are running
 echo -e "\n${BLUE}🔍 Verifying services...${NC}"
 
 services=(
     "redis-server.*13001:Redis Cache"
     "redis-server.*11001:Redis Queue"
     "bench serve.*8001:Frappe Bench"
+    "frappe.*schedule:Frappe Scheduler"
+    "frappe.*worker.*default:Task Notification Worker"
     "yarn.*dev:Frontend Dev Server"
 )
 
@@ -184,12 +216,14 @@ if [ "$all_running" = true ]; then
     echo -e "   ${GREEN}🌐 Local Frontend:     ${NC}http://127.0.0.1:5173"
     
     echo -e "\n${BLUE}📱 Useful Commands:${NC}"
-    echo -e "   ${GREEN}Redis Cache Logs:  ${NC}screen -r redis_cache"
-    echo -e "   ${GREEN}Redis Queue Logs:  ${NC}screen -r redis_queue"
-    echo -e "   ${GREEN}Backend Logs:      ${NC}screen -r frappe_bench"
-    echo -e "   ${GREEN}Frontend Logs:     ${NC}screen -r crm_frontend"
-    echo -e "   ${GREEN}List Sessions:     ${NC}screen -ls"
-    echo -e "   ${GREEN}Stop All:          ${NC}pkill -f \"bench serve\"; pkill -f \"yarn.*dev\"; pkill -f \"redis-server\""
+    echo -e "   ${GREEN}Redis Cache Logs:     ${NC}screen -r redis_cache"
+    echo -e "   ${GREEN}Redis Queue Logs:     ${NC}screen -r redis_queue"
+    echo -e "   ${GREEN}Backend Logs:         ${NC}screen -r frappe_bench"
+    echo -e "   ${GREEN}Scheduler Logs:       ${NC}screen -r frappe_scheduler"
+    echo -e "   ${GREEN}Notification Worker:  ${NC}screen -r crm_worker"
+    echo -e "   ${GREEN}Frontend Logs:        ${NC}screen -r crm_frontend"
+    echo -e "   ${GREEN}List Sessions:        ${NC}screen -ls"
+    echo -e "   ${GREEN}Stop All:             ${NC}./stop_crm_dev.sh"
     
 else
     echo -e "\n${RED}❌ Some services failed to start. Please check the logs.${NC}"
