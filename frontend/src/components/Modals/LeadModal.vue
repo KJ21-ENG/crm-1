@@ -87,7 +87,7 @@ onMounted(() => {
     email: '',
     mobile_no: '',
     lead_type: 'Sales', // Set default lead type (hidden field)
-    lead_source: '', // New field for lead source
+    lead_source: 'On Call', // Default value for lead source
     account_type: 'Individual', // Set default account type
     no_of_employees: '1-10',
     status: '',
