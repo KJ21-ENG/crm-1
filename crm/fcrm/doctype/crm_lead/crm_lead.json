@@ -12,6 +12,7 @@
  "field_order": [
   "details",
   "lead_type",
+  "lead_source",
   "description",
   "issue_type",
   "account_type",
@@ -102,6 +103,14 @@
    "fieldtype": "Select",
    "label": "Lead Type",
    "options": "Support\nSales",
+   "default": "Sales",
+   "hidden": 1
+  },
+  {
+   "fieldname": "lead_source",
+   "fieldtype": "Select",
+   "label": "Lead Source",
+   "options": "On Call\nOffice Visit",
    "reqd": 1
   },
   {

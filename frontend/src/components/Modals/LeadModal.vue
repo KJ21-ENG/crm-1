@@ -54,7 +54,7 @@ import { sessionStore } from '@/stores/session'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { capture } from '@/telemetry'
-import { createResource } from 'frappe-ui'
+import { createResource, call } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { useDocument } from '@/data/document'
 import { computed, onMounted, ref, nextTick } from 'vue'
@@ -86,10 +86,12 @@ onMounted(() => {
     last_name: '',
     email: '',
     mobile_no: '',
-    lead_type: 'Sales', // Set default lead type
+    lead_type: 'Sales', // Set default lead type (hidden field)
+    lead_source: '', // New field for lead source
     account_type: 'Individual', // Set default account type
     no_of_employees: '1-10',
     status: '',
+    assigned_to: '', // New field for assignment tracking
     // ... other default values
   }
 
@@ -127,6 +129,23 @@ const tabs = createResource({
               field.options = leadStatuses.value
               field.prefix = getLeadStatus(lead.doc.status).color
             }
+            
+            // Add custom assigned_to field for tracking assignments
+            if (field.fieldname == 'lead_owner') {
+              // Insert assigned_to field after lead_owner
+              const assignedToField = {
+                fieldname: 'assigned_to',
+                fieldtype: 'Link',
+                label: 'Assign To',
+                options: 'User',
+                description: 'Assign this lead to another team member for handling'
+              }
+              // Find the current field index and insert after it
+              const currentFieldIndex = column.fields.indexOf(field)
+              if (currentFieldIndex !== -1) {
+                column.fields.splice(currentFieldIndex + 1, 0, assignedToField)
+              }
+            }
 
             if (field.fieldtype === 'Table') {
               lead.doc[field.fieldname] = []
@@ -142,12 +161,20 @@ const tabs = createResource({
 const createLead = createResource({
   url: 'frappe.client.insert',
   makeParams(values) {
-    return {
-      doc: {
-        doctype: 'CRM Lead',
-        ...values,
-      },
+    // Prepare the document
+    const doc = {
+      doctype: 'CRM Lead',
+      ...values,
     }
+    
+    // Handle assignment: if assigned_to is provided, set it in _assign field
+    if (values.assigned_to) {
+      doc._assign = JSON.stringify([values.assigned_to])
+      // Remove assigned_to from the doc as it's not a real field
+      delete doc.assigned_to
+    }
+    
+    return { doc }
   },
 })
 
@@ -163,16 +190,12 @@ function createNewLead() {
         error.value = __('First Name is mandatory')
         return error.value
       }
-      if (!lead.doc.lead_type) {
-        error.value = __('Lead Type is mandatory')
+      if (!lead.doc.lead_source) {
+        error.value = __('Lead Source is mandatory')
         return error.value
       }
-      if (lead.doc.lead_type === 'Support' && !lead.doc.issue_type) {
-        error.value = __('Issue Type is mandatory for Support leads')
-        return error.value
-      }
-      if (lead.doc.lead_type === 'Sales' && !lead.doc.account_type) {
-        error.value = __('Account Type is mandatory for Sales leads')
+      if (!lead.doc.account_type) {
+        error.value = __('Account Type is mandatory')
         return error.value
       }
       if (lead.doc.annual_revenue) {
@@ -200,7 +223,22 @@ function createNewLead() {
       }
       isLeadCreating.value = true
     },
-    onSuccess(data) {
+    async onSuccess(data) {
+      // If there's an assigned_to user, handle the assignment
+      if (lead.doc.assigned_to && lead.doc.assigned_to !== user) {
+        try {
+          await call('frappe.desk.form.assign_to.add', {
+            assign_to: [lead.doc.assigned_to],
+            doctype: 'CRM Lead',
+            name: data.name,
+            description: `Lead assigned by ${user} during creation`
+          })
+        } catch (err) {
+          console.error('Assignment failed:', err)
+          // Continue even if assignment fails
+        }
+      }
+      
       capture('lead_created')
       isLeadCreating.value = false
       show.value = false
