@@ -125,6 +125,19 @@
             label="Organization"
             placeholder="Enter organization name"
           />
+
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.pan_card_number"
+              label="PAN Card Number"
+              placeholder="Enter PAN card number (optional)"
+            />
+            <FormControl
+              v-model="newCustomer.aadhaar_card_number"
+              label="Aadhaar Card Number"
+              placeholder="Enter Aadhaar number (optional)"
+            />
+          </div>
         </div>
       </template>
       
@@ -166,7 +179,9 @@ const newCustomer = ref({
   last_name: '',
   email: '',
   mobile_no: '',
-  organization: ''
+  organization: '',
+  pan_card_number: '',
+  aadhaar_card_number: ''
 })
 
 // Load customers
@@ -223,6 +238,8 @@ const createCustomer = async () => {
       last_name: newCustomer.value.last_name,
       email: newCustomer.value.email,
       organization: newCustomer.value.organization,
+      pan_card_number: newCustomer.value.pan_card_number,
+      aadhaar_card_number: newCustomer.value.aadhaar_card_number,
       customer_source: 'Direct'
     })
     
@@ -232,7 +249,9 @@ const createCustomer = async () => {
       last_name: '',
       email: '',
       mobile_no: '',
-      organization: ''
+      organization: '',
+      pan_card_number: '',
+      aadhaar_card_number: ''
     }
     
     showCreateDialog.value = false

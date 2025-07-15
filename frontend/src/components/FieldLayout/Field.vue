@@ -1,6 +1,6 @@
 <template>
-  <div v-if="field.visible" class="field">
-    <div v-if="field.fieldtype != 'Check'" class="mb-2 text-sm text-ink-gray-5">
+  <div v-if="field.visible && shouldRenderField(field)" class="field">
+    <div v-if="field.fieldtype != 'Check' && field.label" class="mb-2 text-sm text-ink-gray-5">
       {{ __(field.label) }}
       <span
         v-if="
@@ -334,10 +334,36 @@ function isFieldVisible(field) {
   )
 }
 
+const shouldRenderField = (field) => {
+  // Don't render fields without labels or with empty labels
+  if (!field.label || field.label.trim() === '') {
+    return false
+  }
+  
+  // Don't render hidden fields
+  if (field.hidden) {
+    return false
+  }
+  
+  // Section breaks and column breaks should not render as input fields
+  if (['Section Break', 'Column Break', 'Tab Break'].includes(field.fieldtype)) {
+    return false
+  }
+  
+  return true
+}
+
 const getPlaceholder = (field) => {
   if (field.placeholder) {
     return __(field.placeholder)
   }
+  
+  // Only show placeholder if field has a proper label
+  if (!field.label || field.label.trim() === '') {
+    console.warn('Field without proper label detected:', field)
+    return ''
+  }
+  
   if (['Select', 'Link'].includes(field.fieldtype)) {
     return __('Select {0}', [__(field.label)])
   } else {

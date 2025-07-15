@@ -38,7 +38,11 @@
   "column_break_3",
   "state",
   "country",
-  "pincode"
+  "pincode",
+  "identity_section",
+  "pan_card_number",
+  "column_break_identity",
+  "aadhaar_card_number"
  ],
  "fields": [
   {
@@ -194,6 +198,27 @@
    "fieldname": "pincode",
    "fieldtype": "Data",
    "label": "Pincode"
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity Documents"
+  },
+  {
+   "fieldname": "pan_card_number",
+   "fieldtype": "Data",
+   "label": "PAN Card Number",
+   "description": "Permanent Account Number (optional)"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aadhaar_card_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Card Number", 
+   "description": "12-digit Aadhaar number (optional)"
   }
  ],
  "has_web_view": 0,

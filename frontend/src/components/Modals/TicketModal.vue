@@ -287,12 +287,7 @@
               :loading="isTicketCreating"
               @click="createNewTicket"
             />
-            <Button
-              v-if="hasOpenTickets"
-              variant="outline"
-              :label="__('View Open Tickets')"
-              @click="viewOpenTickets"
-            />
+
           </div>
         </div>
       </div>

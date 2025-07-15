@@ -213,6 +213,73 @@
       <p class="text-ink-gray-7">Customer not found</p>
     </div>
   </div>
+
+  <!-- Edit Customer Dialog -->
+  <Dialog
+    v-model="showEditDialog"
+    :options="{
+      title: 'Edit Customer',
+      size: 'xl'
+    }"
+  >
+    <template #body-content>
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <FormControl
+            v-model="editCustomer.first_name"
+            label="First Name"
+            placeholder="Enter first name"
+          />
+          <FormControl
+            v-model="editCustomer.last_name"
+            label="Last Name"
+            placeholder="Enter last name"
+          />
+        </div>
+        
+        <FormControl
+          v-model="editCustomer.email"
+          label="Email"
+          type="email"
+          placeholder="Enter email address"
+        />
+        
+        <FormControl
+          v-model="editCustomer.mobile_no"
+          label="Mobile Number"
+          placeholder="Enter mobile number"
+        />
+        
+        <FormControl
+          v-model="editCustomer.organization"
+          label="Organization"
+          placeholder="Enter organization name"
+        />
+
+        <div class="grid grid-cols-2 gap-4">
+          <FormControl
+            v-model="editCustomer.pan_card_number"
+            label="PAN Card Number"
+            placeholder="Enter PAN card number (optional)"
+          />
+          <FormControl
+            v-model="editCustomer.aadhaar_card_number"
+            label="Aadhaar Card Number"
+            placeholder="Enter Aadhaar number (optional)"
+          />
+        </div>
+      </div>
+    </template>
+    
+    <template #actions>
+      <Button
+        variant="solid"
+        label="Update Customer"
+        @click="updateCustomer"
+        :loading="updating"
+      />
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -222,6 +289,9 @@ import {
   Avatar, 
   Badge, 
   Tabs, 
+  Dialog,
+  FormControl,
+  Button,
   call
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
@@ -246,6 +316,19 @@ const customer = ref({
   data: null,
   loading: true,
   error: null
+})
+
+// Edit dialog state
+const showEditDialog = ref(false)
+const updating = ref(false)
+const editCustomer = ref({
+  first_name: '',
+  last_name: '',
+  email: '',
+  mobile_no: '',
+  organization: '',
+  pan_card_number: '',
+  aadhaar_card_number: ''
 })
 
 // Load customer data
@@ -273,7 +356,7 @@ const actions = computed(() => [
   {
     label: 'Edit Customer',
     icon: 'edit',
-    onClick: () => editCustomer()
+    onClick: () => openEditDialog()
   }
 ])
 
@@ -317,9 +400,46 @@ async function loadCustomerInteractions() {
   }
 }
 
-function editCustomer() {
-  // TODO: Implement edit customer functionality
-  console.log('Edit customer:', props.customerId)
+function openEditDialog() {
+  // Populate edit form with current customer data
+  editCustomer.value = {
+    first_name: customer.value.data.first_name || '',
+    last_name: customer.value.data.last_name || '',
+    email: customer.value.data.email || '',
+    mobile_no: customer.value.data.mobile_no || '',
+    organization: customer.value.data.organization || '',
+    pan_card_number: customer.value.data.pan_card_number || '',
+    aadhaar_card_number: customer.value.data.aadhaar_card_number || ''
+  }
+  showEditDialog.value = true
+}
+
+async function updateCustomer() {
+  try {
+    updating.value = true
+    
+    // Call the update API
+    await call('frappe.client.set_value', {
+      doctype: 'CRM Customer',
+      name: props.customerId,
+      fieldname: editCustomer.value
+    })
+    
+    // Refresh customer data
+    await loadCustomer()
+    
+    // Close dialog
+    showEditDialog.value = false
+    
+    // Show success message (you can add toast notification here)
+    console.log('Customer updated successfully!')
+    
+  } catch (error) {
+    console.error('Error updating customer:', error)
+    // Show error message (you can add toast notification here)
+  } finally {
+    updating.value = false
+  }
 }
 
 function formatDate(dateString) {
