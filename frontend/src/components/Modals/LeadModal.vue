@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="show" :options="{ size: '3xl' }">
+  <Dialog v-model="show" :options="{ size: '3xl' }" v-if="!leadModalHidden">
     <template #body>
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
         <div class="mb-5 flex items-center justify-between">
@@ -28,6 +28,62 @@
         </div>
         <div>
           <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
+          
+          <!-- Assign Task Button Section -->
+          <div v-if="lead.doc.assigned_to && lead.doc.assigned_to !== user" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-ink-gray-9">
+                {{ __('Lead will be assigned to {0}', [getUser(lead.doc.assigned_to)?.full_name || lead.doc.assigned_to]) }}
+              </p>
+              <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
+                {{ __('You can create a task for the assigned user to get started immediately') }}
+              </p>
+              <p class="text-xs text-green-600" v-else>
+                {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData.title]) }}
+              </p>
+            </div>
+            
+            <!-- Task Assignment Actions -->
+            <div class="flex items-center gap-2">
+              <!-- Assign Task Button (when no task is pending) -->
+              <Button
+                v-if="!pendingTaskData"
+                variant="outline"
+                :label="__('Assign Task')"
+                @click.stop="openTaskModalForAssignment"
+              >
+                <template #prefix>
+                  <FeatherIcon name="plus" class="h-4 w-4" />
+                </template>
+              </Button>
+              
+              <!-- Task Assigned Status (when task is pending) -->
+              <template v-else>
+                <Button
+                  variant="solid"
+                  :label="__('Task Assigned')"
+                  @click.stop="editAssignedTask"
+                >
+                  <template #prefix>
+                    <FeatherIcon name="check" class="h-4 w-4" />
+                  </template>
+                </Button>
+                
+                <!-- Clear Task Button -->
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="clearAssignedTask"
+                  class="!px-2"
+                >
+                  <template #icon>
+                    <FeatherIcon name="x" class="h-4 w-4" />
+                  </template>
+                </Button>
+              </template>
+            </div>
+          </div>
+          
           <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
         </div>
       </div>
@@ -43,11 +99,22 @@
       </div>
     </template>
   </Dialog>
+  
+  <!-- Task Modal for creating tasks -->
+  <TaskModal
+    v-if="showTaskModal"
+    v-model="showTaskModal"
+    :task="taskData"
+    doctype="CRM Lead"
+    :doc="createdLeadId || null"
+    @after="handleTaskCreated"
+  />
 </template>
 
 <script setup>
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
+import TaskModal from '@/components/Modals/TaskModal.vue'
 import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
 import { sessionStore } from '@/stores/session'
@@ -57,7 +124,7 @@ import { capture } from '@/telemetry'
 import { createResource, call } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { useDocument } from '@/data/document'
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -73,6 +140,22 @@ const show = defineModel()
 const router = useRouter()
 const error = ref(null)
 const isLeadCreating = ref(false)
+
+// Task Modal state
+const showTaskModal = ref(false)
+const createdLeadId = ref('')
+const pendingTaskData = ref(null) // Store task data that was created before lead
+const leadModalHidden = ref(false) // Track if lead modal is temporarily hidden
+const taskData = ref({
+  title: '',
+  description: '',
+  assigned_to: '',
+  due_date: '',
+  status: 'Backlog',
+  priority: 'Medium',
+  reference_doctype: 'CRM Lead',
+  reference_docname: '',
+})
 
 const { document: lead, triggerOnChange } = useDocument('CRM Lead')
 
@@ -114,6 +197,102 @@ const leadStatuses = computed(() => {
   return statuses
 })
 
+function handleTaskCreated(taskDoc, isNew = false) {
+  console.log('Task created:', taskDoc)
+  showTaskModal.value = false
+  
+  // Restore the lead modal
+  leadModalHidden.value = false
+  
+  // Clear any error messages
+  error.value = null
+  
+  // If lead doesn't exist yet, store task data for later creation
+  if (!createdLeadId.value) {
+    pendingTaskData.value = {
+      ...taskDoc,
+      isNew: isNew
+    }
+    console.log('Task data stored, will be created after lead is saved')
+    return
+  }
+  
+  if (isNew) {
+    // Show success message
+    console.log(`Task "${taskDoc.title}" created successfully for ${getUser(taskDoc.assigned_to).full_name}`)
+  }
+  
+  // Navigate to the lead page after task is created
+  router.push({ name: 'Lead', params: { leadId: createdLeadId.value } })
+}
+
+// Function to open task modal from the assignment section
+function openTaskModalForAssignment() {
+  if (!lead.doc.assigned_to) {
+    error.value = __('Please select a user to assign before creating a task')
+    return
+  }
+  
+  // Pre-fill task data
+  taskData.value = {
+    title: `Follow up on lead: ${lead.doc.first_name || 'New Lead'}`,
+    description: `Task created for lead assignment - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim(),
+    assigned_to: lead.doc.assigned_to,
+    due_date: '',
+    status: 'Backlog',
+    priority: 'Medium',
+    reference_doctype: 'CRM Lead',
+    reference_docname: '', // Will be empty until lead is created
+  }
+  
+  // Temporarily hide lead modal to prevent conflicts
+  leadModalHidden.value = true
+  
+  // Use nextTick to ensure proper modal transition
+  nextTick(() => {
+    showTaskModal.value = true
+  })
+}
+
+// Function to edit the already assigned task
+function editAssignedTask() {
+  if (!pendingTaskData.value) return
+  
+  // Load the existing task data for editing
+  taskData.value = {
+    ...pendingTaskData.value,
+    reference_docname: '', // Will be empty until lead is created
+  }
+  
+  // Temporarily hide lead modal to prevent conflicts
+  leadModalHidden.value = true
+  
+  // Use nextTick to ensure proper modal transition
+  nextTick(() => {
+    showTaskModal.value = true
+  })
+}
+
+// Function to clear the assigned task
+function clearAssignedTask() {
+  // Clear the pending task data
+  pendingTaskData.value = null
+  
+  // Clear task data
+  taskData.value = {
+    title: '',
+    description: '',
+    assigned_to: '',
+    due_date: '',
+    status: 'Backlog',
+    priority: 'Medium',
+    reference_doctype: 'CRM Lead',
+    reference_docname: '',
+  }
+  
+  console.log('Task assignment cleared')
+}
+
 const tabs = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
   cache: ['QuickEntry', 'CRM Lead'],
@@ -123,7 +302,7 @@ const tabs = createResource({
     _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
-          column.fields.forEach((field) => {
+          column.fields.forEach((field, fieldIndex) => {
             if (field.fieldname == 'status') {
               field.fieldtype = 'Select'
               field.options = leadStatuses.value
@@ -140,6 +319,7 @@ const tabs = createResource({
                 options: 'User',
                 description: 'Assign this lead to another team member for handling'
               }
+              
               // Find the current field index and insert after it
               const currentFieldIndex = column.fields.indexOf(field)
               if (currentFieldIndex !== -1) {
@@ -224,6 +404,9 @@ function createNewLead() {
       isLeadCreating.value = true
     },
     async onSuccess(data) {
+      // Store the created lead ID for task reference
+      createdLeadId.value = data.name
+      
       // If there's an assigned_to user, handle the assignment
       if (lead.doc.assigned_to && lead.doc.assigned_to !== user) {
         try {
@@ -239,10 +422,38 @@ function createNewLead() {
         }
       }
       
+      // If there's a pending task, create it now with the lead reference
+      if (pendingTaskData.value) {
+        try {
+          const taskDoc = {
+            ...pendingTaskData.value,
+            reference_doctype: 'CRM Lead',
+            reference_docname: data.name
+          }
+          
+          // Create the task
+          await call('frappe.client.insert', {
+            doc: {
+              doctype: 'CRM Task',
+              ...taskDoc
+            }
+          })
+          
+          console.log(`Task "${taskDoc.title}" created successfully for ${getUser(taskDoc.assigned_to).full_name}`)
+          pendingTaskData.value = null // Clear pending task
+        } catch (err) {
+          console.error('Failed to create pending task:', err)
+          // Continue even if task creation fails
+        }
+      }
+      
       capture('lead_created')
       isLeadCreating.value = false
+      
+      // Close modal and navigate to lead page
       show.value = false
       router.push({ name: 'Lead', params: { leadId: data.name } })
+      
       updateOnboardingStep('create_first_lead', true, false, () => {
         localStorage.setItem('firstLead' + user, data.name)
       })
@@ -263,6 +474,14 @@ function openQuickEntryModal() {
   quickEntryProps.value = { doctype: 'CRM Lead' }
   nextTick(() => (show.value = false))
 }
+
+// Watch for TaskModal closing to restore LeadModal
+watch(showTaskModal, (newValue) => {
+  if (!newValue && leadModalHidden.value) {
+    // TaskModal was closed, restore the lead modal
+    leadModalHidden.value = false
+  }
+})
 
 onMounted(() => {
   // Set default lead owner if not provided

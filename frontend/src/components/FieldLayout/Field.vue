@@ -202,6 +202,16 @@
       :description="field.description"
       @change="fieldChange(flt($event.target.value), field)"
     />
+    <Button
+      v-else-if="field.fieldtype === 'Button'"
+      :variant="field.buttonVariant || 'outline'"
+      :size="field.buttonSize || 'sm'"
+      :label="field.buttonLabel || field.label"
+      :icon="field.buttonIcon"
+      :disabled="Boolean(field.read_only)"
+      @click="field.onClick && field.onClick()"
+      class="mt-1"
+    />
     <FormControl
       v-else
       type="text"
