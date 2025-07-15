@@ -199,6 +199,24 @@ async function updateTask() {
       emit('after', d)
     }
   } else {
+    // ✅ FIX: Check if we have a proper document reference
+    // If no reference document (props.doc is empty/null) and doctype is CRM Lead,
+    // this is likely being called from LeadModal before lead creation
+    if ((!props.doc || props.doc === '') && props.doctype === 'CRM Lead') {
+      // Don't create the task yet - just return the task data
+      // This prevents duplicate creation from LeadModal
+      console.log('Task creation deferred - no reference document exists yet')
+      emit('after', {
+        ..._task.value,
+        reference_doctype: props.doctype,
+        reference_docname: props.doc || '',
+        name: null // No actual task created yet
+      }, true) // Mark as "new" for proper handling
+      show.value = false
+      return
+    }
+    
+    // Normal task creation with proper reference
     let d = await call(
       'frappe.client.insert',
       {

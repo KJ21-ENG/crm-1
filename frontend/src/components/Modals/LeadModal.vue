@@ -207,23 +207,32 @@ function handleTaskCreated(taskDoc, isNew = false) {
   // Clear any error messages
   error.value = null
   
-  // If lead doesn't exist yet, store task data for later creation
-  if (!createdLeadId.value) {
-    pendingTaskData.value = {
-      ...taskDoc,
-      isNew: isNew
+  // ✅ FIX: Check if this task was created from LeadModal (no reference_docname)
+  // If it has a reference_docname, it's a legitimate task creation
+  if (taskDoc.reference_docname && taskDoc.reference_docname !== '') {
+    // This is a real task with proper reference - navigate to lead
+    if (isNew) {
+      console.log(`Task "${taskDoc.title}" created successfully for ${getUser(taskDoc.assigned_to).full_name}`)
     }
-    console.log('Task data stored, will be created after lead is saved')
+    router.push({ name: 'Lead', params: { leadId: taskDoc.reference_docname } })
     return
   }
   
-  if (isNew) {
-    // Show success message
-    console.log(`Task "${taskDoc.title}" created successfully for ${getUser(taskDoc.assigned_to).full_name}`)
+  // ✅ FIX: If no reference_docname, this is a task created from LeadModal
+  // Store it as pending task data instead of creating duplicate
+  pendingTaskData.value = {
+    title: taskDoc.title,
+    description: taskDoc.description,
+    assigned_to: taskDoc.assigned_to,
+    due_date: taskDoc.due_date,
+    status: taskDoc.status,
+    priority: taskDoc.priority,
+    reference_doctype: 'CRM Lead',
+    reference_docname: '', // Will be set when lead is created
+    isNew: true // Mark as new for proper handling
   }
   
-  // Navigate to the lead page after task is created
-  router.push({ name: 'Lead', params: { leadId: createdLeadId.value } })
+  console.log('Task data stored, will be created after lead is saved')
 }
 
 // Function to open task modal from the assignment section
@@ -422,8 +431,9 @@ function createNewLead() {
         }
       }
       
-      // If there's a pending task, create it now with the lead reference
-      if (pendingTaskData.value) {
+      // ✅ FIX: Only create task if pending task exists and doesn't have a real task ID
+      // This prevents duplicate creation if TaskModal already created a task
+      if (pendingTaskData.value && (!pendingTaskData.value.name || pendingTaskData.value.name === null)) {
         try {
           const taskDoc = {
             ...pendingTaskData.value,
@@ -431,8 +441,11 @@ function createNewLead() {
             reference_docname: data.name
           }
           
+          // Remove the name field if it's null (prevents insertion conflicts)
+          delete taskDoc.name
+          
           // Create the task
-          await call('frappe.client.insert', {
+          const createdTask = await call('frappe.client.insert', {
             doc: {
               doctype: 'CRM Task',
               ...taskDoc
@@ -444,6 +457,20 @@ function createNewLead() {
         } catch (err) {
           console.error('Failed to create pending task:', err)
           // Continue even if task creation fails
+        }
+      } else if (pendingTaskData.value && pendingTaskData.value.name) {
+        // Task was already created by TaskModal, just update the reference
+        console.log('Task already exists, updating reference_docname')
+        try {
+          await call('frappe.client.set_value', {
+            doctype: 'CRM Task',
+            name: pendingTaskData.value.name,
+            fieldname: 'reference_docname',
+            value: data.name
+          })
+          pendingTaskData.value = null // Clear pending task
+        } catch (err) {
+          console.error('Failed to update task reference:', err)
         }
       }
       
