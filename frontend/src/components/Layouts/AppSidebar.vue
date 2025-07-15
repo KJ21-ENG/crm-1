@@ -8,7 +8,7 @@
     </div>
     <div class="flex-1 overflow-y-auto">
       <div class="mb-3 flex flex-col">
-        <SidebarLink
+        <!-- <SidebarLink
           id="notifications-btn"
           :label="__('Notifications')"
           :icon="NotificationsIcon"
@@ -27,7 +27,7 @@
               class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-surface-gray-6 ring-1 ring-white"
             />
           </template>
-        </SidebarLink>
+        </SidebarLink> -->
         <SidebarLink
           id="task-notifications-btn"
           :label="__('Task Reminders')"
@@ -140,7 +140,7 @@
         </template>
       </SidebarLink>
     </div>
-    <Notifications />
+    <!-- <Notifications /> -->
     <TaskNotifications />
     <Settings />
     <HelpModal

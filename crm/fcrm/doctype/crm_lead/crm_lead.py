@@ -12,6 +12,7 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 	add_status_change_log,
 )
 from crm.api.activities import emit_activity_update
+from crm.api.lead_notifications import handle_lead_assignment_change
 
 
 class CRMLead(Document):
@@ -28,11 +29,17 @@ class CRMLead(Document):
 			self.assign_agent(self.lead_owner)
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
+		
+		# 🔔 Send lead assignment notification for lead owner changes
+		handle_lead_assignment_change(self, method="validate")
 
 	def after_insert(self):
 		if self.lead_owner:
 			self.assign_agent(self.lead_owner)
 		emit_activity_update("CRM Lead", self.name)
+		
+		# 🔔 Send lead assignment notification for new leads
+		handle_lead_assignment_change(self, method="after_insert")
 
 	def on_update(self):
 		emit_activity_update("CRM Lead", self.name)

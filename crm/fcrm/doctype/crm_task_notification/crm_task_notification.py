@@ -19,17 +19,20 @@ class CRMTaskNotification(Document):
 	
 	def format_notification_text(self):
 		"""Generate formatted notification text based on task details"""
-		if not self.notification_text and self.task:
-			task_doc = frappe.get_doc("CRM Task", self.task)
-			
-			if self.notification_type == "Due Date Reminder":
-				self.notification_text = self.get_due_date_reminder_text(task_doc)
-			elif self.notification_type == "Overdue Task":
-				self.notification_text = self.get_overdue_task_text(task_doc)
-			elif self.notification_type == "Task Assignment":
-				self.notification_text = self.get_task_assignment_text(task_doc)
-			elif self.notification_type == "Task Completion":
-				self.notification_text = self.get_task_completion_text(task_doc)
+		if not self.notification_text:
+			if self.notification_type == "Lead Assignment":
+				self.notification_text = self.get_lead_assignment_text()
+			elif self.task:
+				task_doc = frappe.get_doc("CRM Task", self.task)
+				
+				if self.notification_type == "Due Date Reminder":
+					self.notification_text = self.get_due_date_reminder_text(task_doc)
+				elif self.notification_type == "Overdue Task":
+					self.notification_text = self.get_overdue_task_text(task_doc)
+				elif self.notification_type == "Task Assignment":
+					self.notification_text = self.get_task_assignment_text(task_doc)
+				elif self.notification_type == "Task Completion":
+					self.notification_text = self.get_task_completion_text(task_doc)
 	
 	def get_due_date_reminder_text(self, task_doc):
 		"""Generate due date reminder notification text"""
@@ -79,6 +82,30 @@ class CRMTaskNotification(Document):
 				<div class="mt-1">
 					<span class="font-medium text-ink-gray-9">{task_doc.title}</span>
 					<span> has been marked as complete</span>
+				</div>
+			</div>
+		"""
+	
+	def get_lead_assignment_text(self):
+		"""Generate lead assignment notification text"""
+		if self.reference_doctype == "CRM Lead" and self.reference_docname:
+			lead_doc = frappe.get_doc("CRM Lead", self.reference_docname)
+			return f"""
+				<div class="mb-2 leading-5 text-ink-gray-5">
+					<span class="font-medium text-ink-gray-9">Lead Assignment</span>
+					<div class="mt-1">
+						<span class="font-medium text-ink-gray-9">{lead_doc.lead_name}</span>
+						<span> has been assigned to you</span>
+					</div>
+					{f'<div class="text-sm text-ink-gray-6">Organization: {lead_doc.organization}</div>' if lead_doc.organization else ''}
+					{f'<div class="text-sm text-ink-gray-6">Contact: {lead_doc.mobile_no or lead_doc.email or "N/A"}</div>' if (lead_doc.mobile_no or lead_doc.email) else ''}
+				</div>
+			"""
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-ink-gray-9">Lead Assignment</span>
+				<div class="mt-1">
+					<span>A new lead has been assigned to you</span>
 				</div>
 			</div>
 		"""
@@ -168,29 +195,42 @@ def get_user_task_notifications(limit=20):
 		return []
 
 
-def create_task_notification(task_name, notification_type, assigned_to, message=None):
+def create_task_notification(task_name, notification_type, assigned_to, message=None, reference_doctype=None, reference_docname=None):
 	"""Helper function to create a task notification"""
 	try:
-		# Check if notification already exists
-		existing = frappe.db.exists("CRM Task Notification", {
-			"task": task_name,
-			"notification_type": notification_type,
-			"assigned_to": assigned_to,
-			"status": ["in", ["Pending", "Sent"]]
-		})
-		
-		if existing:
-			return frappe.get_doc("CRM Task Notification", existing)
-		
-		# Create new notification
-		notification = frappe.get_doc({
-			"doctype": "CRM Task Notification",
-			"task": task_name,
-			"notification_type": notification_type,
-			"assigned_to": assigned_to,
-			"message": message,
-			"status": "Pending"
-		})
+		# For Lead Assignment notifications, don't check for existing task notifications
+		if notification_type == "Lead Assignment":
+			# Create new lead assignment notification
+			notification = frappe.get_doc({
+				"doctype": "CRM Task Notification",
+				"notification_type": notification_type,
+				"assigned_to": assigned_to,
+				"message": message,
+				"reference_doctype": reference_doctype,
+				"reference_docname": reference_docname,
+				"status": "Pending"
+			})
+		else:
+			# Check if notification already exists for task-based notifications
+			existing = frappe.db.exists("CRM Task Notification", {
+				"task": task_name,
+				"notification_type": notification_type,
+				"assigned_to": assigned_to,
+				"status": ["in", ["Pending", "Sent"]]
+			})
+			
+			if existing:
+				return frappe.get_doc("CRM Task Notification", existing)
+			
+			# Create new task notification
+			notification = frappe.get_doc({
+				"doctype": "CRM Task Notification",
+				"task": task_name,
+				"notification_type": notification_type,
+				"assigned_to": assigned_to,
+				"message": message,
+				"status": "Pending"
+			})
 		
 		notification.insert(ignore_permissions=True)
 		return notification
