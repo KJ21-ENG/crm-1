@@ -62,10 +62,11 @@
       <ListRowItem v-else :item="item" :align="column.align">
         <template #prefix>
           <div v-if="column.key === 'status'">
-            <IndicatorIcon :class="item.color" />
+            <IndicatorIcon :class="item && item.color ? item.color : ''" />
           </div>
           <div v-else-if="column.key === 'priority'">
             <div 
+              v-if="item && item.value"
               class="h-3 w-3 rounded-full"
               :class="{
                 'bg-blue-500': item.value === 'Low',
@@ -77,20 +78,20 @@
           </div>
           <div v-else-if="column.key === 'customer_name'">
             <Avatar
-              v-if="item.label"
+              v-if="item && item.label"
               class="flex items-center"
-              :image="item.image"
-              :label="item.image_label"
+              :image="item.image || ''"
+              :label="item.image_label || ''"
               size="sm"
             />
           </div>
           <div v-else-if="column.key === 'assigned_to'">
           <Avatar
-              v-if="item.full_name"
+              v-if="item && item.full_name"
               class="flex items-center"
-              :image="item.user_image"
+              :image="item.user_image || ''"
               :label="item.full_name"
-            size="sm"
+              size="sm"
           />
           </div>
           <div v-else-if="column.key === 'mobile_no'">
@@ -124,8 +125,8 @@
                 })
             "
           >
-            <Tooltip :text="item.label">
-              <div>{{ item.timeAgo }}</div>
+            <Tooltip :text="item && item.label ? item.label : ''">
+              <div>{{ item && item.timeAgo ? item.timeAgo : '' }}</div>
             </Tooltip>
           </div>
           <div v-else-if="column.key === '_liked_by'">
@@ -149,9 +150,9 @@
             class="truncate text-base"
           >
             <Badge
-              v-if="item.value"
+              v-if="item && item.value"
               :variant="'subtle'"
-              :theme="item.color"
+              :theme="item.color || 'gray'"
               size="md"
               :label="item.value"
               @click="
@@ -171,9 +172,9 @@
             class="truncate text-base"
           >
             <Badge
-              v-if="item.value"
+              v-if="item && item.value"
               :variant="'subtle'"
-              :theme="item.color"
+              :theme="item.color || 'gray'"
               size="md"
               :label="item.value"
               @click="
@@ -193,9 +194,9 @@
             class="truncate text-base"
           >
             <Badge
-              v-if="item.value"
+              v-if="item && item.value"
               :variant="'subtle'"
-              :theme="item.color"
+              :theme="item.color || 'gray'"
               size="md"
               :label="item.value"
               @click="

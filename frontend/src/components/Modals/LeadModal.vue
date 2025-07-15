@@ -160,7 +160,7 @@ const taskData = ref({
 const { document: lead, triggerOnChange } = useDocument('CRM Lead')
 
 // Initialize document properly
-onMounted(() => {
+onMounted(async () => {
   // Initialize lead document with required properties
   lead.doc = {
     doctype: 'CRM Lead',
@@ -187,7 +187,61 @@ onMounted(() => {
   if (!lead.doc?.lead_owner) {
     lead.doc.lead_owner = user
   }
+
+  // Auto-fill customer data if mobile number is provided
+  const mobileNumber = lead.doc.mobile_no
+  if (mobileNumber) {
+    await autoFillCustomerData(mobileNumber)
+  }
 })
+
+// Auto-fill customer data from customer database
+async function autoFillCustomerData(mobileNumber) {
+  try {
+    console.log('🔍 [LEAD AUTO-FILL] Looking up customer data for mobile:', mobileNumber)
+    console.log('🔍 [LEAD AUTO-FILL] Current lead.doc before API call:', JSON.stringify(lead.doc, null, 2))
+    
+    const customerData = await createResource({
+      url: 'crm.api.customers.get_customer_by_mobile',
+      params: {
+        mobile_no: mobileNumber
+      }
+    }).fetch()
+    
+    console.log('🔍 [LEAD AUTO-FILL] API Response:', customerData)
+    console.log('🔍 [LEAD AUTO-FILL] API Response type:', typeof customerData)
+    
+    if (customerData) {
+      console.log('✅ [LEAD AUTO-FILL] Customer found! Data:', JSON.stringify(customerData, null, 2))
+      
+      // Store original values for comparison
+      const originalFirstName = lead.doc.first_name
+      const originalLastName = lead.doc.last_name
+      const originalEmail = lead.doc.email
+      const originalOrganization = lead.doc.organization
+      
+      // Auto-fill form fields with customer data
+      lead.doc.first_name = customerData.first_name || lead.doc.first_name
+      lead.doc.last_name = customerData.last_name || lead.doc.last_name
+      lead.doc.email = customerData.email || lead.doc.email
+      lead.doc.organization = customerData.organization || lead.doc.organization
+      
+      console.log('🔍 [LEAD AUTO-FILL] Field updates:')
+      console.log('  first_name:', originalFirstName, '->', lead.doc.first_name)
+      console.log('  last_name:', originalLastName, '->', lead.doc.last_name)
+      console.log('  email:', originalEmail, '->', lead.doc.email)
+      console.log('  organization:', originalOrganization, '->', lead.doc.organization)
+      
+      console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
+      console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))
+    } else {
+      console.log('ℹ️ [LEAD AUTO-FILL] No existing customer found for mobile:', mobileNumber)
+    }
+  } catch (error) {
+    console.error('❌ [LEAD AUTO-FILL] Error looking up customer data:', error)
+    console.error('❌ [LEAD AUTO-FILL] Error details:', error.message, error.stack)
+  }
+}
 
 const leadStatuses = computed(() => {
   let statuses = statusOptions('lead', null, [], triggerOnChange)

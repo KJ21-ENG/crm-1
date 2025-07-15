@@ -387,7 +387,7 @@ watch([() => ticket.doc?.mobile_no, () => ticket.doc?.email], ([mobile, email]) 
 }, { immediate: false })
 
 // Initialize ticket with defaults
-onMounted(() => {
+onMounted(async () => {
   // Initialize an empty doc first
   ticket.doc = {
     doctype: 'CRM Ticket',
@@ -417,15 +417,74 @@ onMounted(() => {
       ticket_subject: `Support request from call ${customerNumber}`,
       description: `Customer called on ${props.callLog.start_time}`
     })
+  }
+
+  // Auto-fill customer data if mobile number is provided
+  const mobileNumber = ticket.doc.mobile_no
+  if (mobileNumber) {
+    await autoFillCustomerData(mobileNumber)
     
-    // Fetch customer history immediately for call log tickets
+    // Fetch customer history
     nextTick(() => {
-      if (customerNumber) {
-        customerHistory.reload()
-      }
+      customerHistory.reload()
     })
   }
 })
+
+// Auto-fill customer data from customer database
+async function autoFillCustomerData(mobileNumber) {
+  try {
+    console.log('🔍 [AUTO-FILL] Looking up customer data for mobile:', mobileNumber)
+    console.log('🔍 [AUTO-FILL] Current ticket.doc before API call:', JSON.stringify(ticket.doc, null, 2))
+    
+    const customerData = await createResource({
+      url: 'crm.api.customers.get_customer_by_mobile',
+      params: {
+        mobile_no: mobileNumber
+      }
+    }).fetch()
+    
+    console.log('🔍 [AUTO-FILL] API Response:', customerData)
+    console.log('🔍 [AUTO-FILL] API Response type:', typeof customerData)
+    
+    if (customerData) {
+      console.log('✅ [AUTO-FILL] Customer found! Data:', JSON.stringify(customerData, null, 2))
+      
+      // Store original values for comparison
+      const originalFirstName = ticket.doc.first_name
+      const originalLastName = ticket.doc.last_name
+      const originalEmail = ticket.doc.email
+      const originalOrganization = ticket.doc.organization
+      
+      // Auto-fill form fields with customer data
+      ticket.doc.first_name = customerData.first_name || ticket.doc.first_name
+      ticket.doc.last_name = customerData.last_name || ticket.doc.last_name
+      ticket.doc.email = customerData.email || ticket.doc.email
+      ticket.doc.organization = customerData.organization || ticket.doc.organization
+      
+      console.log('🔍 [AUTO-FILL] Field updates:')
+      console.log('  first_name:', originalFirstName, '->', ticket.doc.first_name)
+      console.log('  last_name:', originalLastName, '->', ticket.doc.last_name)
+      console.log('  email:', originalEmail, '->', ticket.doc.email)
+      console.log('  organization:', originalOrganization, '->', ticket.doc.organization)
+      
+      // Update ticket subject if it was generic
+      if (!ticket.doc.ticket_subject || ticket.doc.ticket_subject.includes('call')) {
+        const newSubject = `Support request from ${customerData.first_name || ''} ${customerData.last_name || ''}`.trim()
+        console.log('🔍 [AUTO-FILL] Updating subject to:', newSubject)
+        ticket.doc.ticket_subject = newSubject
+      }
+      
+      console.log('✅ [AUTO-FILL] Form auto-filled successfully')
+      console.log('🔍 [AUTO-FILL] Final ticket.doc:', JSON.stringify(ticket.doc, null, 2))
+    } else {
+      console.log('ℹ️ [AUTO-FILL] No existing customer found for mobile:', mobileNumber)
+    }
+  } catch (error) {
+    console.error('❌ [AUTO-FILL] Error looking up customer data:', error)
+    console.error('❌ [AUTO-FILL] Error details:', error.message, error.stack)
+  }
+}
 
 const tabs = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
