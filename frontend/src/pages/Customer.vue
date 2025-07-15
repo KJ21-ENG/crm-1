@@ -45,7 +45,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- Basic Information -->
             <div class="bg-surface-white rounded-lg border p-6">
-              <h2 class="text-lg font-medium mb-4">Contact Information</h2>
+              <h2 class="text-lg font-medium mb-4">Customer Information</h2>
               <div class="space-y-3">
                 <div v-if="customer.data.email">
                   <label class="text-sm text-ink-gray-7">Email</label>
@@ -59,13 +59,17 @@
                   <label class="text-sm text-ink-gray-7">Phone</label>
                   <p class="text-ink-gray-12">{{ customer.data.phone }}</p>
                 </div>
-                <div v-if="customer.data.organization">
-                  <label class="text-sm text-ink-gray-7">Organization</label>
-                  <p class="text-ink-gray-12">{{ customer.data.organization }}</p>
-                </div>
                 <div v-if="customer.data.job_title">
                   <label class="text-sm text-ink-gray-7">Job Title</label>
                   <p class="text-ink-gray-12">{{ customer.data.job_title }}</p>
+                </div>
+                <div v-if="customer.data.pan_card_number">
+                  <label class="text-sm text-ink-gray-7">PAN Card Number</label>
+                  <p class="text-ink-gray-12">{{ customer.data.pan_card_number }}</p>
+                </div>
+                <div v-if="customer.data.aadhaar_card_number">
+                  <label class="text-sm text-ink-gray-7">Aadhaar Card Number</label>
+                  <p class="text-ink-gray-12">{{ customer.data.aadhaar_card_number }}</p>
                 </div>
               </div>
             </div>

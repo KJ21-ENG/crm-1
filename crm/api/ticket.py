@@ -328,12 +328,15 @@ def get_customer_history(mobile_no=None, email=None):
             }
         }
     
-    # Get tickets matching mobile_no or email
+    # Get tickets matching mobile_no or email (exclude closed tickets)
     tickets = []
     if mobile_no:
         mobile_tickets = frappe.get_list(
             "CRM Ticket",
-            filters={"mobile_no": mobile_no},
+            filters={
+                "mobile_no": mobile_no,
+                "status": ["not in", ["Closed", "Resolved"]]
+            },
             fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
             order_by="creation desc",
             limit=20
@@ -343,7 +346,10 @@ def get_customer_history(mobile_no=None, email=None):
     if email:
         email_tickets = frappe.get_list(
             "CRM Ticket", 
-            filters={"email": email},
+            filters={
+                "email": email,
+                "status": ["not in", ["Closed", "Resolved"]]
+            },
             fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
             order_by="creation desc",
             limit=20
@@ -362,12 +368,15 @@ def get_customer_history(mobile_no=None, email=None):
     unique_tickets.sort(key=lambda x: x.creation, reverse=True)
     tickets = unique_tickets[:10]
     
-    # Get leads matching mobile_no or email
+    # Get leads matching mobile_no or email (exclude closed/converted leads)
     leads = []
     if mobile_no:
         mobile_leads = frappe.get_list(
             "CRM Lead",
-            filters={"mobile_no": mobile_no},
+            filters={
+                "mobile_no": mobile_no,
+                "status": ["not in", ["Converted", "Do Not Contact", "Lost"]]
+            },
             fields=["name", "lead_name", "status", "creation", "modified"],
             order_by="creation desc",
             limit=20
@@ -377,7 +386,10 @@ def get_customer_history(mobile_no=None, email=None):
     if email:
         email_leads = frappe.get_list(
             "CRM Lead",
-            filters={"email": email}, 
+            filters={
+                "email": email,
+                "status": ["not in", ["Converted", "Do Not Contact", "Lost"]]
+            }, 
             fields=["name", "lead_name", "status", "creation", "modified"],
             order_by="creation desc",
             limit=20

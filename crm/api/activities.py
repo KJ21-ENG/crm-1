@@ -692,7 +692,8 @@ def get_custom_ticket_activities(ticket_name):
 			"content": ["like", "%📱 WhatsApp Support%"]
 		},
 		fields=["name", "content", "creation", "owner", "comment_email"],
-		order_by="creation desc"
+		order_by="creation desc",
+		ignore_permissions=True
 	)
 			
 	for comment in whatsapp_comments:

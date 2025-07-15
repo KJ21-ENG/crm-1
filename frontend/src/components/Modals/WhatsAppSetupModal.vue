@@ -76,12 +76,12 @@
               variant="solid"
               theme="red"
               class="w-full"
-              @click="disconnectWhatsApp"
+              @click="logoutWhatsApp"
             >
               <template #prefix>
                 <FeatherIcon name="log-out" class="h-4 w-4" />
               </template>
-              {{ __('Disconnect WhatsApp') }}
+              {{ __('Logout') }}
             </Button>
           </div>
         </div>
@@ -155,26 +155,26 @@ const refreshStatus = () => {
   checkWhatsAppStatus()
 }
 
-const disconnectWhatsApp = async () => {
+const logoutWhatsApp = async () => {
   try {
     const response = await createResource({
       url: 'crm.api.whatsapp_support.disconnect',
     }).fetch()
 
     if (response.success) {
-      const disconnectedStatus = {
+      const loggedOutStatus = {
         connected: false,
         phoneNumber: null,
       }
-      whatsappStatus.value = disconnectedStatus
-      emit('status-update', disconnectedStatus)
+      whatsappStatus.value = loggedOutStatus
+      emit('status-update', loggedOutStatus)
       qrCode.value = ''
-      toast.success('WhatsApp disconnected successfully')
+      toast.success('WhatsApp logged out successfully')
     } else {
-      toast.error('Failed to disconnect WhatsApp')
+      toast.error('Failed to logout from WhatsApp')
     }
   } catch (error) {
-    toast.error('Error disconnecting WhatsApp: ' + error.message)
+    toast.error('Error logging out from WhatsApp: ' + error.message)
   }
 }
 

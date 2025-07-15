@@ -699,7 +699,8 @@ function get_activities() {
         reference_doctype: task.reference_doctype,
         reference_docname: task.reference_docname
       },
-      is_lead: true, // Since this is for leads
+      is_lead: props.doctype === 'CRM Lead',
+      is_ticket: props.doctype === 'CRM Ticket',
       task_data: task // Keep original task data for detailed display
     }))
     activities = [...activities, ...taskActivities]

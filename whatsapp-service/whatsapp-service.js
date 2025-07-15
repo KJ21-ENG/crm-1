@@ -181,13 +181,12 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-// Disconnect WhatsApp
-app.post('/disconnect', async (req, res) => {
+// Logout WhatsApp (without destroying the service)
+app.post('/logout', async (req, res) => {
     try {
         if (client) {
             await client.logout();
-            await client.destroy();
-            client = null;
+            // Don't destroy the client, just logout from the account
         }
         
         isConnected = false;
@@ -196,14 +195,40 @@ app.post('/disconnect', async (req, res) => {
 
         res.json({ 
             success: true, 
-            message: 'WhatsApp disconnected successfully' 
+            message: 'WhatsApp logged out successfully' 
         });
 
     } catch (error) {
-        console.error('Error disconnecting WhatsApp:', error);
+        console.error('Error logging out WhatsApp:', error);
         res.json({ 
             success: false, 
-            message: 'Error disconnecting WhatsApp: ' + error.message 
+            message: 'Error logging out WhatsApp: ' + error.message 
+        });
+    }
+});
+
+// Disconnect WhatsApp (legacy endpoint - now just calls logout)
+app.post('/disconnect', async (req, res) => {
+    try {
+        if (client) {
+            await client.logout();
+            // Keep the service running, just logout from the account
+        }
+        
+        isConnected = false;
+        phoneNumber = null;
+        qrCodeString = '';
+
+        res.json({ 
+            success: true, 
+            message: 'WhatsApp logged out successfully' 
+        });
+
+    } catch (error) {
+        console.error('Error logging out WhatsApp:', error);
+        res.json({ 
+            success: false, 
+            message: 'Error logging out WhatsApp: ' + error.message 
         });
     }
 });

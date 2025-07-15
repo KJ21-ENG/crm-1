@@ -66,9 +66,6 @@
                 <span v-if="customer.email && customer.mobile_no">•</span>
                 <span v-if="customer.mobile_no">{{ customer.mobile_no }}</span>
               </div>
-              <p v-if="customer.organization" class="text-sm text-ink-500">
-                {{ customer.organization }}
-              </p>
             </div>
           </div>
           
@@ -193,7 +190,6 @@ const customers = createListResource({
     'last_name',
     'email',
     'mobile_no',
-    'organization',
     'status',
     'image',
     'creation'
