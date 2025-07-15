@@ -226,6 +226,37 @@
         <div v-else-if="activity.activity_type == 'whatsapp_support'" class="mb-4">
           <WhatsAppActivityArea :activity="activity" />
         </div>
+        <div v-else-if="activity.activity_type == 'task'" class="mb-4">
+          <div class="flex flex-col gap-2 py-1.5">
+            <div class="flex items-center justify-stretch gap-2 text-base">
+              <div class="inline-flex items-center flex-wrap gap-1.5 text-ink-gray-8 font-medium">
+                <UserAvatar class="mr-1" :user="activity.owner" size="xs" />
+                <span class="font-medium">{{ getUser(activity.owner).full_name }}</span>
+                <span class="text-ink-gray-5">{{ activity.data.status === 'Done' ? 'completed' : 'created' }}</span>
+                <span class="font-medium text-ink-gray-8">task:</span>
+                <span class="font-medium text-ink-gray-9">{{ activity.data.title }}</span>
+                <div v-if="activity.data.priority" class="flex items-center gap-1">
+                  <TaskPriorityIcon class="!h-3 !w-3" :priority="activity.data.priority" />
+                  <span class="text-sm text-ink-gray-6">{{ activity.data.priority }}</span>
+                </div>
+              </div>
+              <div class="ml-auto whitespace-nowrap">
+                <Tooltip :text="formatDate(activity.creation)">
+                  <div class="text-sm text-ink-gray-5">
+                    {{ __(timeAgo(activity.creation)) }}
+                  </div>
+                </Tooltip>
+              </div>
+            </div>
+            <div v-if="activity.data.due_date" class="flex items-center gap-2 text-sm text-ink-gray-6">
+              <CalendarIcon class="h-3 w-3" />
+              <span>Due: {{ formatDate(activity.data.due_date, 'MMM D, YYYY | hh:mm a') }}</span>
+            </div>
+            <div v-if="activity.data.description" class="text-sm text-ink-gray-7 leading-relaxed">
+              <div class="prose-sm" v-html="activity.data.description"></div>
+            </div>
+          </div>
+        </div>
         <div v-else class="mb-4 flex flex-col gap-2 py-1.5">
           <div class="flex items-center justify-stretch gap-2 text-base">
             <div
@@ -478,6 +509,8 @@ import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
+import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
@@ -642,9 +675,37 @@ const replyMessage = ref({})
 
 function get_activities() {
   if (!all_activities.data?.versions) return []
-  if (!all_activities.data?.calls.length)
-    return all_activities.data.versions || []
-  return [...all_activities.data.versions, ...all_activities.data.calls]
+  
+  let activities = [...(all_activities.data.versions || [])]
+  
+  // Add calls if available
+  if (all_activities.data?.calls?.length) {
+    activities = [...activities, ...all_activities.data.calls]
+  }
+  
+  // Add tasks as activities if available
+  if (all_activities.data?.tasks?.length) {
+    const taskActivities = all_activities.data.tasks.map(task => ({
+      activity_type: 'task',
+      name: task.name,
+      creation: task.modified, // Use modified as creation time for sorting
+      owner: task.assigned_to,
+      data: {
+        title: task.title,
+        description: task.description,
+        due_date: task.due_date,
+        priority: task.priority,
+        status: task.status,
+        reference_doctype: task.reference_doctype,
+        reference_docname: task.reference_docname
+      },
+      is_lead: true, // Since this is for leads
+      task_data: task // Keep original task data for detailed display
+    }))
+    activities = [...activities, ...taskActivities]
+  }
+  
+  return activities
 }
 
 const activities = computed(() => {
@@ -832,6 +893,9 @@ function timelineIcon(activity_type, is_lead, is_ticket) {
       break
     case 'whatsapp_support':
       icon = WhatsAppIcon
+      break
+    case 'task':
+      icon = TaskIcon
       break
     default:
       icon = DotIcon
