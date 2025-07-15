@@ -32,6 +32,10 @@ class CRMTicket(Document):
 	def after_insert(self):
 		if self.assigned_to:
 			self.assign_agent(self.assigned_to)
+		
+		# Create or update customer record
+		self.create_or_update_customer()
+		
 		emit_activity_update("CRM Ticket", self.name)
 
 	def on_update(self):
@@ -117,6 +121,33 @@ class CRMTicket(Document):
 				)
 			elif user != agent:
 				frappe.share.remove(self.doctype, self.name, user)
+
+	def create_or_update_customer(self):
+		"""Create or update customer record based on ticket data"""
+		if not self.mobile_no:
+			return
+		
+		try:
+			# Import the customer API function
+			from crm.api.customers import create_or_update_customer
+			
+			customer = create_or_update_customer(
+				mobile_no=self.mobile_no,
+				first_name=self.first_name,
+				last_name=self.last_name,
+				email=self.email,
+				organization=self.organization,
+				customer_source="Ticket",
+				reference_doctype="CRM Ticket",
+				reference_docname=self.name
+			)
+			
+			frappe.logger().info(f"Customer record processed for ticket {self.name}: {customer}")
+			
+		except Exception as e:
+			# Log error but don't fail the ticket creation
+			frappe.log_error(f"Error creating/updating customer for ticket {self.name}: {str(e)}", "Customer Creation Error")
+			frappe.logger().error(f"Customer creation failed for ticket {self.name}: {str(e)}")
 
 	def set_sla(self):
 		"""

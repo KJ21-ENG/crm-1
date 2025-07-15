@@ -74,6 +74,18 @@ const routes = [
     props: true,
   },
   {
+    alias: '/customers',
+    path: '/customers/view/:viewType?',
+    name: 'Customers',
+    component: () => import('@/pages/Customers.vue'),
+  },
+  {
+    path: '/customers/:customerId',
+    name: 'Customer',
+    component: () => import(`@/pages/${handleMobileView('Customer')}.vue`),
+    props: true,
+  },
+  {
     alias: '/organizations',
     path: '/organizations/view/:viewType?',
     name: 'Organizations',

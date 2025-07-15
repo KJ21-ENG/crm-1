@@ -1,0 +1,255 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-01-20 12:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "email_append_to": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "details",
+  "customer_name",
+  "first_name",
+  "last_name",
+  "middle_name",
+  "email",
+  "mobile_no",
+  "phone",
+  "column_break_1",
+  "salutation",
+  "gender",
+  "organization",
+  "job_title",
+  "section_break_2",
+  "naming_series",
+  "status",
+  "customer_source",
+  "column_break_2",
+  "created_from_lead",
+  "created_from_ticket",
+  "image",
+  "address_section",
+  "address_line_1",
+  "address_line_2",
+  "city",
+  "column_break_3",
+  "state",
+  "country",
+  "pincode"
+ ],
+ "fields": [
+  {
+   "fieldname": "details",
+   "fieldtype": "Section Break",
+   "label": "Customer Details"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "fieldname": "middle_name",
+   "fieldtype": "Data",
+   "label": "Middle Name"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "unique": 1
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Select",
+   "label": "Salutation",
+   "options": "Mr\nMs\nMrs\nDr\nProf"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "Male\nFemale\nOther"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Data",
+   "label": "Organization"
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "label": "Job Title"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Additional Information"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "CRM-CUST-.YYYY.-"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive",
+   "default": "Active"
+  },
+  {
+   "fieldname": "customer_source",
+   "fieldtype": "Select",
+   "label": "Customer Source",
+   "options": "Lead\nTicket\nDirect\nOther"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_from_lead",
+   "fieldtype": "Link",
+   "label": "Created From Lead",
+   "options": "CRM Lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_from_ticket",
+   "fieldtype": "Link",
+   "label": "Created From Ticket",
+   "options": "CRM Ticket",
+   "read_only": 1
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Customer Image"
+  },
+  {
+   "fieldname": "address_section",
+   "fieldtype": "Section Break",
+   "label": "Address Information"
+  },
+  {
+   "fieldname": "address_line_1",
+   "fieldtype": "Data",
+   "label": "Address Line 1"
+  },
+  {
+   "fieldname": "address_line_2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Data",
+   "label": "Country"
+  },
+  {
+   "fieldname": "pincode",
+   "fieldtype": "Data",
+   "label": "Pincode"
+  }
+ ],
+ "has_web_view": 0,
+ "icon": "fa fa-user",
+ "index_web_pages_for_search": 1,
+ "is_submittable": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2025-01-20 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Customer",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CRM Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CRM Agent",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "customer_name",
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
+} 

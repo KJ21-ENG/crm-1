@@ -96,6 +96,7 @@ import UserDropdown from '@/components/UserDropdown.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
 import DealsIcon from '@/components/Icons/DealsIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+import CustomersIcon from '@/components/Icons/CustomersIcon.vue'
 import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
@@ -127,6 +128,11 @@ const links = [
     label: 'Contacts',
     icon: ContactsIcon,
     to: 'Contacts',
+  },
+  {
+    label: 'Customers',
+    icon: CustomersIcon,
+    to: 'Customers',
   },
   {
     label: 'Organizations',
@@ -211,6 +217,8 @@ function getIcon(routeName, icon) {
       return DealsIcon
     case 'Contacts':
       return ContactsIcon
+    case 'Customers':
+      return CustomersIcon
     case 'Organizations':
       return OrganizationsIcon
     case 'Notes':

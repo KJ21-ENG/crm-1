@@ -36,6 +36,10 @@ class CRMLead(Document):
 	def after_insert(self):
 		if self.lead_owner:
 			self.assign_agent(self.lead_owner)
+		
+		# Create or update customer record
+		self.create_or_update_customer()
+		
 		emit_activity_update("CRM Lead", self.name)
 		
 		# 🔔 Send lead assignment notification for new leads
@@ -126,6 +130,34 @@ class CRMLead(Document):
 				)
 			elif user != agent:
 				frappe.share.remove(self.doctype, self.name, user)
+
+	def create_or_update_customer(self):
+		"""Create or update customer record based on lead data"""
+		if not self.mobile_no:
+			return
+		
+		try:
+			# Import the customer API function
+			from crm.api.customers import create_or_update_customer
+			
+			customer = create_or_update_customer(
+				mobile_no=self.mobile_no,
+				first_name=self.first_name,
+				last_name=self.last_name,
+				email=self.email,
+				organization=self.organization,
+				job_title=self.job_title,
+				customer_source="Lead",
+				reference_doctype="CRM Lead",
+				reference_docname=self.name
+			)
+			
+			frappe.logger().info(f"Customer record processed for lead {self.name}: {customer}")
+			
+		except Exception as e:
+			# Log error but don't fail the lead creation
+			frappe.log_error(f"Error creating/updating customer for lead {self.name}: {str(e)}", "Customer Creation Error")
+			frappe.logger().error(f"Customer creation failed for lead {self.name}: {str(e)}")
 
 	def create_contact(self, existing_contact=None, throw=True):
 		if not self.lead_name:
