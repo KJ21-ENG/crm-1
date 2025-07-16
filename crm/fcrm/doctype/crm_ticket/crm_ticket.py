@@ -219,6 +219,14 @@ class CRMTicket(Document):
 				"label": "Ticket Owner",
 				"type": "Link",
 				"key": "ticket_owner",
+				"options": "User",
+				"width": "10rem",
+			},
+			{
+				"label": "Assigned To",
+				"type": "Link",
+				"key": "assigned_to",
+				"options": "User",
 				"width": "10rem",
 			},
 			{
@@ -236,6 +244,7 @@ class CRMTicket(Document):
 			"priority",
 			"issue_type",
 			"ticket_owner",
+			"assigned_to",
 			"first_name",
 			"email",
 			"mobile_no",

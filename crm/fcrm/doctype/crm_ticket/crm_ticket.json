@@ -17,6 +17,7 @@
   "issue_type",
   "department",
   "assigned_to",
+  "ticket_owner",
   "person_tab",
   "salutation",
   "first_name",
@@ -99,6 +100,12 @@
    "fieldname": "assigned_to",
    "fieldtype": "Link",
    "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "fieldname": "ticket_owner",
+   "fieldtype": "Link",
+   "label": "Ticket Owner",
    "options": "User"
   },
   {
