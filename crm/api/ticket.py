@@ -1173,3 +1173,114 @@ def determine_ticket_for_call(call_creation_time, customer_tickets):
             break
     
     return frappe.get_doc("CRM Ticket", active_ticket.name) if active_ticket else None 
+
+@frappe.whitelist()
+def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
+    """Assign a ticket to a role using round-robin logic"""
+    try:
+        if not assigned_by:
+            assigned_by = frappe.session.user
+        
+        # Import here to avoid circular imports
+        from crm.api.role_assignment import RoleAssignmentTracker
+        from frappe.utils import get_fullname
+        from crm.api.activities import emit_activity_update
+        
+        # Get the next user for this role using the dedicated tracker
+        assigned_user = RoleAssignmentTracker.assign_to_next_user(
+            role_name=role_name,
+            document_type="CRM Ticket",
+            document_name=ticket_name,
+            assigned_by=assigned_by
+        )
+        
+        # Update the ticket (only assigned_role, NOT ticket_owner)
+        ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
+        ticket_doc.assigned_role = role_name
+        
+        # Use Frappe's standard assignment system
+        frappe.desk.form.assign_to.add({
+            "assign_to": [assigned_user],
+            "doctype": "CRM Ticket",
+            "name": ticket_name,
+            "description": f"Ticket assigned to {role_name} role - round-robin assignment"
+        })
+        
+        # Create activity timeline entry for the assignment
+        assigned_user_name = get_fullname(assigned_user)
+        assigned_by_name = get_fullname(assigned_by)
+        
+        # Create assignment activity
+        assignment_comment = frappe.get_doc({
+            "doctype": "Comment", 
+            "comment_type": "Comment",
+            "reference_doctype": "CRM Ticket",
+            "reference_name": ticket_name,
+            "content": f"🎯 <strong>{assigned_by_name}</strong> assigned this ticket to <strong>{assigned_user_name}</strong> from <strong>{role_name}</strong> role using round-robin assignment",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        assignment_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Ticket", ticket_name)
+        
+        ticket_doc.save(ignore_permissions=True)
+        
+        # Create follow-up task for ticket
+        task_doc = frappe.get_doc({
+            "doctype": "CRM Task",
+            "title": f"Handle ticket: {ticket_doc.ticket_subject or ticket_name}",
+            "assigned_to": assigned_user,
+            "reference_doctype": "CRM Ticket",
+            "reference_docname": ticket_name,
+            "description": f"Task created for ticket assignment to {role_name} role - {ticket_doc.ticket_subject or ''}".strip(),
+            "priority": ticket_doc.priority or "Medium",
+            "status": "Open"
+        })
+        task_doc.insert(ignore_permissions=True)
+        
+        # Create activity for task creation
+        task_activity_comment = frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "CRM Ticket", 
+            "reference_name": ticket_name,
+            "content": f"📋 Task created: {task_doc.title}",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        task_activity_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Ticket", ticket_name)
+        
+        # Send notification to assigned user (manually since we're not changing ticket_owner)
+        from crm.api.ticket_notifications import create_ticket_assignment_notification
+        try:
+            create_ticket_assignment_notification(
+                ticket_doc=ticket_doc,
+                assigned_user=assigned_user,
+                tasks=[task_doc] if task_doc else None,
+                is_reassignment=False
+            )
+            frappe.logger().info(f"Assignment notification sent to {assigned_user} for ticket {ticket_name}")
+        except Exception as e:
+            frappe.log_error(f"Failed to send ticket assignment notification: {str(e)}", "Ticket Notification Error")
+        
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "assigned_user": assigned_user,
+            "role": role_name,
+            "message": f"Ticket successfully assigned to {assigned_user} from {role_name} role",
+            "task_created": task_doc.name
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Ticket role assignment failed: {str(e)}", "Ticket Role Assignment Error")
+        return {
+            "success": False,
+            "error": str(e)
+        } 

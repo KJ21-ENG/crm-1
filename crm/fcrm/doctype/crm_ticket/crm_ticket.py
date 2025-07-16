@@ -12,6 +12,8 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 	add_status_change_log,
 )
 from crm.api.activities import emit_activity_update
+# Import ticket notification handler
+from crm.api.ticket_notifications import handle_ticket_assignment_change
 
 
 class CRMTicket(Document):
@@ -22,21 +24,28 @@ class CRMTicket(Document):
 		self.set_customer_name()
 		self.set_title()
 		self.validate_email()
-		if not self.is_new() and self.has_value_changed("assigned_to") and self.assigned_to:
-			self.share_with_agent(self.assigned_to)
-			self.assign_agent(self.assigned_to)
+		# Handle ticket_owner assignment logic
+		if not self.is_new() and self.has_value_changed("ticket_owner") and self.ticket_owner:
+			self.share_with_agent(self.ticket_owner)
+			self.assign_agent(self.ticket_owner)
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
 			self.check_resolution_status()
+		
+		# Handle ticket assignment notifications for ticket owner changes
+		handle_ticket_assignment_change(self, method="validate")
 
 	def after_insert(self):
-		if self.assigned_to:
-			self.assign_agent(self.assigned_to)
+		if self.ticket_owner:
+			self.assign_agent(self.ticket_owner)
 		
 		# Create or update customer record
 		self.create_or_update_customer()
 		
 		emit_activity_update("CRM Ticket", self.name)
+		
+		# Handle ticket assignment notifications for new tickets
+		handle_ticket_assignment_change(self, method="after_insert")
 
 	def on_update(self):
 		emit_activity_update("CRM Ticket", self.name)
@@ -66,8 +75,8 @@ class CRMTicket(Document):
 			if not self.flags.ignore_email_validation:
 				validate_email_address(self.email, throw=True)
 
-			if self.email == self.assigned_to:
-				frappe.throw(_("Assigned To cannot be same as the Customer Email Address"))
+			if self.email == self.ticket_owner:
+				frappe.throw(_("Ticket Owner cannot be same as the Customer Email Address"))
 
 			if self.is_new() or not self.image:
 				self.image = has_gravatar(self.email)
@@ -207,9 +216,9 @@ class CRMTicket(Document):
 				"width": "10rem",
 			},
 			{
-				"label": "Assigned To",
+				"label": "Ticket Owner",
 				"type": "Link",
-				"key": "assigned_to",
+				"key": "ticket_owner",
 				"width": "10rem",
 			},
 			{
@@ -226,7 +235,7 @@ class CRMTicket(Document):
 			"status",
 			"priority",
 			"issue_type",
-			"assigned_to",
+			"ticket_owner",
 			"first_name",
 			"email",
 			"mobile_no",
@@ -245,5 +254,5 @@ class CRMTicket(Document):
 		return {
 			"column_field": "status",
 			"title_field": "ticket_subject",
-			"kanban_fields": '["customer_name", "priority", "issue_type", "assigned_to", "modified"]',
+			"kanban_fields": '["customer_name", "priority", "issue_type", "ticket_owner", "modified"]',
 		} 

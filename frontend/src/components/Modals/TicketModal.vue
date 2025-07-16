@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="show" :options="{ size: '4xl' }">
+  <Dialog v-model="show" :options="{ size: '4xl' }" v-if="!ticketModalHidden">
     <template #body>
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
         <div class="mb-5 flex items-center justify-between">
@@ -36,6 +36,62 @@
             v-model="ticket.doc" 
             :doctype="'CRM Ticket'"
           />
+          
+          <!-- Assign Task Button Section -->
+          <div v-if="ticket.doc.assign_to_role" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-ink-gray-9">
+                {{ __('Ticket will be assigned to a user from "{0}" role', [ticket.doc.assign_to_role]) }}
+              </p>
+              <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
+                {{ __('You can create a task that will be assigned along with the ticket') }}
+              </p>
+              <p class="text-xs text-green-600" v-else>
+                {{ __('Task "{0}" will be created when ticket is saved', [pendingTaskData.title]) }}
+              </p>
+            </div>
+            
+            <!-- Task Assignment Actions -->
+            <div class="flex items-center gap-2">
+              <!-- Assign Task Button (when no task is pending) -->
+              <Button
+                v-if="!pendingTaskData"
+                variant="outline"
+                :label="__('Assign Task')"
+                @click.stop="openTaskModalForAssignment"
+              >
+                <template #prefix>
+                  <FeatherIcon name="plus" class="h-4 w-4" />
+                </template>
+              </Button>
+              
+              <!-- Task Assigned Status (when task is pending) -->
+              <template v-else>
+                <Button
+                  variant="solid"
+                  :label="__('Task Assigned')"
+                  @click.stop="editAssignedTask"
+                >
+                  <template #prefix>
+                    <FeatherIcon name="check" class="h-4 w-4" />
+                  </template>
+                </Button>
+                
+                <!-- Clear Task Button -->
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="clearAssignedTask"
+                  class="!px-2"
+                >
+                  <template #icon>
+                    <FeatherIcon name="x" class="h-4 w-4" />
+                  </template>
+                </Button>
+              </template>
+            </div>
+          </div>
+          
           <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
           </div>
 
@@ -297,6 +353,17 @@
     v-model="showWhatsAppSetupModal"
     @status-update="updateWhatsAppStatus"
   />
+  
+  <!-- Task Modal for creating tasks -->
+  <TaskModal
+    v-if="showTaskModal"
+    v-model="showTaskModal"
+    :task="taskData"
+    doctype="CRM Ticket"
+    :doc="createdTicketId || null"
+    :roleForAssignment="taskData.role_for_assignment || ''"
+    @after="handleTaskCreated"
+  />
 </template>
 
 <script setup>
@@ -304,13 +371,14 @@ import EditIcon from '@/components/Icons/EditIcon.vue'
 import TicketIcon from '@/components/Icons/TaskIcon.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
+import TaskModal from '@/components/Modals/TaskModal.vue'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { capture } from '@/telemetry'
 import { formatDate } from '@/utils'
-import { createResource, Badge, Button, Dialog, toast, FeatherIcon } from 'frappe-ui'
+import { createResource, Badge, Button, Dialog, toast, FeatherIcon, call } from 'frappe-ui'
 import { useDocument } from '@/data/document'
 import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -342,6 +410,22 @@ const router = useRouter()
 const error = ref(null)
 const isTicketCreating = ref(false)
 const issueSolved = ref(false)  // Add issueSolved ref
+
+// Task Modal state for role assignment
+const showTaskModal = ref(false)
+const createdTicketId = ref('')
+const pendingTaskData = ref(null) // Store task data that was created before ticket
+const ticketModalHidden = ref(false) // Track if ticket modal is temporarily hidden
+const taskData = ref({
+  title: '',
+  description: '',
+  assigned_to: '',
+  due_date: '',
+  status: 'Backlog',
+  priority: 'Medium',
+  reference_doctype: 'CRM Ticket',
+  reference_docname: '',
+})
 
 const { document: ticket, triggerOnChange } = useDocument('CRM Ticket')
 
@@ -386,6 +470,7 @@ onMounted(async () => {
   // Initialize an empty doc first
   ticket.doc = {
     doctype: 'CRM Ticket',
+    name: '', // Required for Field.vue
     first_name: '',
     last_name: '',
     email: '',
@@ -396,7 +481,9 @@ onMounted(async () => {
     status: 'New',
     department: 'Support',
     issue_type: 'Account',
-    assigned_to: user
+    assign_to_role: '', // New field for role-based assignment
+    ticket_owner: user,
+    assigned_role: ''
   }
 
   // Then merge with defaults if provided
@@ -481,6 +568,88 @@ async function autoFillCustomerData(mobileNumber) {
   }
 }
 
+// Task Modal Functions
+function openTaskModalForAssignment() {
+  if (!ticket.doc.assign_to_role) {
+    error.value = __('Please select a role to assign before creating a task')
+    return
+  }
+  
+  // Pre-fill task data - assigned_to will be set when ticket is created
+  taskData.value = {
+    title: `Handle ticket: ${ticket.doc.ticket_subject || 'New Ticket'}`,
+    description: `Task created for ticket assignment to ${ticket.doc.assign_to_role} role - ${ticket.doc.ticket_subject || ''}`.trim(),
+    assigned_to: '', // Will be set when ticket is created with role assignment
+    role_for_assignment: ticket.doc.assign_to_role, // Store role for later assignment
+    due_date: '',
+    status: 'Backlog',
+    priority: ticket.doc.priority || 'Medium',
+    reference_doctype: 'CRM Ticket',
+    reference_docname: '', // Will be empty until ticket is created
+  }
+  
+  // Temporarily hide ticket modal to prevent conflicts
+  ticketModalHidden.value = true
+  
+  // Use nextTick to ensure proper modal transition
+  nextTick(() => {
+    showTaskModal.value = true
+  })
+}
+
+// Function to edit the already assigned task
+function editAssignedTask() {
+  if (!pendingTaskData.value) return
+  
+  // Load the existing task data for editing
+  taskData.value = {
+    ...pendingTaskData.value,
+    reference_docname: '', // Will be empty until ticket is created
+  }
+  
+  // Temporarily hide ticket modal to prevent conflicts
+  ticketModalHidden.value = true
+  
+  // Use nextTick to ensure proper modal transition
+  nextTick(() => {
+    showTaskModal.value = true
+  })
+}
+
+// Function to clear the assigned task
+function clearAssignedTask() {
+  // Clear the pending task data
+  pendingTaskData.value = null
+  
+  // Clear task data
+  taskData.value = {
+    title: '',
+    description: '',
+    assigned_to: '',
+    due_date: '',
+    status: 'Backlog',
+    priority: 'Medium',
+    reference_doctype: 'CRM Ticket',
+    reference_docname: '',
+  }
+  
+  console.log('Task assignment cleared')
+}
+
+// Handle task modal events
+function handleTaskCreated(task) {
+  console.log('Task created from modal:', task)
+  
+  // Store the task data for later association with the ticket
+  pendingTaskData.value = task
+  
+  // Restore ticket modal visibility
+  ticketModalHidden.value = false
+  showTaskModal.value = false
+  
+  console.log('Task pending for ticket creation:', pendingTaskData.value)
+}
+
 const tabs = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
   cache: ['QuickEntry', 'CRM Ticket'],
@@ -533,6 +702,31 @@ const tabs = createResource({
                 { label: 'Billing', value: 'Billing' },
                 { label: 'General', value: 'General' }
               ]
+            }
+            
+            // Add custom assign_to_role field for role-based assignments
+            if (field.fieldname == 'ticket_owner') {
+              // Insert assign_to_role field after ticket_owner
+              const assignToRoleField = {
+                fieldname: 'assign_to_role',
+                fieldtype: 'Select',
+                label: 'Assign To Role',
+                options: [
+                  { label: '', value: '' },
+                  { label: 'Sales User', value: 'Sales User' },
+                  { label: 'Sales Manager', value: 'Sales Manager' },
+                  { label: 'Support User', value: 'Support User' },
+                  { label: 'CRM User', value: 'CRM User' },
+                  { label: 'CRM Manager', value: 'CRM Manager' }
+                ],
+                description: 'Select role for automatic user assignment'
+              }
+              
+              // Find the current field index and insert after it
+              const currentFieldIndex = column.fields.indexOf(field)
+              if (currentFieldIndex !== -1) {
+                column.fields.splice(currentFieldIndex + 1, 0, assignToRoleField)
+              }
             }
 
             // Configure contact information fields
@@ -619,9 +813,89 @@ async function createNewTicket() {
     const response = await createTicket.submit(ticket.doc)
 
     if (response) {
+      // Store the created ticket ID for task reference
+      createdTicketId.value = response.name
+      
+      // Handle role-based assignment
+      let assignedUser = null
+      if (ticket.doc.assign_to_role) {
+        try {
+          const assignmentResult = await call('crm.api.ticket.assign_ticket_to_role', {
+            ticket_name: response.name,
+            role_name: ticket.doc.assign_to_role,
+            assigned_by: null // Will use current user
+          })
+          
+          if (assignmentResult.success) {
+            assignedUser = assignmentResult.assigned_user
+            console.log(`Ticket assigned to ${assignmentResult.assigned_user} (${ticket.doc.assign_to_role} role)`)
+            console.log('Assignment message:', assignmentResult.message)
+            if (assignmentResult.task_created) {
+              console.log('Task created:', assignmentResult.task_created)
+            }
+          } else {
+            console.error('Role-based assignment failed:', assignmentResult.error)
+          }
+        } catch (err) {
+          console.error('Role-based assignment failed:', err)
+          // Continue even if assignment fails
+        }
+      }
+      
+      // Create task if pending task exists and doesn't have a real task ID
+      if (pendingTaskData.value && (!pendingTaskData.value.name || pendingTaskData.value.name === null)) {
+        try {
+          const taskDoc = {
+            ...pendingTaskData.value,
+            reference_doctype: 'CRM Ticket',
+            reference_docname: response.name
+          }
+          
+          // If task has role_for_assignment and we have an assigned user, use that user
+          if (taskDoc.role_for_assignment && assignedUser) {
+            taskDoc.assigned_to = assignedUser
+            delete taskDoc.role_for_assignment
+          }
+          
+          // Remove the name field if it's null (prevents insertion conflicts)
+          delete taskDoc.name
+          
+          // Create the task
+          const createdTask = await call('frappe.client.insert', {
+            doc: {
+              doctype: 'CRM Task',
+              ...taskDoc
+            }
+          })
+          
+          console.log(`Task "${taskDoc.title}" created successfully for ${assignedUser ? getUser(assignedUser).full_name : 'assigned user'}`)
+          pendingTaskData.value = null // Clear pending task
+        } catch (err) {
+          console.error('Failed to create pending task:', err)
+          // Continue even if task creation fails
+        }
+      } else if (pendingTaskData.value && pendingTaskData.value.name) {
+        // Task was already created by TaskModal, just update the reference
+        console.log('Task already exists, updating reference_docname')
+        try {
+          await call('frappe.client.set_value', {
+            doctype: 'CRM Task',
+            name: pendingTaskData.value.name,
+            fieldname: 'reference_docname',
+            value: response.name
+          })
+          pendingTaskData.value = null // Clear pending task
+        } catch (err) {
+          console.error('Failed to update task reference:', err)
+        }
+      }
+      
       show.value = false
       emit('ticket-created', response)
       emit('update:modelValue', false)
+      
+      // Navigate to ticket detail page
+      router.push({ name: 'Ticket', params: { ticketId: response.name } })
       
       // Capture analytics
       capture('ticket_created', {
@@ -845,5 +1119,13 @@ const openWhatsAppSetup = () => {
 // Check WhatsApp status on mount
 onMounted(() => {
   checkWhatsAppStatus()
+})
+
+// Watch for TaskModal closing to restore TicketModal
+watch(showTaskModal, (newValue) => {
+  if (!newValue && ticketModalHidden.value) {
+    // TaskModal was closed, restore the ticket modal
+    ticketModalHidden.value = false
+  }
 })
 </script> 
