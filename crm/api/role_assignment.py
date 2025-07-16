@@ -1,7 +1,9 @@
 import frappe
 import json
 from datetime import datetime
+from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
+from crm.api.activities import emit_activity_update
 
 @frappe.whitelist()
 def test_role_assignment_tracker():
@@ -86,6 +88,25 @@ def assign_to_role(lead_name, role_name, assigned_by=None):
             "description": f"Lead assigned to {role_name} role - round-robin assignment"
         })
         
+        # Create activity timeline entry for the assignment
+        assigned_user_name = get_fullname(assigned_user)
+        assigned_by_name = get_fullname(assigned_by)
+        
+        # Create assignment activity
+        assignment_comment = frappe.get_doc({
+            "doctype": "Comment", 
+            "comment_type": "Comment",  # Changed to Comment so it shows in docinfo.comments
+            "reference_doctype": "CRM Lead",
+            "reference_name": lead_name,
+            "content": f"🎯 <strong>{assigned_by_name}</strong> assigned this lead to <strong>{assigned_user_name}</strong> from <strong>{role_name}</strong> role using round-robin assignment",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        assignment_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Lead", lead_name)
+        
         lead_doc.save(ignore_permissions=True)
         
         # Create follow-up task
@@ -100,6 +121,39 @@ def assign_to_role(lead_name, role_name, assigned_by=None):
             "status": "Open"
         })
         task_doc.insert(ignore_permissions=True)
+        
+        # Create activity for task creation
+        task_activity = {
+            "activity_type": "task",
+            "name": task_doc.name,
+            "creation": frappe.utils.now(),
+            "owner": assigned_by,
+            "data": {
+                "title": task_doc.title,
+                "description": task_doc.description,
+                "due_date": task_doc.due_date,
+                "priority": task_doc.priority,
+                "status": task_doc.status,
+                "reference_doctype": task_doc.reference_doctype,
+                "reference_docname": task_doc.reference_docname
+            },
+            "is_lead": True
+        }
+        
+        # Add activity to timeline
+        activity_comment = frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Comment",  # Changed to Comment so it shows in docinfo.comments
+            "reference_doctype": "CRM Lead", 
+            "reference_name": lead_name,
+            "content": f"📋 Task created: {task_doc.title}",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        activity_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Lead", lead_name)
         
         frappe.db.commit()
         
