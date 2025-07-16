@@ -22,6 +22,7 @@
   "job_title",
   "source",
   "lead_owner",
+  "assigned_role",
   "person_tab",
   "salutation",
   "first_name",
@@ -189,6 +190,13 @@
    "fieldtype": "Link",
    "label": "Lead Owner",
    "options": "User"
+  },
+  {
+   "fieldname": "assigned_role",
+   "fieldtype": "Data",
+   "label": "Assigned Role",
+   "read_only": 1,
+   "description": "Role used for automatic assignment"
   },
   {
    "fieldname": "source",

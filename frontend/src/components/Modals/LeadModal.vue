@@ -30,13 +30,13 @@
           <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
           
           <!-- Assign Task Button Section -->
-          <div v-if="lead.doc.assigned_to && lead.doc.assigned_to !== user" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+          <div v-if="lead.doc.assign_to_role" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
             <div class="flex-1">
               <p class="text-sm font-medium text-ink-gray-9">
-                {{ __('Lead will be assigned to {0}', [getUser(lead.doc.assigned_to)?.full_name || lead.doc.assigned_to]) }}
+                {{ __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) }}
               </p>
               <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
-                {{ __('You can create a task for the assigned user to get started immediately') }}
+                {{ __('You can create a task that will be assigned along with the lead') }}
               </p>
               <p class="text-xs text-green-600" v-else>
                 {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData.title]) }}
@@ -107,6 +107,7 @@
     :task="taskData"
     doctype="CRM Lead"
     :doc="createdLeadId || null"
+    :roleForAssignment="taskData.role_for_assignment || ''"
     @after="handleTaskCreated"
   />
 </template>
@@ -174,7 +175,7 @@ onMounted(async () => {
     account_type: 'Individual', // Set default account type
     no_of_employees: '1-10',
     status: '',
-    assigned_to: '', // New field for assignment tracking
+    assign_to_role: '', // New field for role-based assignment
     // ... other default values
   }
 
@@ -291,16 +292,17 @@ function handleTaskCreated(taskDoc, isNew = false) {
 
 // Function to open task modal from the assignment section
 function openTaskModalForAssignment() {
-  if (!lead.doc.assigned_to) {
-    error.value = __('Please select a user to assign before creating a task')
+  if (!lead.doc.assign_to_role) {
+    error.value = __('Please select a role to assign before creating a task')
     return
   }
   
-  // Pre-fill task data
+  // Pre-fill task data - assigned_to will be set when lead is created
   taskData.value = {
     title: `Follow up on lead: ${lead.doc.first_name || 'New Lead'}`,
-    description: `Task created for lead assignment - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim(),
-    assigned_to: lead.doc.assigned_to,
+    description: `Task created for lead assignment to ${lead.doc.assign_to_role} role - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim(),
+    assigned_to: '', // Will be set when lead is created with role assignment
+    role_for_assignment: lead.doc.assign_to_role, // Store role for later assignment
     due_date: '',
     status: 'Backlog',
     priority: 'Medium',
@@ -372,21 +374,28 @@ const tabs = createResource({
               field.prefix = getLeadStatus(lead.doc.status).color
             }
             
-            // Add custom assigned_to field for tracking assignments
+            // Add custom assign_to_role field for role-based assignments
             if (field.fieldname == 'lead_owner') {
-              // Insert assigned_to field after lead_owner
-              const assignedToField = {
-                fieldname: 'assigned_to',
-                fieldtype: 'Link',
-                label: 'Assign To',
-                options: 'User',
-                description: 'Assign this lead to another team member for handling'
+              // Insert assign_to_role field after lead_owner
+              const assignToRoleField = {
+                fieldname: 'assign_to_role',
+                fieldtype: 'Select',
+                label: 'Assign To Role',
+                options: [
+                  { label: '', value: '' },
+                  { label: 'Sales User', value: 'Sales User' },
+                  { label: 'Sales Manager', value: 'Sales Manager' },
+                  { label: 'Support User', value: 'Support User' },
+                  { label: 'CRM User', value: 'CRM User' },
+                  { label: 'CRM Manager', value: 'CRM Manager' }
+                ],
+                description: 'Select role for automatic user assignment'
               }
               
               // Find the current field index and insert after it
               const currentFieldIndex = column.fields.indexOf(field)
               if (currentFieldIndex !== -1) {
-                column.fields.splice(currentFieldIndex + 1, 0, assignedToField)
+                column.fields.splice(currentFieldIndex + 1, 0, assignToRoleField)
               }
             }
 
@@ -410,11 +419,11 @@ const createLead = createResource({
       ...values,
     }
     
-    // Handle assignment: if assigned_to is provided, set it in _assign field
-    if (values.assigned_to) {
-      doc._assign = JSON.stringify([values.assigned_to])
-      // Remove assigned_to from the doc as it's not a real field
-      delete doc.assigned_to
+    // Handle role-based assignment: if assign_to_role is provided, store it
+    if (values.assign_to_role) {
+      doc.assigned_role = values.assign_to_role
+      // Remove assign_to_role from the doc as it's not a real field
+      delete doc.assign_to_role
     }
     
     return { doc }
@@ -470,17 +479,28 @@ function createNewLead() {
       // Store the created lead ID for task reference
       createdLeadId.value = data.name
       
-      // If there's an assigned_to user, handle the assignment
-      if (lead.doc.assigned_to && lead.doc.assigned_to !== user) {
+      // Handle role-based assignment
+      let assignedUser = null
+      if (lead.doc.assign_to_role) {
         try {
-          await call('frappe.desk.form.assign_to.add', {
-            assign_to: [lead.doc.assigned_to],
-            doctype: 'CRM Lead',
-            name: data.name,
-            description: `Lead assigned by ${user} during creation`
+          const assignmentResult = await call('crm.api.role_assignment.assign_to_role', {
+            lead_name: data.name,
+            role_name: lead.doc.assign_to_role,
+            assigned_by: null // Will use current user
           })
+          
+          if (assignmentResult.success) {
+            assignedUser = assignmentResult.assigned_user
+            console.log(`Lead assigned to ${assignmentResult.assigned_user} (${lead.doc.assign_to_role} role)`)
+            console.log('Assignment message:', assignmentResult.message)
+            if (assignmentResult.task_created) {
+              console.log('Task created:', assignmentResult.task_created)
+            }
+          } else {
+            console.error('Role-based assignment failed:', assignmentResult.error)
+          }
         } catch (err) {
-          console.error('Assignment failed:', err)
+          console.error('Role-based assignment failed:', err)
           // Continue even if assignment fails
         }
       }
@@ -495,6 +515,12 @@ function createNewLead() {
             reference_docname: data.name
           }
           
+          // If task has role_for_assignment and we have an assigned user, use that user
+          if (taskDoc.role_for_assignment && assignedUser) {
+            taskDoc.assigned_to = assignedUser
+            delete taskDoc.role_for_assignment
+          }
+          
           // Remove the name field if it's null (prevents insertion conflicts)
           delete taskDoc.name
           
@@ -506,7 +532,7 @@ function createNewLead() {
             }
           })
           
-          console.log(`Task "${taskDoc.title}" created successfully for ${getUser(taskDoc.assigned_to).full_name}`)
+          console.log(`Task "${taskDoc.title}" created successfully for ${assignedUser ? getUser(assignedUser).full_name : 'assigned user'}`)
           pendingTaskData.value = null // Clear pending task
         } catch (err) {
           console.error('Failed to create pending task:', err)

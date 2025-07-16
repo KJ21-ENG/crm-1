@@ -69,6 +69,7 @@
             </Button>
           </Dropdown>
           <Link
+            v-if="!isRoleAssignment"
             class="form-control"
             :value="getUser(_task.assigned_to).full_name"
             doctype="User"
@@ -108,6 +109,17 @@
             </Button>
           </Dropdown>
         </div>
+        
+        <!-- Role assignment notification -->
+        <div v-if="isRoleAssignment" class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center gap-2">
+            <FeatherIcon name="info" class="h-4 w-4 text-blue-600" />
+            <p class="text-sm text-blue-800">
+              {{ __('Task will be automatically assigned to a user from "{0}" role using round-robin logic', [props.roleForAssignment]) }}
+            </p>
+          </div>
+        </div>
+        
         <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
       </div>
     </template>
@@ -141,6 +153,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  roleForAssignment: {
+    type: String,
+    default: '',
+  },
 })
 
 const show = defineModel()
@@ -155,6 +171,7 @@ const { updateOnboardingStep } = useOnboarding('frappecrm')
 const error = ref(null)
 const title = ref(null)
 const editMode = ref(false)
+const isRoleAssignment = ref(false)
 const _task = ref({
   title: '',
   description: '',
@@ -254,6 +271,35 @@ function render() {
     }
   })
 }
+
+// Handle role-based assignment
+watch(
+  () => props.roleForAssignment,
+  async (role) => {
+    if (role) {
+      isRoleAssignment.value = true
+      
+      try {
+        // Get the next user for this role
+        const result = await call('crm.api.role_assignment.preview_next_assignment', {
+          role_name: role
+        })
+        
+        if (result.success && result.next_user) {
+          _task.value.assigned_to = result.next_user
+          console.log(`Pre-selected user ${result.next_user} for role ${role}`)
+        } else {
+          console.warn('Could not get next user for role:', role)
+        }
+      } catch (err) {
+        console.error('Error getting next user for role:', err)
+      }
+    } else {
+      isRoleAssignment.value = false
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => show.value && render())
 
