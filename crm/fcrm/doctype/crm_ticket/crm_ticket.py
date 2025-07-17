@@ -48,6 +48,11 @@ class CRMTicket(Document):
 		handle_ticket_assignment_change(self, method="after_insert")
 
 	def on_update(self):
+		# Sync customer-related field changes to customer record
+		customer_fields = ['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number']
+		if any(self.has_value_changed(field) for field in customer_fields):
+			self.create_or_update_customer()
+		
 		emit_activity_update("CRM Ticket", self.name)
 
 	def before_save(self):

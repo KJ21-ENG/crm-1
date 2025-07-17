@@ -290,42 +290,7 @@
         </div>
           </div>
 
-      <!-- Customer Contact Info -->
-      <div class="border-b p-5">
-        <div class="mb-3 text-sm font-medium text-ink-gray-7">
-          {{ __('Contact Information') }}
-        </div>
-        <div class="space-y-2">
-          <div v-if="ticket.data.mobile_no" class="flex items-center gap-2">
-            <PhoneIcon class="h-4 w-4 text-ink-gray-6" />
-            <span class="text-sm text-ink-gray-8">{{ ticket.data.mobile_no }}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              @click="makeCall(ticket.data.mobile_no)"
-              class="ml-auto"
-            >
-              <template #icon>
-                <PhoneIcon class="h-3 w-3" />
-              </template>
-            </Button>
-          </div>
-          <div v-if="ticket.data.email" class="flex items-center gap-2">
-            <Email2Icon class="h-4 w-4 text-ink-gray-6" />
-            <span class="text-sm text-ink-gray-8">{{ ticket.data.email }}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              @click="openEmailBox()"
-              class="ml-auto"
-            >
-              <template #icon>
-                <Email2Icon class="h-3 w-3" />
-              </template>
-            </Button>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Related Items -->
       <div v-if="relatedTickets.data?.length" class="border-b p-5">
