@@ -325,9 +325,9 @@ const leadDetails = ref({})
 const ticketDefaults = computed(() => {
   if (!callLog.value?.data) return {}
   
-  const customerNumber = callLog.value.data.type === 'Incoming' 
-    ? callLog.value.data.from 
-    : callLog.value.data.to
+  // Use the new customer field, fallback to legacy logic
+  const customerNumber = callLog.value.data.customer || 
+    (callLog.value.data.type === 'Incoming' ? callLog.value.data.from : callLog.value.data.to)
     
   return {
     mobile_no: customerNumber,
@@ -346,19 +346,17 @@ async function createTicket() {
     name: 'Tickets',
     query: { 
       showTicketModal: true,
-      mobile_no: callLog.value?.data?.type === 'Incoming' 
-        ? callLog.value?.data?.from 
-        : callLog.value?.data?.to,
+      mobile_no: callLog.value?.data?.customer || 
+        (callLog.value?.data?.type === 'Incoming' ? callLog.value?.data?.from : callLog.value?.data?.to),
       call_log: callLog.value?.data?.name
     }
   })
 }
 
 async function createLead() {
-  // Get customer's number based on call type
-  const customerNumber = callLog.value?.data?.type === 'Incoming' 
-    ? callLog.value?.data?.from  // For incoming calls, customer is the 'from' number
-    : callLog.value?.data?.to    // For outgoing calls, customer is the 'to' number
+  // Use the new customer field, fallback to legacy logic
+  const customerNumber = callLog.value?.data?.customer || 
+    (callLog.value?.data?.type === 'Incoming' ? callLog.value?.data?.from : callLog.value?.data?.to)
 
   show.value = false
   router.push({ 

@@ -41,7 +41,7 @@
     >
       <ListRowItem :item="item" :align="column.align">
         <template #prefix>
-          <div v-if="['caller', 'receiver'].includes(column.key)">
+          <div v-if="['caller', 'receiver', 'employee'].includes(column.key)">
             <Avatar
               v-if="item.label"
               class="flex items-center"
