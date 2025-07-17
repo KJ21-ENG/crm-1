@@ -236,12 +236,25 @@ def prepare_call_log_document(call_log_data):
         caller = None
         receiver = current_user
     
-    # Get customer name from contact/lead info or generate default
+    # Get customer name from contact/lead/customer info or generate default
     if contact_info and contact_info.get('contact_name'):
         customer_name = contact_info['contact_name']
     else:
-        # Generate default name for unknown customers
-        customer_name = f"Lead from call {customer}"
+        # Try to get customer name directly from CRM Customer table as fallback
+        try:
+            customer_record = search_crm_customer_by_phone(customer)
+            if customer_record:
+                customer_name = customer_record.get('customer_name') or customer_record.get('full_name')
+                if not customer_name:
+                    first_name = customer_record.get('first_name', '')
+                    last_name = customer_record.get('last_name', '')
+                    customer_name = f"{first_name} {last_name}".strip()
+        except Exception as e:
+            frappe.logger().error(f"Error getting customer name for {customer}: {e}")
+        
+        # If still no customer name, generate default
+        if not customer_name:
+            customer_name = f"Lead from call {customer}"
 
     doc_data = {
         'doctype': 'CRM Call Log',
@@ -288,7 +301,7 @@ def prepare_call_log_document(call_log_data):
 
 def identify_contact(from_number, to_number, call_type):
     """
-    Try to identify contact or lead based on phone numbers
+    Try to identify contact, lead, or CRM customer based on phone numbers
     
     Args:
         from_number: Caller number
@@ -296,11 +309,20 @@ def identify_contact(from_number, to_number, call_type):
         call_type: Type of call (Incoming/Outgoing)
         
     Returns:
-        dict: Contact/Lead information if found
+        dict: Contact/Lead/Customer information if found
     """
     try:
         # Determine which number to search for
         search_number = from_number if call_type == 'Incoming' else to_number
+        
+        # First, search in CRM Customer table (highest priority)
+        customer = search_crm_customer_by_phone(search_number)
+        if customer:
+            return {
+                'reference_doctype': 'CRM Customer',
+                'reference_docname': customer['name'],
+                'contact_name': customer.get('customer_name', ''),
+            }
         
         # Search in contacts
         contact = search_contact_by_phone(search_number)
@@ -374,6 +396,51 @@ def search_lead_by_phone(phone_number):
         
     except Exception as e:
         frappe.logger().error(f"Error searching lead: {e}")
+        return None
+
+
+def search_crm_customer_by_phone(phone_number):
+    """Search for CRM customer by phone number"""
+    try:
+        clean_phone = clean_phone_number(phone_number)
+        
+        # Search in CRM Customer table by mobile_no field
+        customer = frappe.db.get_value(
+            'CRM Customer',
+            {'mobile_no': phone_number},  # Exact match first
+            ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'mobile_no'],
+            as_dict=True
+        )
+        
+        if customer:
+            return customer
+        
+        # If not found, try with cleaned number
+        if clean_phone != phone_number:
+            customer = frappe.db.get_value(
+                'CRM Customer',
+                {'mobile_no': clean_phone},
+                ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'mobile_no'],
+                as_dict=True
+            )
+            if customer:
+                return customer
+        
+        # Also search in phone field if it exists
+        customer = frappe.db.get_value(
+            'CRM Customer',
+            {'phone': phone_number},
+            ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'phone'],
+            as_dict=True
+        )
+        
+        if customer:
+            return customer
+        
+        return None
+        
+    except Exception as e:
+        frappe.logger().error(f"Error searching CRM customer: {e}")
         return None
 
 
