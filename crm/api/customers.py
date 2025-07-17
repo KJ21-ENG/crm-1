@@ -47,7 +47,8 @@ def create_or_update_customer(mobile_no, first_name=None, last_name=None,
                                                  job_title=job_title,
                                                  customer_source=customer_source,
                                                  reference_doctype=reference_doctype,
-                                                 reference_docname=reference_docname)
+                                                 reference_docname=reference_docname,
+                                                 **kwargs)
 
 
 @frappe.whitelist()
@@ -95,6 +96,8 @@ def process_lead_creation(lead_data):
             email=lead_data.get("email"),
             organization=lead_data.get("organization"),
             job_title=lead_data.get("job_title"),
+            pan_card_number=lead_data.get("pan_card_number"),
+            aadhaar_card_number=lead_data.get("aadhaar_card_number"),
             customer_source="Lead",
             reference_doctype="CRM Lead",
             reference_docname=lead_data.get("name")
@@ -118,6 +121,8 @@ def process_ticket_creation(ticket_data):
             last_name=ticket_data.get("last_name"),
             email=ticket_data.get("email"),
             organization=ticket_data.get("organization"),
+            pan_card_number=ticket_data.get("pan_card_number"),
+            aadhaar_card_number=ticket_data.get("aadhaar_card_number"),
             customer_source="Ticket",
             reference_doctype="CRM Ticket",
             reference_docname=ticket_data.get("name")

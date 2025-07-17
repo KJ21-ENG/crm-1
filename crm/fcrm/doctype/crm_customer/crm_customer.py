@@ -88,7 +88,7 @@ class CRMCustomer(Document):
         sync_fields = [
             'customer_name', 'first_name', 'last_name', 'middle_name', 'email', 
             'mobile_no', 'organization', 'phone', 'job_title',
-            'salutation', 'gender'
+            'salutation', 'gender', 'pan_card_number', 'aadhaar_card_number'
         ]
         
         # Get current values from database
@@ -110,7 +110,7 @@ class CRMCustomer(Document):
         sync_fields = [
             'customer_name', 'first_name', 'last_name', 'middle_name', 'email', 
             'mobile_no', 'organization', 'phone', 'job_title',
-            'salutation', 'gender'
+            'salutation', 'gender', 'pan_card_number', 'aadhaar_card_number'
         ]
         
         changes = {}

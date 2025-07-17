@@ -59,6 +59,10 @@
   "column_break_pweh",
   "first_response_time",
   "first_responded_on",
+  "identity_section",
+  "pan_card_number",
+  "column_break_identity",
+  "aadhaar_card_number",
   "log_tab",
   "status_change_log"
  ],
@@ -371,6 +375,27 @@
    "label": "Net Total",
    "options": "currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity Documents"
+  },
+  {
+   "fieldname": "pan_card_number",
+   "fieldtype": "Data",
+   "label": "PAN Card Number",
+   "description": "Permanent Account Number (optional)"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aadhaar_card_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Card Number",
+   "description": "12-digit Aadhaar number (optional)"
   }
  ],
  "grid_page_length": 50,

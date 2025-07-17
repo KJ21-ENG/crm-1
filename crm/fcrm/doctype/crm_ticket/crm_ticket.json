@@ -50,6 +50,10 @@
   "resolution",
   "resolution_time",
   "resolved_on",
+  "identity_section",
+  "pan_card_number",
+  "column_break_identity",
+  "aadhaar_card_number",
   "log_tab",
   "status_change_log"
  ],
@@ -305,6 +309,27 @@
    "fieldtype": "Table",
    "label": "Status Change Log",
    "options": "CRM Status Change Log"
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity Documents"
+  },
+  {
+   "fieldname": "pan_card_number",
+   "fieldtype": "Data",
+   "label": "PAN Card Number",
+   "description": "Permanent Account Number (optional)"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aadhaar_card_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Card Number",
+   "description": "12-digit Aadhaar number (optional)"
   }
  ],
  "grid_page_length": 50,

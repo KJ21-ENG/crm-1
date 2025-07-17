@@ -170,6 +170,8 @@ onMounted(async () => {
     last_name: '',
     email: '',
     mobile_no: '',
+    pan_card_number: '', // Identity document field
+    aadhaar_card_number: '', // Identity document field
     lead_type: 'Sales', // Set default lead type (hidden field)
     lead_source: 'On Call', // Default value for lead source
     account_type: 'Individual', // Set default account type
@@ -220,18 +222,24 @@ async function autoFillCustomerData(mobileNumber) {
       const originalLastName = lead.doc.last_name
       const originalEmail = lead.doc.email
       const originalOrganization = lead.doc.organization
+      const originalPAN = lead.doc.pan_card_number
+      const originalAadhaar = lead.doc.aadhaar_card_number
       
       // Auto-fill form fields with customer data
       lead.doc.first_name = customerData.first_name || lead.doc.first_name
       lead.doc.last_name = customerData.last_name || lead.doc.last_name
       lead.doc.email = customerData.email || lead.doc.email
       lead.doc.organization = customerData.organization || lead.doc.organization
+      lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
+      lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
       
       console.log('🔍 [LEAD AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', lead.doc.first_name)
       console.log('  last_name:', originalLastName, '->', lead.doc.last_name)
       console.log('  email:', originalEmail, '->', lead.doc.email)
       console.log('  organization:', originalOrganization, '->', lead.doc.organization)
+      console.log('  pan_card_number:', originalPAN, '->', lead.doc.pan_card_number)
+      console.log('  aadhaar_card_number:', originalAadhaar, '->', lead.doc.aadhaar_card_number)
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))

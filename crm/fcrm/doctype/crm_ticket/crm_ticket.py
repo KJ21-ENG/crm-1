@@ -146,6 +146,8 @@ class CRMTicket(Document):
 				last_name=self.last_name,
 				email=self.email,
 				organization=self.organization,
+				pan_card_number=self.pan_card_number,
+				aadhaar_card_number=self.aadhaar_card_number,
 				customer_source="Ticket",
 				reference_doctype="CRM Ticket",
 				reference_docname=self.name

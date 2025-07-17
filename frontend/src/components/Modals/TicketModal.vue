@@ -475,6 +475,8 @@ onMounted(async () => {
     last_name: '',
     email: '',
     mobile_no: '',
+    pan_card_number: '', // Identity document field
+    aadhaar_card_number: '', // Identity document field
     ticket_subject: '',
     description: '',
     priority: 'Medium',
@@ -537,18 +539,24 @@ async function autoFillCustomerData(mobileNumber) {
       const originalLastName = ticket.doc.last_name
       const originalEmail = ticket.doc.email
       const originalOrganization = ticket.doc.organization
+      const originalPAN = ticket.doc.pan_card_number
+      const originalAadhaar = ticket.doc.aadhaar_card_number
       
       // Auto-fill form fields with customer data
       ticket.doc.first_name = customerData.first_name || ticket.doc.first_name
       ticket.doc.last_name = customerData.last_name || ticket.doc.last_name
       ticket.doc.email = customerData.email || ticket.doc.email
       ticket.doc.organization = customerData.organization || ticket.doc.organization
+      ticket.doc.pan_card_number = customerData.pan_card_number || ticket.doc.pan_card_number
+      ticket.doc.aadhaar_card_number = customerData.aadhaar_card_number || ticket.doc.aadhaar_card_number
       
       console.log('🔍 [AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', ticket.doc.first_name)
       console.log('  last_name:', originalLastName, '->', ticket.doc.last_name)
       console.log('  email:', originalEmail, '->', ticket.doc.email)
       console.log('  organization:', originalOrganization, '->', ticket.doc.organization)
+      console.log('  pan_card_number:', originalPAN, '->', ticket.doc.pan_card_number)
+      console.log('  aadhaar_card_number:', originalAadhaar, '->', ticket.doc.aadhaar_card_number)
       
       // Update ticket subject if it was generic
       if (!ticket.doc.ticket_subject || ticket.doc.ticket_subject.includes('call')) {

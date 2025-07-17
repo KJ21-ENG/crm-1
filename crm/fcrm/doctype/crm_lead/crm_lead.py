@@ -147,6 +147,8 @@ class CRMLead(Document):
 				email=self.email,
 				organization=self.organization,
 				job_title=self.job_title,
+				pan_card_number=self.pan_card_number,
+				aadhaar_card_number=self.aadhaar_card_number,
 				customer_source="Lead",
 				reference_doctype="CRM Lead",
 				reference_docname=self.name
