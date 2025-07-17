@@ -22,3 +22,4 @@ crm.patches.v1_0.update_ticket_assignment_fields_layout
 crm.patches.v1_0.remove_assigned_to_field_from_ticket_layout
 crm.patches.v1_0.add_customer_update_history
 crm.patches.v1_0.remove_custom_update_history_field
+crm.patches.v1_0.enhance_quick_filters
