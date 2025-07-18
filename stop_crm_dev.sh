@@ -142,7 +142,25 @@ else
     print_warning "Task Notification Worker still running"
 fi
 
-# 4. Stop Frappe Bench (screen session + processes)
+# 4. Stop WhatsApp Service (screen session + processes)
+echo -e "${BLUE}📱 Stopping WhatsApp Service...${NC}"
+if screen -list | grep -q "crm_whatsapp"; then
+    screen -S crm_whatsapp -X quit
+    sleep 2
+fi
+
+if check_service "node.*whatsapp-service.js"; then
+    pkill -f "node.*whatsapp-service.js"
+    sleep 1
+fi
+
+if ! check_service "node.*whatsapp-service.js"; then
+    print_status "WhatsApp Service stopped"
+else
+    print_warning "WhatsApp Service still running"
+fi
+
+# 5. Stop Frappe Bench (screen session + processes)
 echo -e "${BLUE}🏗️  Stopping Frappe Bench...${NC}"
 if screen -list | grep -q "frappe_bench"; then
     screen -S frappe_bench -X quit
@@ -176,15 +194,15 @@ else
     print_warning "Some Frappe processes still running"
 fi
 
-# 5. Stop Redis Queue (port 11001)
+# 6. Stop Redis Queue (port 11001)
 echo -e "${BLUE}📋 Stopping Redis Queue...${NC}"
 stop_redis_port 11001 "Redis Queue"
 
-# 6. Stop Redis Cache (port 13001)  
+# 7. Stop Redis Cache (port 13001)  
 echo -e "${BLUE}💾 Stopping Redis Cache...${NC}"
 stop_redis_port 13001 "Redis Cache"
 
-# 7. Optionally stop default Redis and MariaDB
+# 8. Optionally stop default Redis and MariaDB
 read -p "$(echo -e ${YELLOW}🔄 Stop Redis and MariaDB services too? [y/N]: ${NC})" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -208,11 +226,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-# 8. Clean up any remaining screen sessions
+# 9. Clean up any remaining screen sessions
 echo -e "${BLUE}🧹 Cleaning up screen sessions...${NC}"
 screen -wipe > /dev/null 2>&1
 
-# 9. Final verification
+# 10. Final verification
 echo -e "\n${BLUE}🔍 Verifying services are stopped...${NC}"
 
 crm_services=(
@@ -220,6 +238,7 @@ crm_services=(
     "frappe.*serve.*8001|frappe.*socketio|bench.*serve:Frappe Bench"
     "frappe.*schedule:Frappe Scheduler"
     "frappe.*worker.*default:Task Notification Worker"
+    "node.*whatsapp-service.js:WhatsApp Service"
     "redis-server.*11001:Redis Queue"
     "redis-server.*13001:Redis Cache"
 )
