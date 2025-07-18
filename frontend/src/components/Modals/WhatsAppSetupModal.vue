@@ -35,7 +35,7 @@
               </div>
               <div class="flex justify-center">
                 <div 
-                  v-if="qrCode && !whatsappStatus.is_initializing"
+                  v-if="qrCode"
                   class="border rounded-lg p-4 bg-white"
                 >
                   <img 
@@ -102,11 +102,13 @@
               theme="red"
               class="w-full"
               @click="logoutWhatsApp"
+              :loading="loggingOut"
+              :disabled="loggingOut"
             >
               <template #prefix>
                 <FeatherIcon name="log-out" class="h-4 w-4" />
               </template>
-              {{ __('Logout') }}
+              {{ loggingOut ? __('Logging Out...') : __('Logout') }}
             </Button>
           </div>
         </div>
@@ -132,6 +134,7 @@ const emit = defineEmits(['update:modelValue', 'status-update'])
 const show = defineModel()
 const qrCode = ref('')
 const generatingQR = ref(false)
+const loggingOut = ref(false)
 const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
@@ -190,6 +193,11 @@ const checkWhatsAppStatus = async () => {
       qrCode.value = ''
     }
     
+    // If not connected and QR code is available but we don't have it, get it immediately
+    if (!newStatus.connected && newStatus.qr_code_available && !qrCode.value && !generatingQR.value) {
+      generateQRCode()
+    }
+    
     // If not connected and not initializing, try to get QR code
     if (!newStatus.connected && !newStatus.is_initializing && !qrCode.value && !generatingQR.value) {
       generateQRCode()
@@ -226,6 +234,7 @@ const refreshStatus = () => {
 }
 
 const logoutWhatsApp = async () => {
+  loggingOut.value = true
   try {
     const response = await createResource({
       url: 'crm.api.whatsapp_support.disconnect',
@@ -240,9 +249,11 @@ const logoutWhatsApp = async () => {
       }, 1000)
     } else {
       toast.error('Failed to logout from WhatsApp')
+      loggingOut.value = false
     }
   } catch (error) {
     toast.error('Error logging out from WhatsApp: ' + error.message)
+    loggingOut.value = false
   }
 }
 

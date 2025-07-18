@@ -47,6 +47,10 @@ function initializeClient() {
                 qrCodeString = url;
                 console.log('QR code generated as data URL');
             }
+            // Clear initializing flag when QR code is ready
+            if (client) {
+                client.isInitializing = false;
+            }
         });
     });
 
