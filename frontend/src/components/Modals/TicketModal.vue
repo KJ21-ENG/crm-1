@@ -1070,12 +1070,11 @@ const sendSupportPages = async () => {
   try {
     const message = generateMessage()
     
-    // Send WhatsApp message without creating ticket
+    // Send WhatsApp message via local service
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.send_support_pages_without_ticket',
+      url: 'crm.api.whatsapp_setup.send_local_whatsapp_message',
       params: {
-        customer_mobile: ticket.doc.mobile_no,
-        support_pages: selectedPages.value.map(p => p.name),
+        to: ticket.doc.mobile_no,
         message: message,
       },
     }).fetch()
@@ -1097,7 +1096,7 @@ const sendSupportPages = async () => {
 const checkWhatsAppStatus = async () => {
   try {
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.get_status',
+      url: 'crm.api.whatsapp_setup.get_local_whatsapp_status',
     }).fetch()
 
     whatsappStatus.value = {
@@ -1127,6 +1126,13 @@ const openWhatsAppSetup = () => {
 // Check WhatsApp status on mount
 onMounted(() => {
   checkWhatsAppStatus()
+})
+
+// Watch for modal opening to refresh WhatsApp status
+watch(show, (isOpen) => {
+  if (isOpen) {
+    checkWhatsAppStatus()
+  }
 })
 
 // Watch for TaskModal closing to restore TicketModal

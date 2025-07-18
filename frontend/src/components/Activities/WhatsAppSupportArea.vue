@@ -340,12 +340,9 @@ const sendSupportPages = async () => {
     const message = generateMessage()
     
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.send_support_pages',
+      url: 'crm.api.whatsapp_setup.send_local_whatsapp_message',
       params: {
-        doctype: props.doctype,
-        docname: props.docname,
-        customer_mobile: props.customer.mobile_no,
-        support_pages: selectedPages.value.map(p => p.name),
+        to: props.customer.mobile_no,
         message: message,
       },
     }).fetch()
@@ -371,7 +368,7 @@ const generateQRCode = async () => {
   generatingQR.value = true
   try {
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.get_qr_code',
+      url: 'crm.api.whatsapp_setup.get_local_whatsapp_qr',
     }).fetch()
 
     if (response.success) {
@@ -383,7 +380,7 @@ const generateQRCode = async () => {
           generateQRCode()
         }, 2000) // Retry after 2 seconds
       } else {
-        toast.error('Failed to generate QR code')
+        toast.error('Failed to generate QR code: ' + response.message)
       }
     }
   } catch (error) {
@@ -396,7 +393,7 @@ const generateQRCode = async () => {
 const checkWhatsAppStatus = async () => {
   try {
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.get_status',
+      url: 'crm.api.whatsapp_setup.get_local_whatsapp_status',
     }).fetch()
 
     const newStatus = {
@@ -460,22 +457,25 @@ const logoutWhatsApp = async () => {
   loggingOut.value = true
   try {
     const response = await createResource({
-      url: 'crm.api.whatsapp_support.disconnect',
+      url: 'crm.api.whatsapp_setup.disconnect_local_whatsapp',
     }).fetch()
 
     if (response.success) {
-      toast.success('WhatsApp logged out successfully')
-      
-      // Refresh the page after a short delay to show new QR code
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      toast.success('WhatsApp disconnected successfully')
+      whatsappStatus.value = {
+        connected: false,
+        phoneNumber: null,
+        qr_code_available: false,
+        is_initializing: false
+      }
+      qrCode.value = ''
+      emit('statusUpdate', whatsappStatus.value)
     } else {
-      toast.error('Failed to logout from WhatsApp')
-      loggingOut.value = false
+      toast.error(response.message || 'Failed to disconnect')
     }
   } catch (error) {
-    toast.error('Error logging out from WhatsApp: ' + error.message)
+    toast.error('Error disconnecting: ' + error.message)
+  } finally {
     loggingOut.value = false
   }
 }

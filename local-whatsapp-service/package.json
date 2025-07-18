@@ -1,0 +1,32 @@
+{
+  "name": "crm-local-whatsapp-service",
+  "version": "1.0.0",
+  "description": "Local WhatsApp service for CRM integration",
+  "main": "local-service.js",
+  "scripts": {
+    "start": "node local-service.js",
+    "dev": "nodemon local-service.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "whatsapp-web.js": "^1.23.0",
+    "qrcode": "^1.5.3",
+    "puppeteer": "^21.5.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "whatsapp",
+    "crm",
+    "integration",
+    "local"
+  ],
+  "author": "CRM Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 

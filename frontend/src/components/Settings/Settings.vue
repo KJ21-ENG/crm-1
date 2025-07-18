@@ -51,6 +51,7 @@ import GeneralSettings from '@/components/Settings/GeneralSettings.vue'
 import InviteUserPage from '@/components/Settings/InviteUserPage.vue'
 import ProfileSettings from '@/components/Settings/ProfileSettings.vue'
 import WhatsAppSettings from '@/components/Settings/WhatsAppSettings.vue'
+import WhatsAppSetup from '@/components/Settings/WhatsAppSetup.vue'
 import ERPNextSettings from '@/components/Settings/ERPNextSettings.vue'
 import EmailTemplatePage from '@/components/Settings/EmailTemplate/EmailTemplatePage.vue'
 import TelephonySettings from '@/components/Settings/TelephonySettings.vue'
@@ -130,6 +131,12 @@ const tabs = computed(() => {
           icon: WhatsAppIcon,
           component: markRaw(WhatsAppSettings),
           condition: () => isWhatsappInstalled.value && isManager(),
+        },
+        {
+          label: __('WhatsApp Setup'),
+          icon: WhatsAppIcon,
+          component: markRaw(WhatsAppSetup),
+          condition: () => isManager(),
         },
         {
           label: __('ERPNext'),
