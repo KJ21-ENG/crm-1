@@ -375,14 +375,26 @@ def get_status():
             result = response.json()
             return {
                 "connected": result.get('connected', False),
-                "phone_number": result.get('phone_number', None)
+                "phone_number": result.get('phone_number', None),
+                "qr_code_available": result.get('qr_code_available', False),
+                "is_initializing": result.get('is_initializing', False)
             }
         else:
-            return {"connected": False, "phone_number": None}
+            return {
+                "connected": False, 
+                "phone_number": None,
+                "qr_code_available": False,
+                "is_initializing": False
+            }
     
     except Exception as e:
         frappe.log_error(f"WhatsApp Status Error: {str(e)}")
-        return {"connected": False, "phone_number": None}
+        return {
+            "connected": False, 
+            "phone_number": None,
+            "qr_code_available": False,
+            "is_initializing": False
+        }
 
 @frappe.whitelist()
 def disconnect():

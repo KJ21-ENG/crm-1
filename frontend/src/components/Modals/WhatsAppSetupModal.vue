@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model="show" :options="{ size: 'lg' }">
     <template #body>
-      <div class="p-6">
+      <div class="p-6 relative">
+
         <div class="mb-4">
           <h3 class="text-lg font-semibold">{{ __('WhatsApp Setup') }}</h3>
           <p class="text-sm text-gray-600">{{ __('Connect your WhatsApp account to send support messages') }}</p>
@@ -34,7 +35,7 @@
               </div>
               <div class="flex justify-center">
                 <div 
-                  v-if="qrCode"
+                  v-if="qrCode && !whatsappStatus.is_initializing"
                   class="border rounded-lg p-4 bg-white"
                 >
                   <img 
@@ -43,14 +44,38 @@
                     class="max-w-full h-auto"
                     style="width: 256px; height: 256px;"
                   />
-                </div>
-                <div v-else class="border rounded-lg p-8 bg-gray-100">
-                  <div class="text-center text-gray-500">
-                    <div class="mb-2">{{ __('Loading QR Code...') }}</div>
+                  <div class="mt-3 text-center">
                     <Button
                       variant="outline"
                       size="sm"
                       @click="generateQRCode"
+                      :loading="generatingQR"
+                    >
+                      <template #prefix>
+                        <FeatherIcon name="refresh-cw" class="h-3 w-3" />
+                      </template>
+                      {{ __('Refresh QR Code') }}
+                    </Button>
+                  </div>
+                </div>
+                <div v-else class="border rounded-lg p-8 bg-gray-100">
+                  <div class="text-center text-gray-500">
+                    <div v-if="whatsappStatus.is_initializing" class="mb-2">
+                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      {{ __('Initializing WhatsApp...') }}
+                    </div>
+                    <div v-else-if="generatingQR" class="mb-2">
+                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      {{ __('Generating QR Code...') }}
+                    </div>
+                    <div v-else class="mb-2">{{ __('Loading QR Code...') }}</div>
+                    <Button
+                      v-if="!whatsappStatus.is_initializing"
+                      variant="outline"
+                      size="sm"
+                      @click="generateQRCode"
+                      :loading="generatingQR"
+                      :disabled="whatsappStatus.is_initializing"
                     >
                       {{ __('Generate QR Code') }}
                     </Button>
@@ -106,12 +131,18 @@ const emit = defineEmits(['update:modelValue', 'status-update'])
 
 const show = defineModel()
 const qrCode = ref('')
+const generatingQR = ref(false)
 const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
+  qr_code_available: false,
+  is_initializing: false
 })
 
 const generateQRCode = async () => {
+  if (generatingQR.value) return // Prevent multiple simultaneous calls
+  
+  generatingQR.value = true
   try {
     const response = await createResource({
       url: 'crm.api.whatsapp_support.get_qr_code',
@@ -120,10 +151,19 @@ const generateQRCode = async () => {
     if (response.success) {
       qrCode.value = response.qr_code
     } else {
-      toast.error('Failed to generate QR code')
+      // If QR code is being generated, retry after a short delay
+      if (response.message && response.message.includes('being generated')) {
+        setTimeout(() => {
+          generateQRCode()
+        }, 2000) // Retry after 2 seconds
+      } else {
+        toast.error('Failed to generate QR code')
+      }
     }
   } catch (error) {
     toast.error('Error generating QR code: ' + error.message)
+      } finally {
+    generatingQR.value = false
   }
 }
 
@@ -136,7 +176,35 @@ const checkWhatsAppStatus = async () => {
     const newStatus = {
       connected: response.connected || false,
       phoneNumber: response.phone_number || null,
+      qr_code_available: response.qr_code_available || false,
+      is_initializing: response.is_initializing || false
     }
+    
+    // Update QR code if available and we don't have one
+    if (newStatus.qr_code_available && !qrCode.value && !newStatus.connected) {
+      generateQRCode()
+    }
+    
+    // Clear QR code if connected
+    if (newStatus.connected && qrCode.value) {
+      qrCode.value = ''
+    }
+    
+    // If not connected and not initializing, try to get QR code
+    if (!newStatus.connected && !newStatus.is_initializing && !qrCode.value && !generatingQR.value) {
+      generateQRCode()
+    }
+    
+    // If we just finished initializing and don't have a QR code, try to get one
+    if (!newStatus.connected && !newStatus.is_initializing && !qrCode.value && !generatingQR.value && 
+        whatsappStatus.value.is_initializing && !newStatus.is_initializing) {
+      // We just finished initializing, try to get QR code
+      setTimeout(() => {
+        generateQRCode()
+      }, 1000) // Wait 1 second for QR code to be generated
+    }
+    
+
     
     whatsappStatus.value = newStatus
     emit('status-update', newStatus)
@@ -145,6 +213,8 @@ const checkWhatsAppStatus = async () => {
     const errorStatus = {
       connected: false,
       phoneNumber: null,
+      qr_code_available: false,
+      is_initializing: false
     }
     whatsappStatus.value = errorStatus
     emit('status-update', errorStatus)
@@ -162,14 +232,12 @@ const logoutWhatsApp = async () => {
     }).fetch()
 
     if (response.success) {
-      const loggedOutStatus = {
-        connected: false,
-        phoneNumber: null,
-      }
-      whatsappStatus.value = loggedOutStatus
-      emit('status-update', loggedOutStatus)
-      qrCode.value = ''
       toast.success('WhatsApp logged out successfully')
+      
+      // Refresh the page after a short delay to show new QR code
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } else {
       toast.error('Failed to logout from WhatsApp')
     }
@@ -182,8 +250,12 @@ const logoutWhatsApp = async () => {
 watch(show, (isOpen) => {
   if (isOpen) {
     checkWhatsAppStatus()
-    if (!whatsappStatus.value.connected && !qrCode.value) {
-      generateQRCode()
+    // Start real-time polling when modal is open
+    const statusInterval = setInterval(checkWhatsAppStatus, 2000)
+    
+    // Cleanup interval when modal closes
+    return () => {
+      clearInterval(statusInterval)
     }
   }
 })

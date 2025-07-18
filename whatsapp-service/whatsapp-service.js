@@ -20,6 +20,11 @@ let phoneNumber = null;
 
 // Initialize WhatsApp client
 function initializeClient() {
+    // Don't initialize if already initializing
+    if (client && client.isInitializing) {
+        return;
+    }
+    
     client = new Client({
         authStrategy: new LocalAuth(),
         puppeteer: {
@@ -27,6 +32,9 @@ function initializeClient() {
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         }
     });
+    
+    // Mark as initializing
+    client.isInitializing = true;
 
     client.on('qr', (qr) => {
         console.log('QR code received');
@@ -46,6 +54,7 @@ function initializeClient() {
         console.log('WhatsApp client is ready!');
         isConnected = true;
         qrCodeString = '';
+        client.isInitializing = false; // Clear initializing flag
         
         // Get phone number with better error handling
         try {
@@ -69,12 +78,14 @@ function initializeClient() {
         // Set connected state here as backup
         isConnected = true;
         qrCodeString = '';
+        client.isInitializing = false; // Clear initializing flag
     });
 
     client.on('auth_failure', (msg) => {
         console.error('Authentication failed:', msg);
         isConnected = false;
         phoneNumber = null;
+        client.isInitializing = false; // Clear initializing flag
     });
 
     client.on('disconnected', (reason) => {
@@ -82,6 +93,7 @@ function initializeClient() {
         isConnected = false;
         phoneNumber = null;
         qrCodeString = '';
+        client.isInitializing = false; // Clear initializing flag
     });
 
     client.initialize();
@@ -106,15 +118,17 @@ app.get('/qr-code', (req, res) => {
 
     if (!qrCodeString) {
         // Initialize client if not already done
-        if (!client) {
-            initializeClient();
+        if (!client || client.isInitializing) {
+            if (!client) {
+                initializeClient();
+            }
+            
+            res.json({ 
+                success: false, 
+                message: 'QR code is being generated. Please try again in a moment.' 
+            });
+            return;
         }
-        
-        res.json({ 
-            success: false, 
-            message: 'QR code is being generated. Please try again in a moment.' 
-        });
-        return;
     }
 
     res.json({ 
@@ -128,6 +142,8 @@ app.get('/status', (req, res) => {
     res.json({
         connected: isConnected,
         phone_number: phoneNumber,
+        qr_code_available: !!qrCodeString,
+        is_initializing: client ? client.isInitializing : false,
         timestamp: new Date().toISOString()
     });
 });
@@ -192,6 +208,15 @@ app.post('/logout', async (req, res) => {
         isConnected = false;
         phoneNumber = null;
         qrCodeString = '';
+        
+        // Reinitialize the client to allow new QR code generation
+        client = null;
+        initializeClient();
+        
+        // Set initializing flag to true
+        if (client) {
+            client.isInitializing = true;
+        }
 
         res.json({ 
             success: true, 
@@ -218,6 +243,10 @@ app.post('/disconnect', async (req, res) => {
         isConnected = false;
         phoneNumber = null;
         qrCodeString = '';
+        
+        // Reinitialize the client to allow new QR code generation
+        client = null;
+        initializeClient();
 
         res.json({ 
             success: true, 
