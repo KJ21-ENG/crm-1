@@ -214,9 +214,9 @@ def get_extension_info():
         
         info = {
             'exists': os.path.exists(extension_dir),
-            'version': '1.0.0',  # Default fallback
-            'name': 'CRM WhatsApp Extension',
-            'description': 'Chrome extension for multi-user WhatsApp integration'
+            'version': '1.1.0',  # Default fallback
+            'name': 'Eshin Broking WhatsApp Extension',
+            'description': 'Custom Chrome extension for Eshin Broking\'s multi-user WhatsApp integration'
         }
         
         if info['exists']:

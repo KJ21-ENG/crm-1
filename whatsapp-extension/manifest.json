@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "CRM WhatsApp Integration",
+  "name": "Eshin Broking WhatsApp Integration",
   "version": "1.1.0",
-  "description": "Local WhatsApp integration for CRM system with logout functionality",
+  "description": "Custom local WhatsApp integration for Eshin Broking CRM system with logout functionality",
   "permissions": [
     "storage",
     "tabs",

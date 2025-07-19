@@ -14,11 +14,21 @@
     <div class="flex-1 overflow-y-auto">
       <!-- Setup Instructions -->
       <div class="bg-surface-gray-1 rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium text-ink-gray-8 mb-4">
-          {{ __('Multi-User WhatsApp Integration') }}
-        </h3>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-ink-gray-8">
+              {{ __('Eshin Broking WhatsApp Integration') }}
+            </h3>
+            <p class="text-sm text-blue-600 font-medium">{{ __('Custom Multi-User Solution') }}</p>
+          </div>
+        </div>
         <p class="text-sm text-ink-gray-6 mb-4">
-          {{ __('This setup allows each user to connect their own WhatsApp account without conflicts.') }}
+          {{ __('This custom WhatsApp integration is specifically designed for Eshin Broking\'s multi-user CRM environment. Each user can connect their own WhatsApp account without conflicts.') }}
         </p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -72,11 +82,21 @@
 
       <!-- Download Section -->
       <div class="bg-surface-gray-1 rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium text-ink-gray-8 mb-4">
-          {{ __('Download Chrome Extension') }}
-        </h3>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-ink-gray-8">
+              {{ __('Download Eshin Broking Extension') }}
+            </h3>
+            <p class="text-sm text-green-600 font-medium">{{ __('Custom Chrome Extension') }}</p>
+          </div>
+        </div>
         <p class="text-sm text-ink-gray-6 mb-4">
-          {{ __('Download and install the Chrome extension to enable WhatsApp integration.') }}
+          {{ __('Download and install the custom Chrome extension specifically developed for Eshin Broking\'s WhatsApp integration.') }}
         </p>
 
         <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
@@ -88,9 +108,9 @@
                 </svg>
               </div>
               <div>
-                <h4 class="font-medium text-ink-gray-8">{{ extensionInfo.name || __('CRM WhatsApp Extension') }}</h4>
-                <p class="text-sm text-ink-gray-6">{{ __('Version') }} {{ extensionInfo.version || '1.0.0' }} - {{ __('Chrome Extension') }}</p>
-                <p v-if="extensionInfo.description" class="text-xs text-ink-gray-5 mt-1">{{ extensionInfo.description }}</p>
+                <h4 class="font-medium text-ink-gray-8">{{ extensionInfo.name || __('Eshin Broking WhatsApp Extension') }}</h4>
+                <p class="text-sm text-ink-gray-6">{{ __('Version') }} {{ extensionInfo.version || '1.0.0' }} - {{ __('Custom Chrome Extension') }}</p>
+                <p v-if="extensionInfo.description" class="text-xs text-ink-gray-5 mt-1">{{ __('Custom Chrome extension for Eshin Broking\'s multi-user WhatsApp integration') }}</p>
               </div>
             </div>
             <Button
@@ -109,126 +129,6 @@
         </div>
       </div>
 
-      <!-- Installation Instructions -->
-      <div class="bg-surface-gray-1 rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-medium text-ink-gray-8 mb-4">
-          {{ __('Installation Instructions') }}
-        </h3>
-
-        <div class="space-y-4">
-          <!-- Step 1 -->
-          <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
-            <div class="flex items-start gap-3">
-              <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
-                1
-              </div>
-              <div class="flex-1">
-                <h4 class="font-medium text-ink-gray-8 mb-2">{{ __('Install Local WhatsApp Service') }}</h4>
-                <div class="bg-gray-50 rounded p-3 mb-3">
-                  <code class="text-sm text-gray-700">
-                    cd apps/crm/local-whatsapp-service<br>
-                    ./install.sh<br>
-                    ./start-service.sh
-                  </code>
-                </div>
-                <p class="text-sm text-ink-gray-6">
-                  {{ __('This installs the local service that runs on each user\'s machine.') }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
-            <div class="flex items-start gap-3">
-              <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
-                2
-              </div>
-              <div class="flex-1">
-                <h4 class="font-medium text-ink-gray-8 mb-2">{{ __('Install Chrome Extension') }}</h4>
-                <ol class="list-decimal list-inside text-sm text-ink-gray-6 space-y-1 mb-3">
-                  <li>{{ __('Open Chrome and go to') }} <code class="bg-gray-100 px-1 rounded">chrome://extensions/</code></li>
-                  <li>{{ __('Enable "Developer mode" (toggle in top right)') }}</li>
-                  <li>{{ __('Click "Load unpacked"') }}</li>
-                  <li>{{ __('Select the downloaded extension folder') }}</li>
-                  <li>{{ __('Extension appears in the list') }}</li>
-                </ol>
-                <p class="text-sm text-ink-gray-6">
-                  {{ __('The extension will inject WhatsApp functionality into the CRM.') }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
-            <div class="flex items-start gap-3">
-              <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
-                3
-              </div>
-              <div class="flex-1">
-                <h4 class="font-medium text-ink-gray-8 mb-2">{{ __('Connect WhatsApp') }}</h4>
-                <ol class="list-decimal list-inside text-sm text-ink-gray-6 space-y-1 mb-3">
-                  <li>{{ __('Start local service (if not auto-started)') }}</li>
-                  <li>{{ __('Open CRM in Chrome') }}</li>
-                  <li>{{ __('Click extension icon in toolbar') }}</li>
-                  <li>{{ __('Click "Connect WhatsApp"') }}</li>
-                  <li>{{ __('Scan QR code with WhatsApp mobile app') }}</li>
-                  <li>{{ __('Wait for connection (green dot appears)') }}</li>
-                </ol>
-                <p class="text-sm text-ink-gray-6">
-                  {{ __('Each user connects their own WhatsApp account.') }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Troubleshooting -->
-      <div class="bg-surface-gray-1 rounded-lg p-6">
-        <h3 class="text-lg font-medium text-ink-gray-8 mb-4">
-          {{ __('Troubleshooting') }}
-        </h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
-            <h4 class="font-medium text-ink-gray-8 mb-2">{{ __('Common Issues') }}</h4>
-            <ul class="space-y-2 text-sm text-ink-gray-6">
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Service not starting - Check Node.js version') }}
-              </li>
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Extension not working - Check permissions') }}
-              </li>
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Connection fails - Clear session data') }}
-              </li>
-            </ul>
-          </div>
-
-          <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
-            <h4 class="font-medium text-ink-gray-8 mb-2">{{ __('Support') }}</h4>
-            <ul class="space-y-2 text-sm text-ink-gray-6">
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Check local service logs') }}
-              </li>
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Review Chrome DevTools console') }}
-              </li>
-              <li class="flex items-start gap-2">
-                <div class="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                {{ __('Contact system administrator') }}
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -241,9 +141,9 @@ import { createResource } from 'frappe-ui'
 
 const downloading = ref(false)
 const extensionInfo = ref({
-  name: 'CRM WhatsApp Extension',
-  version: '1.0.0',
-  description: 'Chrome extension for multi-user WhatsApp integration',
+  name: 'Eshin Broking WhatsApp Extension',
+  version: '1.1.0',
+  description: 'Custom Chrome extension for Eshin Broking\'s multi-user WhatsApp integration',
   ready: false
 })
 
@@ -253,9 +153,9 @@ const extensionInfoResource = createResource({
   auto: true,
   onSuccess: (data) => {
     extensionInfo.value = {
-      name: data.name || 'CRM WhatsApp Extension',
-      version: data.version || '1.0.0',
-      description: data.description || 'Chrome extension for multi-user WhatsApp integration',
+      name: data.name || 'Eshin Broking WhatsApp Extension',
+      version: data.version || '1.1.0',
+      description: data.description || 'Custom Chrome extension for Eshin Broking\'s multi-user WhatsApp integration',
       ready: data.ready || false
     }
   },
