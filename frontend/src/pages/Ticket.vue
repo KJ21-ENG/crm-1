@@ -857,15 +857,33 @@ const tabs = computed(() => {
 const { tabIndex, changeTabTo } = useActiveTabManager(tabs, 'lastTicketTab')
 
 function getTicketStatusColor(status) {
-  const colors = {
-    'New': 'text-blue-600',
-    'Open': 'text-orange-600',
-    'In Progress': 'text-yellow-600',
-    'Pending Customer': 'text-purple-600',
-    'Resolved': 'text-green-600',
-    'Closed': 'text-gray-600',
+  // Get ticket statuses from the store
+  const { ticketStatuses } = statusesStore()
+  
+  // Find the status in the database
+  const statusData = ticketStatuses.data?.find(s => s.name === status)
+  
+  if (statusData && statusData.color) {
+    // Convert color to text color class
+    const colorMap = {
+      'blue': 'text-blue-600',
+      'orange': 'text-orange-600',
+      'yellow': 'text-yellow-600',
+      'cyan': 'text-cyan-600',
+      'teal': 'text-teal-600',
+      'green': 'text-green-600',
+      'gray': 'text-gray-600',
+      'red': 'text-red-600',
+      'purple': 'text-purple-600',
+      'violet': 'text-violet-600',
+      'amber': 'text-amber-600',
+      'pink': 'text-pink-600',
+      'black': 'text-black-600'
+    }
+    return colorMap[statusData.color] || 'text-gray-600'
   }
-  return colors[status] || 'text-gray-600'
+  
+  return 'text-gray-600'
 }
 
 function getPriorityColor(priority) {

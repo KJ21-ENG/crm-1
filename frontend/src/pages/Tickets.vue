@@ -478,18 +478,16 @@ function parseValue(value, column) {
     }
   }
   if (column.key === 'status') {
-    let colors = {
-      'New': 'blue',
-      'Open': 'orange',
-      'In Progress': 'yellow',
-      'Pending Customer': 'purple',
-      'Resolved': 'green',
-      'Closed': 'gray',
-    }
+    // Get ticket statuses from the store
+    const { ticketStatuses } = statusesStore()
+    
+    // Find the status in the database
+    const statusData = ticketStatuses.data?.find(s => s.name === value)
+    
     return {
       label: value,
       value: value,
-      color: colors[value] || 'gray',
+      color: statusData?.color || 'gray',
     }
   }
 

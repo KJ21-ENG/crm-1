@@ -72,9 +72,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Button, Select, Textarea, FeatherIcon } from 'frappe-ui'
-import { createResource } from 'frappe-ui'
+import { createResource, createListResource } from 'frappe-ui'
 import StatusBadge from '@/components/Badges/StatusBadge.vue'
 
 const props = defineProps({
@@ -90,14 +90,22 @@ const newStatus = ref('')
 const comment = ref('')
 const isUpdating = ref(false)
 
-const statusOptions = [
-  { label: 'New', value: 'New' },
-  { label: 'Open', value: 'Open' },
-  { label: 'In Progress', value: 'In Progress' },
-  { label: 'Pending Customer', value: 'Pending Customer' },
-  { label: 'Resolved', value: 'Resolved' },
-  { label: 'Closed', value: 'Closed' },
-]
+// Get ticket statuses from database
+const ticketStatuses = createListResource({
+  doctype: 'CRM Ticket Status',
+  fields: ['name', 'color', 'position'],
+  orderBy: 'position asc',
+  cache: 'ticket-statuses-modal',
+  initialData: [],
+  auto: true,
+})
+
+const statusOptions = computed(() => {
+  return ticketStatuses.data?.map(status => ({
+    label: status.name,
+    value: status.name
+  })) || []
+})
 
 const updateTicketStatus = createResource({
   url: 'crm.api.ticket.update_ticket_status',

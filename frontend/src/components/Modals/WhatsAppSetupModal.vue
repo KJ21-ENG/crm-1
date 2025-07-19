@@ -165,7 +165,7 @@ const generateQRCode = async () => {
     }
   } catch (error) {
     toast.error('Error generating QR code: ' + error.message)
-  } finally {
+      } finally {
     generatingQR.value = false
   }
 }

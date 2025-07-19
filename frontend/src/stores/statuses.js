@@ -8,6 +8,7 @@ import { reactive, h } from 'vue'
 export const statusesStore = defineStore('crm-statuses', () => {
   let leadStatusesByName = reactive({})
   let dealStatusesByName = reactive({})
+  let ticketStatusesByName = reactive({})
   let communicationStatusesByName = reactive({})
 
   const leadStatuses = createListResource({
@@ -42,6 +43,22 @@ export const statusesStore = defineStore('crm-statuses', () => {
     },
   })
 
+  const ticketStatuses = createListResource({
+    doctype: 'CRM Ticket Status',
+    fields: ['name', 'color', 'position'],
+    orderBy: 'position asc',
+    cache: 'ticket-statuses',
+    initialData: [],
+    auto: true,
+    transform(statuses) {
+      for (let status of statuses) {
+        status.color = parseColor(status.color)
+        ticketStatusesByName[status.name] = status
+      }
+      return statuses
+    },
+  })
+
   const communicationStatuses = createListResource({
     doctype: 'CRM Communication Status',
     fields: ['name'],
@@ -70,6 +87,13 @@ export const statusesStore = defineStore('crm-statuses', () => {
     return dealStatusesByName[name]
   }
 
+  function getTicketStatus(name) {
+    if (!name) {
+      name = ticketStatuses.data[0].name
+    }
+    return ticketStatusesByName[name]
+  }
+
   function getCommunicationStatus(name) {
     if (!name) {
       name = communicationStatuses.data[0].name
@@ -84,7 +108,9 @@ export const statusesStore = defineStore('crm-statuses', () => {
     triggerOnChange = null,
   ) {
     let statusesByName =
-      doctype == 'deal' ? dealStatusesByName : leadStatusesByName
+      doctype == 'deal' ? dealStatusesByName : 
+      doctype == 'ticket' ? ticketStatusesByName : 
+      leadStatusesByName
 
     if (document?.statuses?.length) {
       statuses = document.statuses
@@ -118,9 +144,11 @@ export const statusesStore = defineStore('crm-statuses', () => {
   return {
     leadStatuses,
     dealStatuses,
+    ticketStatuses,
     communicationStatuses,
     getLeadStatus,
     getDealStatus,
+    getTicketStatus,
     getCommunicationStatus,
     statusOptions,
   }

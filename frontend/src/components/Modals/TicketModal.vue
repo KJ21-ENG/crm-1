@@ -679,15 +679,8 @@ const tabs = createResource({
           column.fields.forEach((field) => {
             // Configure specific field types
             if (field.fieldname == 'status') {
-              field.fieldtype = 'Select'
-              field.options = [
-                { label: 'New', value: 'New' },
-                { label: 'Open', value: 'Open' },
-                { label: 'In Progress', value: 'In Progress' },
-                { label: 'Pending Customer', value: 'Pending Customer' },
-                { label: 'Resolved', value: 'Resolved' },
-                { label: 'Closed', value: 'Closed' }
-              ]
+              field.fieldtype = 'Link'
+              field.options = 'CRM Ticket Status'
             }
 
             if (field.fieldname == 'priority') {
