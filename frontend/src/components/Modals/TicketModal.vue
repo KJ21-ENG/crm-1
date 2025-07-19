@@ -465,6 +465,15 @@ watch([() => ticket.doc?.mobile_no, () => ticket.doc?.email], ([mobile, email]) 
   }
 }, { immediate: false })
 
+// 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
+watch(() => ticket.doc?.mobile_no, async (newMobile, oldMobile) => {
+  // Only trigger if mobile number changed and is not empty
+  if (newMobile && newMobile !== oldMobile && newMobile.length >= 10) {
+    console.log('🔍 [AUTO-FILL] Mobile number changed, triggering auto-fill:', newMobile)
+    await autoFillCustomerData(newMobile)
+  }
+}, { immediate: false })
+
 // Initialize ticket with defaults
 onMounted(async () => {
   // Initialize an empty doc first
@@ -741,10 +750,11 @@ const tabs = createResource({
             if (field.fieldname == 'mobile_no') {
               field.fieldtype = 'Data'
               field.label = 'Mobile No'
-              // Add change handler to trigger customer history lookup
+              // Add change handler to trigger customer history lookup and auto-fill
               field.onChange = () => {
                 if (ticket.doc.mobile_no) {
                   customerHistory.reload()
+                  // Auto-fill will be triggered by the watcher above
                 }
               }
             }

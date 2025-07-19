@@ -198,6 +198,15 @@ onMounted(async () => {
   }
 })
 
+// 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
+watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
+  // Only trigger if mobile number changed and is not empty
+  if (newMobile && newMobile !== oldMobile && newMobile.length >= 10) {
+    console.log('🔍 [LEAD AUTO-FILL] Mobile number changed, triggering auto-fill:', newMobile)
+    await autoFillCustomerData(newMobile)
+  }
+}, { immediate: false })
+
 // Auto-fill customer data from customer database
 async function autoFillCustomerData(mobileNumber) {
   try {
@@ -382,6 +391,17 @@ const tabs = createResource({
               field.prefix = getLeadStatus(lead.doc.status).color
             }
             
+            // Configure contact information fields
+            if (field.fieldname == 'mobile_no') {
+              field.fieldtype = 'Data'
+              field.label = 'Mobile No'
+              // Add change handler to trigger auto-fill
+              field.onChange = () => {
+                // Auto-fill will be triggered by the watcher above
+                console.log('🔍 [LEAD] Mobile number field changed:', lead.doc.mobile_no)
+              }
+            }
+
             // Add custom assign_to_role field for role-based assignments
             if (field.fieldname == 'lead_owner') {
               // Insert assign_to_role field after lead_owner

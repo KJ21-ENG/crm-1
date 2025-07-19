@@ -76,7 +76,9 @@ def auto_fill_customer_data(mobile_no):
             "salutation": customer.get("salutation", ""),
             "gender": customer.get("gender", ""),
             "middle_name": customer.get("middle_name", ""),
-            "customer_name": customer.get("customer_name", "")
+            "customer_name": customer.get("customer_name", ""),
+            "pan_card_number": customer.get("pan_card_number", ""),
+            "aadhaar_card_number": customer.get("aadhaar_card_number", "")
         }
     
     return {}
