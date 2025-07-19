@@ -214,12 +214,24 @@ def get_extension_info():
         
         info = {
             'exists': os.path.exists(extension_dir),
-            'version': '1.0.0',
+            'version': '1.0.0',  # Default fallback
             'name': 'CRM WhatsApp Extension',
             'description': 'Chrome extension for multi-user WhatsApp integration'
         }
         
         if info['exists']:
+            # Read version from manifest.json
+            manifest_path = os.path.join(extension_dir, 'manifest.json')
+            if os.path.exists(manifest_path):
+                try:
+                    with open(manifest_path, 'r') as f:
+                        manifest_data = json.load(f)
+                        info['version'] = manifest_data.get('version', '1.0.0')
+                        info['name'] = manifest_data.get('name', info['name'])
+                        info['description'] = manifest_data.get('description', info['description'])
+                except Exception as e:
+                    frappe.log_error(f"Error reading manifest.json: {str(e)}")
+            
             # Check if required files exist
             required_files = ['manifest.json', 'background.js', 'content.js']
             missing_files = []

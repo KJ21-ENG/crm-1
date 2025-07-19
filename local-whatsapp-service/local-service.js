@@ -187,6 +187,95 @@ app.post('/disconnect', (req, res) => {
   }
 });
 
+// Logout WhatsApp (logout and clear session data)
+app.post('/logout', async (req, res) => {
+  try {
+    console.log('Logging out WhatsApp...');
+    
+    // Destroy current client
+    if (client) {
+      await client.destroy();
+      client = null;
+    }
+    
+    // Reset status
+    clientStatus = 'disconnected';
+    qrCodeData = null;
+    
+    // Clear session data
+    const sessionPath = path.join(sessionDir, 'crm-local-client');
+    if (fs.existsSync(sessionPath)) {
+      try {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log('Session data cleared');
+      } catch (error) {
+        console.error('Error clearing session data:', error);
+      }
+    }
+    
+    // Clear cache data as well
+    const cachePath = path.join(sessionDir, '.wwebjs_cache');
+    if (fs.existsSync(cachePath)) {
+      try {
+        fs.rmSync(cachePath, { recursive: true, force: true });
+        console.log('Cache data cleared');
+      } catch (error) {
+        console.error('Error clearing cache data:', error);
+      }
+    }
+    
+    // Don't automatically reinitialize - let user request new QR code
+    console.log('Logout completed. User must request new QR code to reconnect.');
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp logged out successfully. Session data cleared.'
+    });
+  } catch (error) {
+    console.error('Error logging out:', error);
+    res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
+// Request new QR code (after logout)
+app.post('/request-qr', (req, res) => {
+  try {
+    console.log('Requesting new QR code...');
+    
+    // Allow QR code generation if not connected (disconnected or connecting)
+    if (clientStatus !== 'connected') {
+      // Reset to disconnected state first
+      clientStatus = 'disconnected';
+      qrCodeData = null;
+      
+      // Destroy existing client if any
+      if (client) {
+        client.destroy();
+        client = null;
+      }
+      
+      // Initialize new client
+      initializeWhatsAppClient();
+      res.json({
+        success: true,
+        message: 'QR code generation initiated. Check /qr-code endpoint in a few seconds.'
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'WhatsApp is already connected. No QR code needed.'
+      });
+    }
+  } catch (error) {
+    console.error('Error requesting QR code:', error);
+    res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
 // Reconnect WhatsApp
 app.post('/reconnect', (req, res) => {
   try {

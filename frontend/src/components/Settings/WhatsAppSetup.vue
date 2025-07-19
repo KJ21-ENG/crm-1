@@ -88,8 +88,9 @@
                 </svg>
               </div>
               <div>
-                <h4 class="font-medium text-ink-gray-8">{{ __('CRM WhatsApp Extension') }}</h4>
-                <p class="text-sm text-ink-gray-6">{{ __('Version 1.0.0 - Chrome Extension') }}</p>
+                <h4 class="font-medium text-ink-gray-8">{{ extensionInfo.name || __('CRM WhatsApp Extension') }}</h4>
+                <p class="text-sm text-ink-gray-6">{{ __('Version') }} {{ extensionInfo.version || '1.0.0' }} - {{ __('Chrome Extension') }}</p>
+                <p v-if="extensionInfo.description" class="text-xs text-ink-gray-5 mt-1">{{ extensionInfo.description }}</p>
               </div>
             </div>
             <Button
@@ -98,6 +99,7 @@
               theme="green"
               @click="downloadExtension"
               :loading="downloading"
+              :disabled="!extensionInfo.ready"
             >
               <template #prefix>
                 <FeatherIcon name="download" class="h-4 w-4" />
@@ -232,11 +234,39 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import { toast } from 'frappe-ui'
+import { createResource } from 'frappe-ui'
 
 const downloading = ref(false)
+const extensionInfo = ref({
+  name: 'CRM WhatsApp Extension',
+  version: '1.0.0',
+  description: 'Chrome extension for multi-user WhatsApp integration',
+  ready: false
+})
+
+// Fetch extension info
+const extensionInfoResource = createResource({
+  url: 'crm.api.whatsapp_setup.get_extension_info',
+  auto: true,
+  onSuccess: (data) => {
+    extensionInfo.value = {
+      name: data.name || 'CRM WhatsApp Extension',
+      version: data.version || '1.0.0',
+      description: data.description || 'Chrome extension for multi-user WhatsApp integration',
+      ready: data.ready || false
+    }
+  },
+  onError: (error) => {
+    console.error('Failed to fetch extension info:', error)
+  }
+})
+
+onMounted(() => {
+  extensionInfoResource.fetch()
+})
 
 const downloadExtension = async () => {
   downloading.value = true

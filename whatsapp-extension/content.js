@@ -18,7 +18,7 @@ class CRMWhatsAppIntegration {
     // Listen for messages from background script
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'statusUpdate') {
-        this.updateStatus(request.status);
+        this.updateStatus(request.status, request.phoneNumber);
       }
     });
   }
@@ -261,7 +261,7 @@ class CRMWhatsAppIntegration {
     }
   }
 
-  updateStatus(newStatus) {
+  updateStatus(newStatus, phoneNumber = null) {
     this.status = newStatus;
     
     // Update status indicator
@@ -273,7 +273,11 @@ class CRMWhatsAppIntegration {
     }
     
     if (statusText) {
-      statusText.textContent = `WhatsApp: ${newStatus}`;
+      let statusDisplay = `WhatsApp: ${newStatus}`;
+      if (newStatus === 'connected' && phoneNumber) {
+        statusDisplay += ` (${phoneNumber})`;
+      }
+      statusText.textContent = statusDisplay;
     }
 
     // Update connection status in modal

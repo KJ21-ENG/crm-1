@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CRM WhatsApp Integration",
-  "version": "1.0.0",
-  "description": "Local WhatsApp integration for CRM system",
+  "version": "1.1.0",
+  "description": "Local WhatsApp integration for CRM system with logout functionality",
   "permissions": [
     "storage",
     "tabs",

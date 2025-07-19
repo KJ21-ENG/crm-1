@@ -2,6 +2,7 @@
 let localServicePort = null;
 let whatsappStatus = 'disconnected';
 let qrCodeData = null;
+let phoneNumber = null;
 
 // Initialize local WhatsApp service
 async function initializeLocalService() {
@@ -33,7 +34,7 @@ async function initializeLocalService() {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case 'getStatus':
-      sendResponse({ status: whatsappStatus, qrCode: qrCodeData });
+      sendResponse({ status: whatsappStatus, qrCode: qrCodeData, phoneNumber: phoneNumber });
       break;
       
     case 'sendMessage':
@@ -45,6 +46,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'getQRCode':
       getQRCode()
         .then(qr => sendResponse({ qrCode: qr }))
+        .catch(error => sendResponse({ error: error.message }));
+      return true;
+      
+    case 'logout':
+      logoutWhatsApp()
+        .then(result => sendResponse(result))
         .catch(error => sendResponse({ error: error.message }));
       return true;
       
@@ -99,26 +106,85 @@ async function getQRCode() {
   }
 }
 
+// Logout WhatsApp via local service
+async function logoutWhatsApp() {
+  try {
+    const response = await fetch('http://localhost:3001/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    // Update local status
+    whatsappStatus = 'disconnected';
+    qrCodeData = null;
+    phoneNumber = null;
+    
+    // Notify content script of status change
+    chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*'] }, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'statusUpdate',
+          status: whatsappStatus
+        });
+      });
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('Error logging out WhatsApp:', error);
+    throw error;
+  }
+}
+
 // Monitor local service status
 async function checkServiceStatus() {
   try {
     const response = await fetch('http://localhost:3001/status');
     if (response.ok) {
       const status = await response.json();
+      const previousStatus = whatsappStatus;
       whatsappStatus = status.status;
       
+      // Get phone number if connected
+      if (whatsappStatus === 'connected') {
+        try {
+          const clientInfoResponse = await fetch('http://localhost:3001/client-info');
+          if (clientInfoResponse.ok) {
+            const clientInfo = await clientInfoResponse.json();
+            phoneNumber = clientInfo.info?.wid || 'Connected';
+          }
+        } catch (error) {
+          console.error('Error getting client info:', error);
+          phoneNumber = 'Connected';
+        }
+      } else {
+        phoneNumber = null;
+      }
+      
       // Notify content script of status change
-      chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*'] }, (tabs) => {
-        tabs.forEach(tab => {
-          chrome.tabs.sendMessage(tab.id, {
-            action: 'statusUpdate',
-            status: whatsappStatus
+      if (previousStatus !== whatsappStatus) {
+        chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*'] }, (tabs) => {
+          tabs.forEach(tab => {
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'statusUpdate',
+              status: whatsappStatus,
+              phoneNumber: phoneNumber
+            });
           });
         });
-      });
+      }
     }
   } catch (error) {
     whatsappStatus = 'disconnected';
+    phoneNumber = null;
   }
 }
 
