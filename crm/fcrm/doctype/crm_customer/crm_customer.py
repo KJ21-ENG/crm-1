@@ -183,24 +183,23 @@ class CRMCustomer(Document):
         if not self._original_values:
             return self.get_related_leads()  # Fallback to current values
             
-        filters = []
-        
         # Use original mobile_no and email for matching
         original_mobile = self._original_values.get('mobile_no')
         original_email = self._original_values.get('email')
         
-        if original_mobile:
-            filters.append(["mobile_no", "=", original_mobile])
-        if original_email:
-            filters.append(["email", "=", original_email])
-            
-        if not filters:
+        if not original_mobile and not original_email:
             return []
             
-        # Use OR condition for mobile or email match
+        # Build OR filters properly
+        or_filters = []
+        if original_mobile:
+            or_filters.append(["mobile_no", "=", original_mobile])
+        if original_email:
+            or_filters.append(["email", "=", original_email])
+            
         leads = frappe.get_list(
             "CRM Lead",
-            filters=filters,
+            filters=or_filters,
             fields=["name", "lead_name", "mobile_no", "email"]
         )
         
@@ -211,24 +210,23 @@ class CRMCustomer(Document):
         if not self._original_values:
             return self.get_related_tickets()  # Fallback to current values
             
-        filters = []
-        
         # Use original mobile_no and email for matching
         original_mobile = self._original_values.get('mobile_no')
         original_email = self._original_values.get('email')
         
-        if original_mobile:
-            filters.append(["mobile_no", "=", original_mobile])
-        if original_email:
-            filters.append(["email", "=", original_email])
-            
-        if not filters:
+        if not original_mobile and not original_email:
             return []
             
-        # Use OR condition for mobile or email match
+        # Build OR filters properly
+        or_filters = []
+        if original_mobile:
+            or_filters.append(["mobile_no", "=", original_mobile])
+        if original_email:
+            or_filters.append(["email", "=", original_email])
+            
         tickets = frappe.get_list(
             "CRM Ticket",
-            filters=filters,
+            filters=or_filters,
             fields=["name", "ticket_subject", "mobile_no", "email"]
         )
         
@@ -236,20 +234,15 @@ class CRMCustomer(Document):
     
     def get_related_leads(self):
         """Get all leads related to this customer by mobile number or email"""
-        filters = []
-        
-        if self.mobile_no:
-            filters.append(["mobile_no", "=", self.mobile_no])
-        if self.email:
-            filters.append(["email", "=", self.email])
-            
-        if not filters:
+        if not self.mobile_no and not self.email:
             return []
             
-        # Use OR condition for mobile or email match
+        # Build OR filters properly
         or_filters = []
-        for filter_condition in filters:
-            or_filters.append(filter_condition)
+        if self.mobile_no:
+            or_filters.append(["mobile_no", "=", self.mobile_no])
+        if self.email:
+            or_filters.append(["email", "=", self.email])
         
         leads = frappe.get_list(
             "CRM Lead",
@@ -261,20 +254,15 @@ class CRMCustomer(Document):
     
     def get_related_tickets(self):
         """Get all tickets related to this customer by mobile number or email"""
-        filters = []
-        
-        if self.mobile_no:
-            filters.append(["mobile_no", "=", self.mobile_no])
-        if self.email:
-            filters.append(["email", "=", self.email])
-            
-        if not filters:
+        if not self.mobile_no and not self.email:
             return []
             
-        # Use OR condition for mobile or email match
+        # Build OR filters properly
         or_filters = []
-        for filter_condition in filters:
-            or_filters.append(filter_condition)
+        if self.mobile_no:
+            or_filters.append(["mobile_no", "=", self.mobile_no])
+        if self.email:
+            or_filters.append(["email", "=", self.email])
         
         tickets = frappe.get_list(
             "CRM Ticket",
