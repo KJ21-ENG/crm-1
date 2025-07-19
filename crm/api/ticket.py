@@ -1175,6 +1175,119 @@ def determine_ticket_for_call(call_creation_time, customer_tickets):
     return frappe.get_doc("CRM Ticket", active_ticket.name) if active_ticket else None 
 
 @frappe.whitelist()
+def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
+    """Assign a ticket directly to a specific user (Admin Only)"""
+    try:
+        # Check if user has admin permissions
+        if not frappe.has_permission("Role Assignment Tracker", "write"):
+            frappe.throw("Insufficient permissions for direct user assignment")
+        
+        if not assigned_by:
+            assigned_by = frappe.session.user
+        
+        # Validate user exists and is enabled
+        if not frappe.db.exists("User", user_name):
+            frappe.throw(f"User {user_name} does not exist")
+        
+        if not frappe.db.get_value("User", user_name, "enabled"):
+            frappe.throw(f"User {user_name} is not enabled")
+        
+        # Import here to avoid circular imports
+        from frappe.utils import get_fullname
+        from crm.api.activities import emit_activity_update
+        
+        # Update the ticket (set assigned_role to 'Direct Assignment')
+        ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
+        ticket_doc.assigned_role = "Direct Assignment"
+        
+        # Use Frappe's standard assignment system
+        frappe.desk.form.assign_to.add({
+            "assign_to": [user_name],
+            "doctype": "CRM Ticket",
+            "name": ticket_name,
+            "description": f"Ticket directly assigned to {user_name} - admin assignment"
+        })
+        
+        # Create activity timeline entry for the assignment
+        assigned_user_name = get_fullname(user_name)
+        assigned_by_name = get_fullname(assigned_by)
+        
+        # Create assignment activity
+        assignment_comment = frappe.get_doc({
+            "doctype": "Comment", 
+            "comment_type": "Comment",
+            "reference_doctype": "CRM Ticket",
+            "reference_name": ticket_name,
+            "content": f"🎯 <strong>{assigned_by_name}</strong> directly assigned this ticket to <strong>{assigned_user_name}</strong> (admin assignment)",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        assignment_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Ticket", ticket_name)
+        
+        ticket_doc.save(ignore_permissions=True)
+        
+        # Create follow-up task for ticket
+        task_doc = frappe.get_doc({
+            "doctype": "CRM Task",
+            "title": f"Handle ticket: {ticket_doc.ticket_subject or ticket_name}",
+            "assigned_to": user_name,
+            "reference_doctype": "CRM Ticket",
+            "reference_docname": ticket_name,
+            "description": f"Task created for direct ticket assignment to {user_name} - {ticket_doc.ticket_subject or ''}".strip(),
+            "priority": ticket_doc.priority or "Medium",
+            "status": "Open"
+        })
+        task_doc.insert(ignore_permissions=True)
+        
+        # Create activity for task creation
+        task_activity_comment = frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "CRM Ticket", 
+            "reference_name": ticket_name,
+            "content": f"📋 Task created: {task_doc.title}",
+            "comment_email": assigned_by,
+            "creation": frappe.utils.now(),
+        })
+        task_activity_comment.insert(ignore_permissions=True)
+        
+        # Emit activity update to refresh frontend
+        emit_activity_update("CRM Ticket", ticket_name)
+        
+        # Send notification to assigned user
+        from crm.api.ticket_notifications import create_ticket_assignment_notification
+        try:
+            create_ticket_assignment_notification(
+                ticket_doc=ticket_doc,
+                assigned_user=user_name,
+                tasks=[task_doc] if task_doc else None,
+                is_reassignment=False
+            )
+            frappe.logger().info(f"Assignment notification sent to {user_name} for ticket {ticket_name}")
+        except Exception as e:
+            frappe.log_error(f"Failed to send ticket assignment notification: {str(e)}", "Ticket Notification Error")
+        
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "assigned_user": user_name,
+            "role": "Direct Assignment",
+            "message": f"Ticket successfully assigned directly to {user_name}",
+            "task_created": task_doc.name
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Direct ticket assignment failed: {str(e)}", "Ticket Assignment Error")
+        return {
+            "success": False,
+            "error": str(e)
+        } 
+
+@frappe.whitelist()
 def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
     """Assign a ticket to a role using round-robin logic"""
     try:
