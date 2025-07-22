@@ -257,6 +257,29 @@
             </div>
           </div>
         </div>
+        <div v-else-if="activity.activity_type == 'note'" class="mb-4">
+          <div class="flex flex-col gap-2 py-1.5">
+            <div class="flex items-center justify-stretch gap-2 text-base">
+              <div class="inline-flex items-center flex-wrap gap-1.5 text-ink-gray-8 font-medium">
+                <UserAvatar class="mr-1" :user="activity.owner" size="xs" />
+                <span class="font-medium">{{ getUser(activity.owner).full_name }}</span>
+                <span class="text-ink-gray-5">created</span>
+                <span class="font-medium text-ink-gray-8">note:</span>
+                <span class="font-medium text-ink-gray-9">{{ activity.data.title }}</span>
+              </div>
+              <div class="ml-auto whitespace-nowrap">
+                <Tooltip :text="formatDate(activity.creation)">
+                  <div class="text-sm text-ink-gray-5">
+                    {{ __(timeAgo(activity.creation)) }}
+                  </div>
+                </Tooltip>
+              </div>
+            </div>
+            <div v-if="activity.data.content" class="text-sm text-ink-gray-7 leading-relaxed">
+              <div class="prose-sm" v-html="activity.data.content"></div>
+            </div>
+          </div>
+        </div>
         <div v-else class="mb-4 flex flex-col gap-2 py-1.5">
           <div class="flex items-center justify-stretch gap-2 text-base">
             <div
@@ -683,6 +706,26 @@ function get_activities() {
     activities = [...activities, ...all_activities.data.calls]
   }
   
+  // Add notes as activities if available
+  if (all_activities.data?.notes?.length) {
+    const noteActivities = all_activities.data.notes.map(note => ({
+      activity_type: 'note',
+      name: note.name,
+      creation: note.modified, // Use modified as creation time for sorting
+      owner: note.owner,
+      data: {
+        title: note.title,
+        content: note.content,
+        reference_doctype: note.reference_doctype,
+        reference_docname: note.reference_docname
+      },
+      is_lead: props.doctype === 'CRM Lead',
+      is_ticket: props.doctype === 'CRM Ticket',
+      note_data: note // Keep original note data for detailed display
+    }))
+    activities = [...activities, ...noteActivities]
+  }
+  
   // Add tasks as activities if available
   if (all_activities.data?.tasks?.length) {
     const taskActivities = all_activities.data.tasks.map(task => ({
@@ -849,6 +892,9 @@ function timelineIcon(activity_type, is_lead, is_ticket) {
       break
     case 'comment':
       icon = CommentIcon
+      break
+    case 'note':
+      icon = NoteIcon
       break
     case 'incoming_call':
       icon = InboundCallIcon
