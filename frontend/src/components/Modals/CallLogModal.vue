@@ -144,7 +144,7 @@ const tabs = createResource({
               } else {
                 // Read-only for other users
                 field.read_only = true
-                field.description = 'Current user (non-editable)'
+                //field.description = 'Current user (non-editable)'
               }
             }
           })
