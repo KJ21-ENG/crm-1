@@ -172,6 +172,10 @@ scheduler_events = {
 		# Task notification check every minute (closest to 5 seconds we can get with Frappe scheduler)
 		"* * * * *": [
 			"crm.api.task_notifications.check_and_send_task_notifications"
+		],
+		# Overdue task reassignment check every 5 minutes
+		"*/5 * * * *": [
+			"crm.api.overdue_handler.check_and_reassign_overdue_tasks"
 		]
 	},
 	"daily": [

@@ -732,7 +732,7 @@ function get_activities() {
       activity_type: 'task',
       name: task.name,
       creation: task.modified, // Use modified as creation time for sorting
-      owner: task.assigned_to,
+      owner: task.owner, // Use actual task owner instead of assigned_to
       data: {
         title: task.title,
         description: task.description,
