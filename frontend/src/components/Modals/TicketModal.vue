@@ -132,7 +132,7 @@
                         @click="router.push({ name: 'Ticket', params: { ticketId: existingTicket.name } })"
                       >
                         <div class="font-medium text-sm text-ink-gray-9">
-                          {{ existingTicket.ticket_subject }}
+                          {{ existingTicket.subject }}
                         </div>
                         <div class="text-xs text-ink-gray-6 mt-1">
                           <Badge 
@@ -487,6 +487,7 @@ onMounted(async () => {
     pan_card_number: '', // Identity document field
     aadhaar_card_number: '', // Identity document field
     ticket_subject: '',
+    subject: '',
     description: '',
     priority: 'Medium',
     status: 'New',
@@ -508,6 +509,7 @@ onMounted(async () => {
     Object.assign(ticket.doc, {
       mobile_no: customerNumber,
       ticket_subject: `Support request from call ${customerNumber}`,
+      subject: `Support request from call ${customerNumber}`,
       description: `Customer called on ${props.callLog.start_time}`
     })
   }
@@ -572,6 +574,7 @@ async function autoFillCustomerData(mobileNumber) {
         const newSubject = `Support request from ${customerData.first_name || ''} ${customerData.last_name || ''}`.trim()
         console.log('🔍 [AUTO-FILL] Updating subject to:', newSubject)
         ticket.doc.ticket_subject = newSubject
+        ticket.doc.subject = newSubject
       }
       
       console.log('✅ [AUTO-FILL] Form auto-filled successfully')
@@ -594,8 +597,8 @@ function openTaskModalForAssignment() {
   
   // Pre-fill task data - assigned_to will be set when ticket is created
   taskData.value = {
-    title: `Handle ticket: ${ticket.doc.ticket_subject || 'New Ticket'}`,
-    description: `Task created for ticket assignment to ${ticket.doc.assign_to_role} role - ${ticket.doc.ticket_subject || ''}`.trim(),
+    title: `Handle ticket: ${ticket.doc.subject || 'New Ticket'}`,
+    description: `Task created for ticket assignment to ${ticket.doc.assign_to_role} role - ${ticket.doc.subject || ''}`.trim(),
     assigned_to: '', // Will be set when ticket is created with role assignment
     role_for_assignment: ticket.doc.assign_to_role, // Store role for later assignment
     due_date: '',

@@ -73,7 +73,18 @@ class CRMTicket(Document):
 			)
 
 	def set_title(self):
-		self.title = self.ticket_subject or f"Ticket from {self.customer_name or 'Customer'}"
+		# Get the actual subject name from the linked document
+		subject_name = self.ticket_subject
+		if self.ticket_subject:
+			try:
+				subject_doc = frappe.get_doc("CRM Ticket Subject", self.ticket_subject)
+				subject_name = subject_doc.subject_name
+				# Store the actual subject name for easier querying
+				self.subject = subject_name
+			except frappe.DoesNotExistError:
+				pass
+		
+		self.title = subject_name or f"Ticket from {self.customer_name or 'Customer'}"
 
 	def validate_email(self):
 		if self.email:

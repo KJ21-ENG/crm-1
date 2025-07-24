@@ -160,7 +160,7 @@
               </component>
             </div>
             <div class="flex flex-col gap-2.5 truncate">
-              <Tooltip :text="ticket.data.ticket_subject || __('Set ticket subject')">
+              <Tooltip :text="ticket.data.subject || __('Set ticket subject')">
                 <div class="truncate text-2xl font-medium text-ink-gray-9">
                   {{ title }}
                 </div>
@@ -305,7 +305,7 @@
           >
             <div class="flex-1">
               <div class="text-sm font-medium text-ink-gray-9">
-                {{ relatedTicket.ticket_subject }}
+                {{ relatedTicket.subject }}
             </div>
               <div class="text-xs text-ink-gray-6">
                 {{ relatedTicket.status }} • {{ formatDate(relatedTicket.creation) }}
@@ -702,7 +702,7 @@ const relatedTickets = createResource({
       mobile_no: ticket.data?.mobile_no,
       name: ['!=', props.ticketId]
     },
-    fields: ['name', 'ticket_subject', 'status', 'creation'],
+    fields: ['name', 'subject', 'status', 'creation'],
     limit: 5,
     order_by: 'creation desc'
   },
@@ -781,7 +781,7 @@ const breadcrumbs = computed(() => {
 })
 
 const title = computed(() => {
-  return ticket.data?.ticket_subject || ticket.data?.name || props.ticketId
+  return ticket.data?.subject || ticket.data?.name || props.ticketId
 })
 
 const customerName = computed(() => {

@@ -12,6 +12,7 @@
  "field_order": [
   "details",
   "ticket_subject",
+  "subject",
   "description",
   "priority",
   "issue_type",
@@ -67,9 +68,15 @@
   },
   {
    "fieldname": "ticket_subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "CRM Ticket Subject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "subject",
    "fieldtype": "Data",
    "label": "Subject",
-   "reqd": 1,
    "in_list_view": 1
   },
   {

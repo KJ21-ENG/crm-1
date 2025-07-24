@@ -159,7 +159,7 @@
                             :to="{ name: 'Ticket', params: { ticketId: ticket.name } }"
                             class="text-ink-blue-600 hover:underline font-medium"
                           >
-                            {{ ticket.ticket_subject }}
+                            {{ ticket.subject }}
                           </router-link>
                           <p class="text-sm text-ink-gray-7">
                             Created: {{ formatDate(ticket.creation) }}
