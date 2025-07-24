@@ -206,7 +206,7 @@ class CRMTicket(Document):
 			{
 				"label": "Subject",
 				"type": "Data",
-				"key": "ticket_subject",
+				"key": "subject",
 				"width": "16rem",
 			},
 			{
@@ -256,7 +256,7 @@ class CRMTicket(Document):
 		]
 		rows = [
 			"name",
-			"ticket_subject",
+			"subject",
 			"customer_name",
 			"status",
 			"priority",
@@ -280,6 +280,6 @@ class CRMTicket(Document):
 	def default_kanban_settings():
 		return {
 			"column_field": "status",
-			"title_field": "ticket_subject",
+			"title_field": "subject",
 			"kanban_fields": '["customer_name", "priority", "issue_type", "ticket_owner", "modified"]',
 		} 

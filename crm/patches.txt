@@ -27,3 +27,4 @@ crm.patches.v1_0.add_custom_lead_statuses # 19-07-2025
 crm.patches.v1_0.add_ticket_statuses # 19-07-2025
 crm.patches.v1_0.remove_issue_type_add_subject_dropdown
 crm.patches.v1_0.update_existing_tickets_subject_names
+crm.patches.v1_0.update_ticket_list_view_to_use_subject
