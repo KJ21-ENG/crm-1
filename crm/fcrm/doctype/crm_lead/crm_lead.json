@@ -23,6 +23,8 @@
   "source",
   "lead_owner",
   "assigned_role",
+  "lead_source",
+  "referral_code",
   "person_tab",
   "salutation",
   "first_name",
@@ -169,6 +171,12 @@
    "options": "On Call\nOffice Visit",
    "default": "On Call",
    "reqd": 1
+  },
+  {
+   "fieldname": "referral_code",
+   "fieldtype": "Data",
+   "label": "Referral Code",
+   "description": "Enter referral code if applicable"
   },
   {
    "fieldname": "section_break_uixv",
