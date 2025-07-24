@@ -33,10 +33,6 @@ class CRMTaskNotification(Document):
 					self.notification_text = self.get_task_assignment_text(task_doc)
 				elif self.notification_type == "Task Completion":
 					self.notification_text = self.get_task_completion_text(task_doc)
-				elif self.notification_type == "Task Reassignment":
-					self.notification_text = self.get_task_reassignment_text(task_doc)
-				elif self.notification_type == "Task Reassigned From You":
-					self.notification_text = self.get_task_reassigned_from_you_text(task_doc)
 	
 	def get_due_date_reminder_text(self, task_doc):
 		"""Generate due date reminder notification text"""
@@ -87,32 +83,6 @@ class CRMTaskNotification(Document):
 					<span class="font-medium text-ink-gray-9">{task_doc.title}</span>
 					<span> has been marked as complete</span>
 				</div>
-			</div>
-		"""
-	
-	def get_task_reassignment_text(self, task_doc):
-		"""Generate task reassignment notification text"""
-		return f"""
-			<div class="mb-2 leading-5 text-ink-gray-5">
-				<span class="font-medium text-blue-600">Task Reassigned to You</span>
-				<div class="mt-1">
-					<span class="font-medium text-ink-gray-9">{task_doc.title}</span>
-					<span> has been reassigned to you due to overdue</span>
-				</div>
-				<div class="text-sm text-ink-gray-6">Please take action immediately</div>
-			</div>
-		"""
-	
-	def get_task_reassigned_from_you_text(self, task_doc):
-		"""Generate task reassigned from you notification text"""
-		return f"""
-			<div class="mb-2 leading-5 text-ink-gray-5">
-				<span class="font-medium text-orange-600">Task Reassigned From You</span>
-				<div class="mt-1">
-					<span class="font-medium text-ink-gray-9">{task_doc.title}</span>
-					<span> has been reassigned from you due to overdue</span>
-				</div>
-				<div class="text-sm text-ink-gray-6">Task was overdue by more than 1 hour and 30 minutes</div>
 			</div>
 		"""
 	
