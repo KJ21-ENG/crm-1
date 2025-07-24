@@ -115,6 +115,11 @@ const { getPinnedViews, getPublicViews } = viewsStore()
 
 const links = [
   {
+    label: 'Dashboard',
+    icon: 'bar-chart-2',
+    to: 'Dashboard',
+  },
+  {
     label: 'Leads',
     icon: LeadsIcon,
     to: 'Leads',

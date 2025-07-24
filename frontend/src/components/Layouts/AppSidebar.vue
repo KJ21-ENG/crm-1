@@ -228,6 +228,11 @@ const isDemoSite = ref(window.is_demo_site)
 
 const links = [
   {
+    label: 'Dashboard',
+    icon: 'bar-chart-2',
+    to: 'Dashboard',
+  },
+  {
     label: 'Tickets',
     icon: SquareAsterisk,
     to: 'Tickets',
