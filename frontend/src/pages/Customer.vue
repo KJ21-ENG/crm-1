@@ -253,12 +253,6 @@
           label="Mobile Number"
           placeholder="Enter mobile number"
         />
-        
-        <FormControl
-          v-model="editCustomer.organization"
-          label="Organization"
-          placeholder="Enter organization name"
-        />
 
         <div class="grid grid-cols-2 gap-4">
           <FormControl

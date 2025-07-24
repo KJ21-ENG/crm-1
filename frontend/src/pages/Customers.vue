@@ -116,12 +116,6 @@
             label="Mobile Number"
             placeholder="Enter mobile number"
           />
-          
-          <FormControl
-            v-model="newCustomer.organization"
-            label="Organization"
-            placeholder="Enter organization name"
-          />
 
           <div class="grid grid-cols-2 gap-4">
             <FormControl
@@ -176,7 +170,6 @@ const newCustomer = ref({
   last_name: '',
   email: '',
   mobile_no: '',
-  organization: '',
   pan_card_number: '',
   aadhaar_card_number: ''
 })
@@ -233,7 +226,6 @@ const createCustomer = async () => {
       first_name: newCustomer.value.first_name,
       last_name: newCustomer.value.last_name,
       email: newCustomer.value.email,
-      organization: newCustomer.value.organization,
       pan_card_number: newCustomer.value.pan_card_number,
       aadhaar_card_number: newCustomer.value.aadhaar_card_number,
       customer_source: 'Direct'
@@ -245,7 +237,6 @@ const createCustomer = async () => {
       last_name: '',
       email: '',
       mobile_no: '',
-      organization: '',
       pan_card_number: '',
       aadhaar_card_number: ''
     }
