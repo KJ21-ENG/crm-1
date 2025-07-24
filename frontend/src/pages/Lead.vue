@@ -394,6 +394,7 @@ import { getMeta } from '@/stores/meta'
 import { useDocument } from '@/data/document'
 import {
   whatsappEnabled,
+  whatsappSupportEnabled,
   callEnabled,
   isMobileView,
 } from '@/composables/settings'
@@ -596,6 +597,12 @@ const tabs = computed(() => {
       label: __('WhatsApp'),
       icon: WhatsAppIcon,
       condition: () => whatsappEnabled.value,
+    },
+    {
+      name: 'WhatsApp Support',
+      label: __('WhatsApp Support'),
+      icon: WhatsAppIcon,
+      condition: () => whatsappSupportEnabled.value,
     },
   ]
   return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))
