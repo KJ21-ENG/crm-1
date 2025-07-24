@@ -242,16 +242,11 @@
                           v-else-if="field.fieldtype === 'Datetime'"
                           class="form-control"
                         >
-                          <DateTimePicker
-                            icon-left=""
-                            :value="document.doc[field.fieldname]"
-                            :formatter="
-                              (date) => getFormat(date, '', true, true)
-                            "
+                          <SimpleDateTimePicker
+                            :modelValue="document.doc[field.fieldname]"
+                            @update:modelValue="(v) => fieldChange(v, field)"
+                            :formatter="(date) => getFormat(date, '', true, true)"
                             :placeholder="field.placeholder"
-                            placement="left-start"
-                            :hideIcon="true"
-                            @change="(v) => fieldChange(v, field)"
                           />
                         </div>
                         <div
@@ -398,7 +393,8 @@ import { usersStore } from '@/stores/users'
 import { isMobileView } from '@/composables/settings'
 import { getFormat, evaluateDependsOnValue } from '@/utils'
 import { flt } from '@/utils/numberFormat.js'
-import { Tooltip, DateTimePicker, DatePicker } from 'frappe-ui'
+import { Tooltip, DatePicker } from 'frappe-ui'
+import SimpleDateTimePicker from '@/components/SimpleDateTimePicker.vue'
 import { useDocument } from '@/data/document'
 import { ref, computed } from 'vue'
 

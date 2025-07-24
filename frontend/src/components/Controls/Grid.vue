@@ -188,14 +188,12 @@
                     input-class="border-none text-sm text-ink-gray-8"
                     @change="(v) => fieldChange(v, field, row)"
                   />
-                  <DateTimePicker
+                  <SimpleDateTimePicker
                     v-else-if="field.fieldtype === 'Datetime'"
-                    :value="row[field.fieldname]"
-                    icon-left=""
-                    variant="outline"
+                    :modelValue="row[field.fieldname]"
+                    @update:modelValue="(v) => fieldChange(v, field, row)"
                     :formatter="(date) => getFormat(date, '', true, true)"
                     input-class="border-none text-sm text-ink-gray-8"
-                    @change="(v) => fieldChange(v, field, row)"
                   />
                   <FormControl
                     v-else-if="
@@ -353,11 +351,11 @@ import {
   FeatherIcon,
   FormControl,
   Checkbox,
-  DateTimePicker,
   DatePicker,
   Tooltip,
   dayjs,
 } from 'frappe-ui'
+import SimpleDateTimePicker from '@/components/SimpleDateTimePicker.vue'
 import Draggable from 'vuedraggable'
 import { ref, reactive, computed, inject, provide } from 'vue'
 

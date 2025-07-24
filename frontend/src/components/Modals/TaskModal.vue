@@ -94,7 +94,7 @@
               </Tooltip>
             </template>
           </Link>
-          <DateTimePicker
+          <SimpleDateTimePicker
             class="datepicker w-36"
             v-model="_task.due_date"
             :placeholder="__('01/04/2024 11:30 PM')"
@@ -135,7 +135,8 @@ import Link from '@/components/Controls/Link.vue'
 import { taskStatusOptions, taskPriorityOptions, getFormat } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { capture } from '@/telemetry'
-import { TextEditor, Dropdown, Tooltip, call, DateTimePicker } from 'frappe-ui'
+import { TextEditor, Dropdown, Tooltip, call } from 'frappe-ui'
+import SimpleDateTimePicker from '@/components/SimpleDateTimePicker.vue'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

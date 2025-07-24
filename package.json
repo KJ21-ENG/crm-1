@@ -20,6 +20,8 @@
 	"author": "Your Company Name",
 	"license": "Proprietary",
 	"dependencies": {
-		"react-native-simcard-info": "^1.1.2"
+		"flatpickr": "^4.6.13",
+		"react-native-simcard-info": "^1.1.2",
+		"vue-flatpickr-component": "^12.0.0"
 	}
 }
