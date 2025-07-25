@@ -215,7 +215,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
 import StatsCard from '@/components/Dashboard/StatsCard.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
@@ -240,7 +240,9 @@ const {
   topPerformers,
   fetchDashboardData,
   refreshDashboard,
-  changeView
+  changeView,
+  startAutoRefresh,
+  stopAutoRefresh
 } = useDashboard()
 
 // View options
@@ -295,5 +297,10 @@ const getViewContext = () => {
 
 onMounted(() => {
   fetchDashboardData()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>

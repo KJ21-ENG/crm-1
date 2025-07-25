@@ -6,20 +6,63 @@ import json
 
 
 @frappe.whitelist()
-def get_dashboard_data(view='daily'):
+def get_dashboard_data(view='daily', _refresh=None):
     """Get comprehensive dashboard data for CRM"""
     try:
-        return {
-            "overview": get_overview_stats(view),
-            "lead_analytics": get_lead_analytics(view),
-            "ticket_analytics": get_ticket_analytics(view),
-            "task_analytics": get_task_analytics(view),
-            "call_log_analytics": get_call_log_analytics(view),
-            "user_performance": get_user_performance(view),
-            "recent_activities": get_recent_activities(view),
-            "trends": get_trends_data(view),
-            "quick_actions": get_quick_actions()
-        }
+        # Force fresh data by clearing any potential cache
+        frappe.cache.delete_keys("dashboard_data*")
+        
+        # If refresh flag is set, also clear any other potential caches
+        if _refresh:
+            frappe.cache.delete_keys("crm_dashboard*")
+            frappe.cache.delete_keys("dashboard*")
+            # Clear all cache for this user
+            frappe.clear_cache()
+        
+        # Get date range for debugging
+        start_date, end_date = get_date_range(view)
+        
+        # Debug: Get recent leads to verify data
+        recent_leads = frappe.db.get_list("CRM Lead",
+            fields=["name", "lead_name", "creation"],
+            filters={"creation": ["between", [start_date, end_date]]},
+            order_by="creation desc",
+            limit=5
+        )
+        
+        # Get total count for debugging
+        total_leads_in_range = frappe.db.count("CRM Lead", filters={
+            "creation": ["between", [start_date, end_date]]
+        })
+        
+        try:
+            result = {
+                "overview": get_overview_stats(view),
+                "lead_analytics": get_lead_analytics(view),
+                "ticket_analytics": get_ticket_analytics(view),
+                "task_analytics": get_task_analytics(view),
+                "call_log_analytics": get_call_log_analytics(view),
+                "user_performance": get_user_performance(view),
+                "recent_activities": get_recent_activities(view),
+                "trends": get_trends_data(view),
+                "quick_actions": get_quick_actions(),
+                "_debug": {
+                    "view": view,
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                    "total_leads_in_range": total_leads_in_range,
+                    "recent_leads_count": len(recent_leads),
+                    "recent_leads": recent_leads
+                }
+            }
+            
+            print(f"Dashboard API Success - Overview: {result['overview']}")
+            return result
+            
+        except Exception as e:
+            print(f"Dashboard API Error in result creation: {str(e)}")
+            frappe.log_error(f"Dashboard API Error in result creation: {str(e)}")
+            return {"error": str(e)}
     except Exception as e:
         frappe.log_error(f"Dashboard API Error: {str(e)}")
         return {"error": str(e)}
@@ -27,20 +70,25 @@ def get_dashboard_data(view='daily'):
 
 def get_date_range(view):
     """Get date range based on view type"""
+    from frappe.utils import getdate, now_datetime, add_days, add_to_date
+    from datetime import datetime, timedelta
+    
     today = getdate()
+    now = now_datetime()
     
     if view == 'daily':
-        start_date = today
-        end_date = today
+        # For daily view, use the entire day from 00:00:00 to 23:59:59
+        start_date = get_datetime(today)  # Start of day
+        end_date = get_datetime(add_to_date(today, days=1))  # Start of next day as datetime
     elif view == 'weekly':
-        start_date = add_days(today, -7)
-        end_date = today
+        start_date = get_datetime(add_days(today, -7))
+        end_date = now
     elif view == 'monthly':
-        start_date = add_days(today, -30)
-        end_date = today
+        start_date = get_datetime(add_days(today, -30))
+        end_date = now
     else:
-        start_date = today
-        end_date = today
+        start_date = get_datetime(today)
+        end_date = now
     
     return start_date, end_date
 
