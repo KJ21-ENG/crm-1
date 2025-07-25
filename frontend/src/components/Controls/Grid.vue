@@ -188,14 +188,14 @@
                     input-class="border-none text-sm text-ink-gray-8"
                     @change="(v) => fieldChange(v, field, row)"
                   />
-                  <DateTimePicker
+                  <CustomDateTimePicker
                     v-else-if="field.fieldtype === 'Datetime'"
-                    :value="row[field.fieldname]"
+                    :model-value="row[field.fieldname]"
                     icon-left=""
                     variant="outline"
                     :formatter="(date) => getFormat(date, '', true, true)"
                     input-class="border-none text-sm text-ink-gray-8"
-                    @change="(v) => fieldChange(v, field, row)"
+                    @update:modelValue="(v) => fieldChange(v, field, row)"
                   />
                   <FormControl
                     v-else-if="
@@ -353,13 +353,13 @@ import {
   FeatherIcon,
   FormControl,
   Checkbox,
-  DateTimePicker,
   DatePicker,
   Tooltip,
   dayjs,
 } from 'frappe-ui'
 import Draggable from 'vuedraggable'
 import { ref, reactive, computed, inject, provide } from 'vue'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
   label: {

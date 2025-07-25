@@ -166,11 +166,11 @@ import {
   createResource,
   Tooltip,
   DatePicker,
-  DateTimePicker,
   DateRangePicker,
 } from 'frappe-ui'
 import { h, computed, onMounted } from 'vue'
 import { isMobileView } from '@/composables/settings'
+import CustomDateTimePicker from './CustomDateTimePicker.vue'
 
 const typeCheck = ['Check']
 const typeLink = ['Link', 'Dynamic Link']
@@ -404,7 +404,7 @@ function getValueControl(f) {
   } else if (typeDate.includes(fieldtype) && operator == 'between') {
     return h(DateRangePicker, { value: f.value, iconLeft: '' })
   } else if (typeDate.includes(fieldtype)) {
-    return h(fieldtype == 'Date' ? DatePicker : DateTimePicker, {
+    return h(fieldtype == 'Date' ? DatePicker : CustomDateTimePicker, {
       value: f.value,
       iconLeft: '',
     })

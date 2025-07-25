@@ -144,13 +144,12 @@
         </Tooltip>
       </template>
     </Link>
-    <DateTimePicker
+    <CustomDateTimePicker
       v-else-if="field.fieldtype === 'Datetime'"
-      :value="data[field.fieldname]"
-      :formatter="(date) => getFormat(date, '', true, true)"
+      :model-value="data[field.fieldname]"
       :placeholder="getPlaceholder(field)"
-      input-class="border-none"
-      @change="(v) => fieldChange(v, field)"
+      :input-class="'border-none'"
+      @update:modelValue="(v) => fieldChange(v, field)"
     />
     <DatePicker
       v-else-if="field.fieldtype === 'Date'"
@@ -250,8 +249,9 @@ import { flt } from '@/utils/numberFormat.js'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { useDocument } from '@/data/document'
-import { Tooltip, DatePicker, DateTimePicker } from 'frappe-ui'
+import { Tooltip, DatePicker } from 'frappe-ui'
 import { computed, provide, inject } from 'vue'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
   field: Object,
