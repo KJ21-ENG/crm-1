@@ -178,6 +178,7 @@ onMounted(async () => {
     no_of_employees: '1-10',
     status: '',
     assign_to_role: '', // New field for role-based assignment
+    referral_code: 'AUOMC', // Set default value for Referral Code
     // ... other default values
   }
 
@@ -499,6 +500,10 @@ function createNewLead() {
       }
       if (!lead.doc.status) {
         error.value = __('Status is required')
+        return error.value
+      }
+      if (!lead.doc.referral_code) {
+        error.value = __('Referral Code is mandatory')
         return error.value
       }
       isLeadCreating.value = true
