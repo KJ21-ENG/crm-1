@@ -6,14 +6,16 @@ export function useDashboard() {
   const error = ref(null)
   const dashboardData = ref(null)
   const lastUpdated = ref(null)
+  const currentView = ref('daily') // 'daily', 'weekly', 'monthly'
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (view = 'daily') => {
     loading.value = true
     error.value = null
     
     try {
       const response = await frappeRequest({ 
-        url: '/api/method/crm.api.dashboard.get_dashboard_data' 
+        url: '/api/method/crm.api.dashboard.get_dashboard_data',
+        params: { view }
       })
       dashboardData.value = response
       lastUpdated.value = new Date()
@@ -26,7 +28,12 @@ export function useDashboard() {
   }
 
   const refreshData = () => {
-    return fetchDashboardData()
+    return fetchDashboardData(currentView.value)
+  }
+
+  const changeView = (view) => {
+    currentView.value = view
+    fetchDashboardData(view)
   }
 
   // Computed properties for different dashboard sections
@@ -40,64 +47,20 @@ export function useDashboard() {
   const trends = computed(() => dashboardData.value?.trends || {})
   const quickActions = computed(() => dashboardData.value?.quick_actions || [])
 
-  // Stats cards data
+  // Stats cards data - removed specified cards
   const statsCards = computed(() => [
-    {
-      title: 'Total Leads',
-      value: overview.value.total_leads || 0,
-      icon: 'user-plus',
-      color: 'blue',
-      change: null
+    { title: 'Total Leads', value: overview.value.total_leads || 0, icon: 'user-plus', color: 'blue', change: null },
+    { title: 'Total Tickets', value: overview.value.total_tickets || 0, icon: 'ticket', color: 'orange', change: null },
+    { title: 'Total Tasks', value: overview.value.total_tasks || 0, icon: 'check-square', color: 'green', change: null },
+    { 
+      title: 'Call Logs', 
+      value: overview.value.total_call_logs || 0, 
+      subtitle: overview.value.missed_calls > 0 ? `${overview.value.missed_calls} missed calls` : null,
+      icon: 'phone', 
+      color: 'purple', 
+      change: null 
     },
-    {
-      title: 'Total Tickets',
-      value: overview.value.total_tickets || 0,
-      icon: 'ticket',
-      color: 'orange',
-      change: null
-    },
-    {
-      title: 'Total Tasks',
-      value: overview.value.total_tasks || 0,
-      icon: 'check-square',
-      color: 'green',
-      change: null
-    },
-    {
-      title: 'Call Logs',
-      value: overview.value.total_call_logs || 0,
-      icon: 'phone',
-      color: 'purple',
-      change: null
-    },
-    {
-      title: 'New Leads (Week)',
-      value: overview.value.new_leads_this_week || 0,
-      icon: 'trending-up',
-      color: 'blue',
-      change: null
-    },
-    {
-      title: 'Resolved Tickets (Week)',
-      value: overview.value.resolved_tickets_this_week || 0,
-      icon: 'check-circle',
-      color: 'green',
-      change: null
-    },
-    {
-      title: 'Conversion Rate',
-      value: `${overview.value.conversion_rate || 0}%`,
-      icon: 'percent',
-      color: 'yellow',
-      change: null
-    },
-    {
-      title: 'Avg Response Time',
-      value: `${overview.value.avg_response_time || 0}h`,
-      icon: 'clock',
-      color: 'red',
-      change: null
-    }
+    { title: 'Avg Response Time', value: `${overview.value.avg_response_time || 0}h`, icon: 'clock', color: 'red', change: null }
   ])
 
   // Chart data
@@ -160,10 +123,12 @@ export function useDashboard() {
     error,
     dashboardData,
     lastUpdated,
+    currentView,
     
     // Actions
     fetchDashboardData,
     refreshData,
+    changeView,
     
     // Computed
     overview,

@@ -81,7 +81,20 @@ const getActionIconColor = (color) => {
 
 const handleAction = (action) => {
   if (action.route) {
-    router.push(action.route)
+    // Navigate to the respective page and trigger the modal
+    if (action.route === '/leads/new') {
+      router.push({ 
+        name: 'Leads',
+        query: { showLeadModal: 'true' }
+      })
+    } else if (action.route === '/tickets/new') {
+      router.push({ 
+        name: 'Tickets',
+        query: { showTicketModal: 'true' }
+      })
+    } else {
+      router.push(action.route)
+    }
   }
 }
 </script> 

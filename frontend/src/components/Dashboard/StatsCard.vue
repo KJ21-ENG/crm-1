@@ -1,9 +1,24 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-    <div class="flex items-center justify-between">
-      <div>
+    <div class="flex items-center space-x-4">
+      <div 
+        :class="[
+          'p-3 rounded-full flex-shrink-0',
+          iconBgColor
+        ]"
+      >
+        <FeatherIcon 
+          :name="icon" 
+          :class="[
+            'w-6 h-6',
+            iconColor
+          ]"
+        />
+      </div>
+      <div class="flex-1">
         <p class="text-sm font-medium text-gray-600">{{ title }}</p>
         <p class="text-3xl font-bold text-gray-900 mt-2">{{ value }}</p>
+        <p v-if="subtitle" class="text-sm text-gray-500 mt-1">{{ subtitle }}</p>
         <div v-if="change" class="flex items-center mt-2">
           <span 
             :class="[
@@ -15,20 +30,6 @@
           </span>
           <span class="text-sm text-gray-500 ml-1">vs last week</span>
         </div>
-      </div>
-      <div 
-        :class="[
-          'p-3 rounded-full',
-          iconBgColor
-        ]"
-      >
-        <FeatherIcon 
-          :name="icon" 
-          :class="[
-            'w-6 h-6',
-            iconColor
-          ]"
-        />
       </div>
     </div>
   </div>
@@ -46,6 +47,10 @@ const props = defineProps({
   value: {
     type: [String, Number],
     required: true
+  },
+  subtitle: {
+    type: String,
+    default: null
   },
   icon: {
     type: String,

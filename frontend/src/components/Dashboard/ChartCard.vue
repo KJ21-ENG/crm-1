@@ -35,11 +35,43 @@
     <div v-else class="h-64">
       <canvas ref="chartCanvas"></canvas>
     </div>
+    
+    <!-- Color Legend -->
+    <div v-if="data && data.length > 0 && showColorLegend" class="mt-4 pt-4 border-t border-gray-200">
+      <!-- Special handling for trends charts -->
+      <div v-if="isTrendsChart" class="flex flex-wrap gap-3">
+        <div class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded">
+          <div class="w-3 h-3 rounded-full" style="background-color: #3B82F6;"></div>
+          <span class="text-xs text-gray-700 font-medium">Leads</span>
+        </div>
+        <div class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded">
+          <div class="w-3 h-3 rounded-full" style="background-color: #10B981;"></div>
+          <span class="text-xs text-gray-700 font-medium">Tickets</span>
+        </div>
+      </div>
+      
+      <!-- Regular legend for other charts -->
+      <div v-else class="flex flex-wrap gap-3">
+        <div 
+          v-for="(item, index) in data" 
+          :key="index"
+          class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded"
+        >
+          <div 
+            class="w-3 h-3 rounded-full"
+            :style="{ backgroundColor: getColorForIndex(index) }"
+          ></div>
+          <span class="text-xs text-gray-700 font-medium">{{ item.label || item.name }}</span>
+          <span class="text-xs text-gray-500">({{ item.value || item.count }})</span>
+          <span v-if="getPercentage(item)" class="text-xs text-gray-400">({{ getPercentage(item) }}%)</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import Chart from 'chart.js/auto'
 
@@ -67,6 +99,10 @@ const props = defineProps({
   showRefresh: {
     type: Boolean,
     default: false
+  },
+  showColorLegend: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -74,6 +110,35 @@ const emit = defineEmits(['refresh'])
 
 const chartCanvas = ref(null)
 let chart = null
+
+// Color palette for charts
+const colors = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
+  '#8B5CF6', '#06B6D4', '#84CC16', '#F97316',
+  '#EC4899', '#8B5A2B', '#6366F1', '#14B8A6'
+]
+
+const getColorForIndex = (index) => {
+  return colors[index % colors.length]
+}
+
+const getPercentage = (item) => {
+  if (!props.data || props.data.length === 0) return null
+  
+  const total = props.data.reduce((sum, dataItem) => sum + (dataItem.value || dataItem.count || 0), 0)
+  if (total === 0) return null
+  
+  const value = item.value || item.count || 0
+  return ((value / total) * 100).toFixed(1)
+}
+
+const isDistributionChart = computed(() => {
+  return props.type === 'bar' || props.type === 'doughnut' || props.type === 'pie'
+})
+
+const isTrendsChart = computed(() => {
+  return props.type === 'line' && props.data.length > 0 && props.data[0].hasOwnProperty('leads') && props.data[0].hasOwnProperty('tickets')
+})
 
 const createChart = () => {
   if (!chartCanvas.value) return
@@ -95,15 +160,15 @@ const createChart = () => {
       datasets.push({
         label: 'Leads',
         data: props.data.map(item => item.leads),
-        borderColor: '#3B82F6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: getColorForIndex(0),
+        backgroundColor: getColorForIndex(0) + '20',
         tension: 0.4
       })
       datasets.push({
         label: 'Tickets',
         data: props.data.map(item => item.tickets),
-        borderColor: '#F59E0B',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderColor: getColorForIndex(1),
+        backgroundColor: getColorForIndex(1) + '20',
         tension: 0.4
       })
       
@@ -118,27 +183,24 @@ const createChart = () => {
         datasets: [{
           label: props.title,
           data: props.data.map(item => item.value || item.count),
-          borderColor: '#3B82F6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: getColorForIndex(0),
+          backgroundColor: getColorForIndex(0) + '20',
           tension: 0.4
         }]
       }
     }
   } else {
     // Bar, doughnut, pie charts
+    const backgroundColor = props.data.map((_, index) => getColorForIndex(index))
+    const borderColor = props.data.map((_, index) => getColorForIndex(index))
+    
     chartData = {
       labels: props.data.map(item => item.label || item.name),
       datasets: [{
         label: props.title,
         data: props.data.map(item => item.value || item.count),
-        backgroundColor: [
-          '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
-          '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'
-        ],
-        borderColor: [
-          '#2563EB', '#059669', '#D97706', '#DC2626',
-          '#7C3AED', '#0891B2', '#65A30D', '#EA580C'
-        ],
+        backgroundColor: backgroundColor,
+        borderColor: borderColor,
         borderWidth: 1
       }]
     }
@@ -149,7 +211,31 @@ const createChart = () => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: props.type !== 'doughnut' && props.type !== 'pie'
+        display: !isTrendsChart.value,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed.y !== undefined) {
+              label += context.parsed.y;
+            } else if (context.parsed !== undefined) {
+              label += context.parsed;
+            }
+            return label;
+          }
+        }
       }
     }
   }
