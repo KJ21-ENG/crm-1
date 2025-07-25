@@ -1,17 +1,11 @@
 <template>
   <div class="custom-datetime-picker">
     <input
-      type="date"
-      v-model="date"
+      type="datetime-local"
+      v-model="datetimeValue"
       :class="inputClass"
       @change="emitChange"
-    />
-    <input
-      type="time"
-      v-model="time"
-      :class="inputClass"
-      step="60"
-      @change="emitChange"
+      :placeholder="placeholder"
     />
   </div>
 </template>
@@ -29,22 +23,16 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'change']);
 
-const date = ref('');
-const time = ref('');
+const datetimeValue = ref('');
 
-// Helper function to format date as YYYY-MM-DD
-function formatDate(date) {
+// Helper function to format date as YYYY-MM-DDTHH:MM
+function formatDateTimeLocal(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-// Helper function to format time as HH:MM
-function formatTime(date) {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 watch(
@@ -52,19 +40,17 @@ watch(
   (val) => {
     if (val) {
       const d = new Date(val);
-      date.value = formatDate(d);
-      time.value = formatTime(d);
+      datetimeValue.value = formatDateTimeLocal(d);
     } else {
-      date.value = '';
-      time.value = '';
+      datetimeValue.value = '';
     }
   },
   { immediate: true }
 );
 
 function emitChange() {
-  if (date.value && time.value) {
-    const dt = new Date(`${date.value}T${time.value}`);
+  if (datetimeValue.value) {
+    const dt = new Date(datetimeValue.value);
     emit('update:modelValue', dt.toISOString());
     emit('change', dt.toISOString());
   } else {
@@ -77,12 +63,10 @@ function emitChange() {
 <style scoped>
 .custom-datetime-picker {
   display: flex;
-  gap: 0.5rem;
   align-items: center;
 }
 
-input[type='date'],
-input[type='time'] {
+input[type='datetime-local'] {
   font-size: 0.875rem;
   border-radius: 0.375rem;
   border: 1px solid #d1d5db;
@@ -90,35 +74,40 @@ input[type='time'] {
   background: #ffffff;
   color: #374151;
   transition: all 0.15s ease-in-out;
-  min-width: 120px;
+  min-width: 200px;
 }
 
-input[type='date']:hover,
-input[type='time']:hover {
+input[type='datetime-local']:hover {
   border-color: #9ca3af;
 }
 
-input[type='date']:focus,
-input[type='time']:focus {
+input[type='datetime-local']:focus {
   outline: none;
   border-color: #6b7280;
   box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
 }
 
-input[type='date']::placeholder,
-input[type='time']::placeholder {
+input[type='datetime-local']::placeholder {
   color: #9ca3af;
 }
 
-/* Custom styling for date/time inputs to match frappe theme */
-input[type='date']::-webkit-calendar-picker-indicator,
-input[type='time']::-webkit-calendar-picker-indicator {
+/* Custom styling for datetime-local input to match frappe theme */
+input[type='datetime-local']::-webkit-calendar-picker-indicator {
   filter: invert(0.5);
   cursor: pointer;
 }
 
-input[type='date']::-webkit-calendar-picker-indicator:hover,
-input[type='time']::-webkit-calendar-picker-indicator:hover {
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.3);
+}
+
+/* Firefox specific styling */
+input[type='datetime-local']::-moz-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+
+input[type='datetime-local']::-moz-calendar-picker-indicator:hover {
   filter: invert(0.3);
 }
 </style> 
