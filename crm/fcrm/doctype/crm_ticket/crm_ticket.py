@@ -228,12 +228,6 @@ class CRMTicket(Document):
 				"width": "8rem",
 			},
 			{
-				"label": "Issue Type",
-				"type": "Select",
-				"key": "issue_type",
-				"width": "10rem",
-			},
-			{
 				"label": "Ticket Owner",
 				"type": "Link",
 				"key": "ticket_owner",
@@ -260,7 +254,6 @@ class CRMTicket(Document):
 			"customer_name",
 			"status",
 			"priority",
-			"issue_type",
 			"ticket_owner",
 			"assigned_to",
 			"first_name",
@@ -281,5 +274,5 @@ class CRMTicket(Document):
 		return {
 			"column_field": "status",
 			"title_field": "subject",
-			"kanban_fields": '["customer_name", "priority", "issue_type", "ticket_owner", "modified"]',
+			"kanban_fields": '["customer_name", "priority", "ticket_owner", "modified"]',
 		} 
