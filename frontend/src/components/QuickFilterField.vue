@@ -25,7 +25,7 @@
   <component
     v-else-if="['Date', 'Datetime'].includes(filter.fieldtype)"
     class="border-none"
-    :is="filter.fieldtype === 'Date' ? DatePicker : DateTimePicker"
+    :is="filter.fieldtype === 'Date' ? DatePicker : CustomDateTimePicker"
     :value="filter.value"
     @change="(v) => updateFilter(filter, v)"
     :placeholder="filter.label"
@@ -40,7 +40,8 @@
 </template>
 <script setup>
 import Link from '@/components/Controls/Link.vue'
-import { FormControl, DatePicker, DateTimePicker } from 'frappe-ui'
+import { FormControl, DatePicker } from 'frappe-ui'
+import CustomDateTimePicker from './CustomDateTimePicker.vue'
 import { useDebounceFn } from '@vueuse/core'
 
 const props = defineProps({

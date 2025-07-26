@@ -71,6 +71,10 @@
                   <label class="text-sm text-ink-gray-7">Aadhaar Card Number</label>
                   <p class="text-ink-gray-12">{{ customer.data.aadhaar_card_number }}</p>
                 </div>
+                <div v-if="customer.data.referral_code">
+                  <label class="text-sm text-ink-gray-7">Referral Code</label>
+                  <p class="text-ink-gray-12">{{ customer.data.referral_code }}</p>
+                </div>
               </div>
             </div>
 

@@ -311,7 +311,7 @@ def get_customer_by_mobile(mobile_no):
         {"mobile_no": mobile_no},
         ["name", "customer_name", "first_name", "last_name", "email", 
          "mobile_no", "organization", "status", "customer_source",
-         "pan_card_number", "aadhaar_card_number"],
+         "pan_card_number", "aadhaar_card_number", "referral_code"],
         as_dict=True
     )
     

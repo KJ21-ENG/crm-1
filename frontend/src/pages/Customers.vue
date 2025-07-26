@@ -171,7 +171,8 @@ const newCustomer = ref({
   email: '',
   mobile_no: '',
   pan_card_number: '',
-  aadhaar_card_number: ''
+  aadhaar_card_number: '',
+  referral_code: ''
 })
 
 // Load customers
@@ -228,6 +229,7 @@ const createCustomer = async () => {
       email: newCustomer.value.email,
       pan_card_number: newCustomer.value.pan_card_number,
       aadhaar_card_number: newCustomer.value.aadhaar_card_number,
+      referral_code: newCustomer.value.referral_code,
       customer_source: 'Direct'
     })
     
@@ -238,7 +240,8 @@ const createCustomer = async () => {
       email: '',
       mobile_no: '',
       pan_card_number: '',
-      aadhaar_card_number: ''
+      aadhaar_card_number: '',
+      referral_code: ''
     }
     
     showCreateDialog.value = false

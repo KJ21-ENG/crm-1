@@ -31,11 +31,10 @@
           <!-- Add datetime picker before the FieldLayout -->
           <div class="mb-4">
             <div class="mb-1.5 text-xs text-ink-gray-5">{{ __('Call Time') }}</div>
-            <DateTimePicker
+            <CustomDateTimePicker
               v-model="callTime"
               :placeholder="__('Select date and time')"
-              :formatter="formatDateTime"
-              input-class="w-full"
+              :input-class="'w-full'"
             />
           </div>
           <FieldLayout
@@ -71,10 +70,11 @@ import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { getRandom } from '@/utils'
 import { capture } from '@/telemetry'
 import { useDocument } from '@/data/document'
-import { FeatherIcon, createResource, ErrorMessage, Badge, DateTimePicker, call } from 'frappe-ui'
+import { FeatherIcon, createResource, ErrorMessage, Badge, call } from 'frappe-ui'
 import { ref, nextTick, computed, onMounted, watch } from 'vue'
 import { sessionStore } from '@/stores/session'
 import { getFormat } from '@/utils'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
   data: {

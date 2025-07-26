@@ -94,12 +94,11 @@
               </Tooltip>
             </template>
           </Link>
-          <DateTimePicker
+          <CustomDateTimePicker
             class="datepicker w-36"
             v-model="_task.due_date"
             :placeholder="__('01/04/2024 11:30 PM')"
-            :formatter="(date) => getFormat(date, '', true, true)"
-            input-class="border-none"
+            :input-class="'border-none'"
           />
           <Dropdown :options="taskPriorityOptions(updateTaskPriority)">
             <Button :label="_task.priority" class="justify-between w-full">
@@ -135,10 +134,11 @@ import Link from '@/components/Controls/Link.vue'
 import { taskStatusOptions, taskPriorityOptions, getFormat } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { capture } from '@/telemetry'
-import { TextEditor, Dropdown, Tooltip, call, DateTimePicker } from 'frappe-ui'
+import { TextEditor, Dropdown, Tooltip, call } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
   task: {

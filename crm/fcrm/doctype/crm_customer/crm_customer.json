@@ -27,6 +27,7 @@
   "naming_series",
   "status",
   "customer_source",
+  "referral_code",
   "column_break_2",
   "created_from_lead",
   "created_from_ticket",
@@ -136,6 +137,12 @@
    "fieldtype": "Select",
    "label": "Customer Source",
    "options": "Lead\nTicket\nDirect\nOther"
+  },
+  {
+   "fieldname": "referral_code",
+   "fieldtype": "Data",
+   "label": "Referral Code",
+   "description": "Enter referral code if applicable"
   },
   {
    "fieldname": "column_break_2",
