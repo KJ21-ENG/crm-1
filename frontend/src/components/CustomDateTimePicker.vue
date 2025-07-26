@@ -50,9 +50,33 @@ watch(
 
 function emitChange() {
   if (datetimeValue.value) {
-    const dt = new Date(datetimeValue.value);
-    emit('update:modelValue', dt.toISOString());
-    emit('change', dt.toISOString());
+    try {
+      // Create date from the datetime-local input value
+      const dt = new Date(datetimeValue.value);
+
+      // Validate the date
+      if (isNaN(dt.getTime())) {
+        console.warn('Invalid date from input:', datetimeValue.value);
+        emit('update:modelValue', '');
+        emit('change', '');
+        return;
+      }
+
+      // Format as MySQL datetime string
+      const mysqlString = dt.getFullYear() + '-' +
+        String(dt.getMonth() + 1).padStart(2, '0') + '-' +
+        String(dt.getDate()).padStart(2, '0') + ' ' +
+        String(dt.getHours()).padStart(2, '0') + ':' +
+        String(dt.getMinutes()).padStart(2, '0') + ':' +
+        String(dt.getSeconds()).padStart(2, '0');
+
+      emit('update:modelValue', mysqlString);
+      emit('change', mysqlString);
+    } catch (error) {
+      console.error('Error processing date value:', error);
+      emit('update:modelValue', '');
+      emit('change', '');
+    }
   } else {
     emit('update:modelValue', '');
     emit('change', '');
