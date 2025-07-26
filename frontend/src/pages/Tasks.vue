@@ -211,8 +211,9 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTodayTaskFilter } from '@/utils/taskFilter'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
@@ -403,4 +404,16 @@ const openTaskFromURL = () => {
     window.history.replaceState(null, '', window.location.pathname)
   }
 }
+
+// Auto-apply today's filter when page loads
+const { applyFilterWithRetry } = useTodayTaskFilter(viewControls, tasks)
+
+onMounted(() => {
+  // Apply today's filter after component is mounted with retry mechanism
+  applyFilterWithRetry()
+})
+
+
+
+
 </script>
