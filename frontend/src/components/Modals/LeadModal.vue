@@ -178,7 +178,7 @@ onMounted(async () => {
     no_of_employees: '1-10',
     status: '',
     assign_to_role: '', // New field for role-based assignment
-    referral_code: 'AUOMC', // Set default value for Referral Code
+    referral_code: '', // Will be set from API
     // ... other default values
   }
 
@@ -197,6 +197,9 @@ onMounted(async () => {
   if (mobileNumber) {
     await autoFillCustomerData(mobileNumber)
   }
+  
+  // Set default referral code from settings
+  await setDefaultReferralCode()
 })
 
 // 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
@@ -207,6 +210,32 @@ watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
     await autoFillCustomerData(newMobile)
   }
 }, { immediate: false })
+
+// Set default referral code from settings
+async function setDefaultReferralCode() {
+  try {
+    console.log('🔍 [LEAD MODAL] Fetching default referral code from settings...')
+    
+    const response = await createResource({
+      url: 'crm.api.settings.get_default_referral_code',
+      params: {}
+    }).fetch()
+    
+    console.log('🔍 [LEAD MODAL] Default referral code response:', response)
+    
+    if (response && response.success && response.default_referral_code) {
+      lead.doc.referral_code = response.default_referral_code
+      console.log('✅ [LEAD MODAL] Default referral code set:', response.default_referral_code)
+    } else {
+      console.log('ℹ️ [LEAD MODAL] No default referral code configured, using empty value')
+      lead.doc.referral_code = ''
+    }
+  } catch (error) {
+    console.error('❌ [LEAD MODAL] Error fetching default referral code:', error)
+    // Don't throw error, just log it and continue with empty value
+    lead.doc.referral_code = ''
+  }
+}
 
 // Auto-fill customer data from customer database
 async function autoFillCustomerData(mobileNumber) {

@@ -177,8 +177,7 @@
    "fieldtype": "Data",
    "label": "Referral Code",
    "description": "Enter referral code if applicable",
-   "reqd": 1,
-   "default": "AUOMC"
+   "reqd": 1
   },
   {
    "fieldname": "section_break_uixv",

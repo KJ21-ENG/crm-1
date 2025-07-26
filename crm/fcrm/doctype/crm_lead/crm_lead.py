@@ -18,6 +18,7 @@ from crm.api.lead_notifications import handle_lead_assignment_change
 class CRMLead(Document):
 	def before_validate(self):
 		self.set_sla()
+		self.set_default_referral_code()
 
 	def validate(self):
 		self.set_full_name()
@@ -345,6 +346,21 @@ class CRMLead(Document):
 
 		new_deal.insert(ignore_permissions=True)
 		return new_deal.name
+
+	def set_default_referral_code(self):
+		"""
+		Set default referral code from FCRM Settings if not already set
+		"""
+		if not self.referral_code:
+			try:
+				# Get default referral code from FCRM Settings
+				fcrm_settings = frappe.get_single("FCRM Settings")
+				if fcrm_settings and fcrm_settings.default_referral_code:
+					self.referral_code = fcrm_settings.default_referral_code
+			except Exception as e:
+				# If settings not found or error, use fallback
+				frappe.log_error(f"Error getting default referral code: {str(e)}")
+				self.referral_code = "AUOMC"  # Fallback default
 
 	def set_sla(self):
 		"""

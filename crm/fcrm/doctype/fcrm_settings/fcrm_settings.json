@@ -8,6 +8,7 @@
   "defaults_tab",
   "restore_defaults",
   "enable_forecasting",
+  "default_referral_code",
   "branding_tab",
   "brand_name",
   "brand_logo",
@@ -64,6 +65,13 @@
    "fieldname": "enable_forecasting",
    "fieldtype": "Check",
    "label": "Enable Forecasting"
+  },
+  {
+   "default": "AUOMC",
+   "description": "Default referral code that will be automatically filled in new leads",
+   "fieldname": "default_referral_code",
+   "fieldtype": "Data",
+   "label": "Default Referral Code"
   }
  ],
  "index_web_pages_for_search": 1,

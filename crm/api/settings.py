@@ -97,3 +97,27 @@ email_service_config = {
 		"smtp_port": 587,
 	},
 }
+
+
+@frappe.whitelist()
+def get_default_referral_code():
+	"""Get default referral code from FCRM Settings"""
+	try:
+		fcrm_settings = frappe.get_single("FCRM Settings")
+		if fcrm_settings and fcrm_settings.default_referral_code:
+			return {
+				"success": True,
+				"default_referral_code": fcrm_settings.default_referral_code
+			}
+		else:
+			return {
+				"success": False,
+				"message": "Default referral code not configured"
+			}
+	except Exception as e:
+		frappe.log_error(f"Error getting default referral code: {str(e)}")
+		return {
+			"success": False,
+			"message": "Error retrieving default referral code",
+			"error": str(e)
+		}
