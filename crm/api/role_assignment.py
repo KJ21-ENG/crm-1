@@ -192,7 +192,7 @@ def assign_to_role(lead_name, role_name, assigned_by=None):
             "reference_docname": lead_name,
             "description": f"Task created for lead assignment to {role_name} role - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
             "priority": "Medium",
-            "status": "Open"
+            "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
         
@@ -306,7 +306,7 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
             "reference_docname": lead_name,
             "description": f"Task created for direct lead assignment to {user_name} - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
             "priority": "Medium",
-            "status": "Open"
+            "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
         

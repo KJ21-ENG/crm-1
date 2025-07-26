@@ -21,18 +21,20 @@ def emit_activity_update(doctype, docname):
 
 
 @frappe.whitelist()
-def get_activities(name):
+def get_activities(name, limit=20, offset=0):
+	limit = int(limit)
+	offset = int(offset)
 	if frappe.db.exists("CRM Deal", name):
-		return get_deal_activities(name)
+		return get_deal_activities(name, limit, offset)
 	elif frappe.db.exists("CRM Lead", name):
-		return get_lead_activities(name)
+		return get_lead_activities(name, limit, offset)
 	elif frappe.db.exists("CRM Ticket", name):
-		return get_ticket_activities(name)
+		return get_ticket_activities(name, limit, offset)
 	else:
 		frappe.throw(_("Document not found"), frappe.DoesNotExistError)
 
 
-def get_deal_activities(name):
+def get_deal_activities(name, limit=20, offset=0):
 	get_docinfo("", "CRM Deal", name)
 	docinfo = frappe.response["docinfo"]
 	deal_meta = frappe.get_meta("CRM Deal")
@@ -59,7 +61,7 @@ def get_deal_activities(name):
 	creation_text = "created this deal"
 
 	if lead:
-		activities, calls, notes, tasks, attachments = get_lead_activities(lead)
+		activities, calls, notes, tasks, attachments = get_lead_activities(lead, limit, offset)
 		creation_text = "converted the lead to this deal"
 
 	activities.append(
@@ -117,9 +119,12 @@ def get_deal_activities(name):
 			"owner": version.owner,
 			"data": data,
 			"is_lead": False,
-			"options": field_option,
 		}
 		activities.append(activity)
+
+	# Pagination
+	activities.sort(key=lambda x: x["creation"], reverse=True)
+	activities = activities[offset:offset+limit]
 
 	for comment in docinfo.comments:
 		activity = {
@@ -180,7 +185,7 @@ def get_deal_activities(name):
 	return activities, calls, notes, tasks, attachments
 
 
-def get_lead_activities(name):
+def get_lead_activities(name, limit=20, offset=0):
 	get_docinfo("", "CRM Lead", name)
 	docinfo = frappe.response["docinfo"]
 	lead_meta = frappe.get_meta("CRM Lead")
@@ -267,7 +272,6 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
-		emit_activity_update("CRM Lead", name)
 
 	for communication in docinfo.communications + docinfo.automated_messages:
 		activity = {
@@ -290,7 +294,6 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
-		emit_activity_update("CRM Lead", name)
 
 	for attachment_log in docinfo.attachment_logs:
 		activity = {
@@ -302,7 +305,6 @@ def get_lead_activities(name):
 			"is_lead": True,
 		}
 		activities.append(activity)
-		emit_activity_update("CRM Lead", name)
 
 	calls = get_linked_calls(name).get("calls", [])
 	notes = get_linked_notes(name) + get_linked_calls(name).get("notes", [])
@@ -310,12 +312,12 @@ def get_lead_activities(name):
 	attachments = get_attachments("CRM Lead", name)
 
 	activities.sort(key=lambda x: x["creation"], reverse=True)
-	activities = handle_multiple_versions(activities)
+	activities = activities[offset:offset+limit]
 
 	return activities, calls, notes, tasks, attachments
 
 
-def get_ticket_activities(name):
+def get_ticket_activities(name, limit=20, offset=0):
 	"""Get comprehensive ticket activities with call log lifecycle logic"""
 	get_docinfo("", "CRM Ticket", name)
 	docinfo = frappe.response["docinfo"]
@@ -413,6 +415,10 @@ def get_ticket_activities(name):
 				"options": field_option,
 			}
 			activities.append(activity)
+
+	# Pagination
+	activities.sort(key=lambda x: x["creation"], reverse=True)
+	activities = activities[offset:offset+limit]
 
 	# Add comments (filter out auto-generated and irrelevant comments)
 	if docinfo.comments:

@@ -1238,7 +1238,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
             "reference_docname": ticket_name,
             "description": f"Task created for direct ticket assignment to {user_name} - {ticket_doc.ticket_subject or ''}".strip(),
             "priority": ticket_doc.priority or "Medium",
-            "status": "Open"
+            "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
         
@@ -1349,7 +1349,7 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
             "reference_docname": ticket_name,
             "description": f"Task created for ticket assignment to {role_name} role - {ticket_doc.ticket_subject or ''}".strip(),
             "priority": ticket_doc.priority or "Medium",
-            "status": "Open"
+            "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
         
