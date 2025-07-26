@@ -552,6 +552,7 @@ async function autoFillCustomerData(mobileNumber) {
       const originalOrganization = ticket.doc.organization
       const originalPAN = ticket.doc.pan_card_number
       const originalAadhaar = ticket.doc.aadhaar_card_number
+      const originalReferralCode = ticket.doc.referral_code
       
       // Auto-fill form fields with customer data
       ticket.doc.first_name = customerData.first_name || ticket.doc.first_name
@@ -560,6 +561,7 @@ async function autoFillCustomerData(mobileNumber) {
       ticket.doc.organization = customerData.organization || ticket.doc.organization
       ticket.doc.pan_card_number = customerData.pan_card_number || ticket.doc.pan_card_number
       ticket.doc.aadhaar_card_number = customerData.aadhaar_card_number || ticket.doc.aadhaar_card_number
+      ticket.doc.referral_code = customerData.referral_code || ticket.doc.referral_code
       
       console.log('🔍 [AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', ticket.doc.first_name)
@@ -568,6 +570,7 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('  organization:', originalOrganization, '->', ticket.doc.organization)
       console.log('  pan_card_number:', originalPAN, '->', ticket.doc.pan_card_number)
       console.log('  aadhaar_card_number:', originalAadhaar, '->', ticket.doc.aadhaar_card_number)
+      console.log('  referral_code:', originalReferralCode, '->', ticket.doc.referral_code)
       
       // Update ticket subject if it was generic
       if (!ticket.doc.ticket_subject || ticket.doc.ticket_subject.includes('call')) {

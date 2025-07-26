@@ -78,7 +78,8 @@ def auto_fill_customer_data(mobile_no):
             "middle_name": customer.get("middle_name", ""),
             "customer_name": customer.get("customer_name", ""),
             "pan_card_number": customer.get("pan_card_number", ""),
-            "aadhaar_card_number": customer.get("aadhaar_card_number", "")
+            "aadhaar_card_number": customer.get("aadhaar_card_number", ""),
+            "referral_code": customer.get("referral_code", "")
         }
     
     return {}
@@ -100,6 +101,7 @@ def process_lead_creation(lead_data):
             job_title=lead_data.get("job_title"),
             pan_card_number=lead_data.get("pan_card_number"),
             aadhaar_card_number=lead_data.get("aadhaar_card_number"),
+            referral_code=lead_data.get("referral_code"),
             customer_source="Lead",
             reference_doctype="CRM Lead",
             reference_docname=lead_data.get("name")
@@ -125,6 +127,7 @@ def process_ticket_creation(ticket_data):
             organization=ticket_data.get("organization"),
             pan_card_number=ticket_data.get("pan_card_number"),
             aadhaar_card_number=ticket_data.get("aadhaar_card_number"),
+            referral_code=ticket_data.get("referral_code"),
             customer_source="Ticket",
             reference_doctype="CRM Ticket",
             reference_docname=ticket_data.get("name")

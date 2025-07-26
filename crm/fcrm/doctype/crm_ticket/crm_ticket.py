@@ -164,6 +164,7 @@ class CRMTicket(Document):
 				organization=self.organization,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
+				referral_code=self.referral_code,
 				customer_source="Ticket",
 				reference_doctype="CRM Ticket",
 				reference_docname=self.name

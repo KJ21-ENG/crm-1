@@ -154,6 +154,7 @@ class CRMLead(Document):
 				job_title=self.job_title,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
+				referral_code=self.referral_code,
 				customer_source="Lead",
 				reference_doctype="CRM Lead",
 				reference_docname=self.name

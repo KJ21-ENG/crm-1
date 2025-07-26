@@ -234,6 +234,7 @@ async function autoFillCustomerData(mobileNumber) {
       const originalOrganization = lead.doc.organization
       const originalPAN = lead.doc.pan_card_number
       const originalAadhaar = lead.doc.aadhaar_card_number
+      const originalReferralCode = lead.doc.referral_code
       
       // Auto-fill form fields with customer data
       lead.doc.first_name = customerData.first_name || lead.doc.first_name
@@ -242,6 +243,7 @@ async function autoFillCustomerData(mobileNumber) {
       lead.doc.organization = customerData.organization || lead.doc.organization
       lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
       lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
+      lead.doc.referral_code = customerData.referral_code || lead.doc.referral_code
       
       console.log('🔍 [LEAD AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', lead.doc.first_name)
@@ -250,6 +252,7 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('  organization:', originalOrganization, '->', lead.doc.organization)
       console.log('  pan_card_number:', originalPAN, '->', lead.doc.pan_card_number)
       console.log('  aadhaar_card_number:', originalAadhaar, '->', lead.doc.aadhaar_card_number)
+      console.log('  referral_code:', originalReferralCode, '->', lead.doc.referral_code)
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))
