@@ -201,3 +201,46 @@ def get_customer_stats():
         "new_customers_this_month": new_customers_this_month,
         "source_breakdown": source_breakdown
     } 
+
+
+@frappe.whitelist()
+def create_or_find_customer(lead_name, mobile_no, customer_name, email=None):
+    """Create or find customer for a lead"""
+    try:
+        if not mobile_no:
+            return {"success": False, "message": "Mobile number is required"}
+        
+        # Check if customer already exists with this mobile number
+        existing_customers = frappe.get_all("CRM Customer", 
+            filters={"mobile_no": mobile_no},
+            fields=["name", "customer_name", "email"]
+        )
+        
+        if existing_customers:
+            # Customer exists, return the first one
+            customer = existing_customers[0]
+            return {
+                "success": True, 
+                "customer_name": customer.name,
+                "action": "found",
+                "message": f"Customer found: {customer.customer_name}"
+            }
+        else:
+            # Create new customer
+            customer = frappe.new_doc("CRM Customer")
+            customer.customer_name = customer_name
+            customer.mobile_no = mobile_no
+            customer.email = email
+            customer.status = "Active"
+            customer.insert(ignore_permissions=True)
+            
+            return {
+                "success": True,
+                "customer_name": customer.name,
+                "action": "created",
+                "message": f"Customer created: {customer.customer_name}"
+            }
+            
+    except Exception as e:
+        frappe.log_error(f"Error in create_or_find_customer: {str(e)}")
+        return {"success": False, "message": str(e)} 

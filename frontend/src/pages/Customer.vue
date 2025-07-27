@@ -55,6 +55,34 @@
                   <label class="text-sm text-ink-gray-7">Mobile</label>
                   <p class="text-ink-gray-12">{{ customer.data.mobile_no }}</p>
                 </div>
+                
+                <!-- Customer Accounts -->
+                <div v-if="customerAccounts.length > 0">
+                  <label class="text-sm text-ink-gray-7">Accounts</label>
+                  <div class="space-y-2">
+                    <div 
+                      v-for="account in customerAccounts" 
+                      :key="account.client_id"
+                      class="flex items-center justify-between p-2 bg-ink-gray-1 rounded border"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-ink-gray-12">
+                          {{ account.account_type }} → {{ account.client_id }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <Badge 
+                          label="Active" 
+                          theme="green" 
+                          size="sm"
+                        />
+                        <span class="text-xs text-ink-gray-7">
+                          {{ formatDate(account.created_on) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div v-if="customer.data.phone">
                   <label class="text-sm text-ink-gray-7">Phone</label>
                   <p class="text-ink-gray-12">{{ customer.data.phone }}</p>
@@ -201,6 +229,89 @@
                     No call logs found for this customer
                   </div>
                 </div>
+
+                <div v-if="tab.name === 'referrals'" class="mt-4">
+                  <!-- Referral Summary -->
+                  <div class="mb-6 p-4 bg-ink-blue-50 rounded-lg">
+                    <h3 class="text-lg font-medium text-ink-gray-9 mb-2">Referral Summary</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-ink-blue-600">{{ referralStats.total_referrals }}</div>
+                        <div class="text-sm text-ink-gray-7">Total Referrals</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-ink-green-600">{{ customerAccounts.length }}</div>
+                        <div class="text-sm text-ink-gray-7">Active Accounts</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-ink-orange-600">{{ referralStats.referral_details.length }}</div>
+                        <div class="text-sm text-ink-gray-7">Unique Referrers</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Customer's Client IDs (Referral Codes) -->
+                  <div class="mb-6">
+                    <h4 class="text-md font-medium text-ink-gray-9 mb-3">Your Referral Codes (Client IDs)</h4>
+                    <div class="space-y-2">
+                      <div 
+                        v-for="account in customerAccounts" 
+                        :key="account.client_id"
+                        class="flex items-center justify-between p-3 bg-ink-gray-1 rounded border"
+                      >
+                        <div class="flex items-center gap-3">
+                          <div class="w-3 h-3 bg-ink-green-500 rounded-full"></div>
+                          <div>
+                            <span class="font-medium text-ink-gray-12">
+                              {{ account.account_type }} → {{ account.client_id }}
+                            </span>
+                            <p class="text-xs text-ink-gray-7">
+                              Created: {{ formatDate(account.created_on) }}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge 
+                          :label="`${getReferralCountForClientId(account.client_id)} referrals`"
+                          theme="blue"
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Referral Details -->
+                  <div v-if="referralStats.referral_details.length > 0">
+                    <h4 class="text-md font-medium text-ink-gray-9 mb-3">Referral Details</h4>
+                    <div class="space-y-3">
+                      <div 
+                        v-for="referral in referralStats.referral_details" 
+                        :key="referral.lead_id"
+                        class="border rounded-lg p-4"
+                      >
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <router-link 
+                              :to="{ name: 'Lead', params: { leadId: referral.lead_id } }"
+                              class="text-ink-blue-600 hover:underline font-medium"
+                            >
+                              {{ referral.lead_name }}
+                            </router-link>
+                            <p class="text-sm text-ink-gray-7">
+                              Used your code: <span class="font-medium">{{ referral.referral_through }}</span>
+                            </p>
+                            <p class="text-sm text-ink-gray-7">
+                              Created: {{ formatDate(referral.creation) }}
+                            </p>
+                          </div>
+                          <Badge :label="referral.status" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="text-center py-8 text-ink-gray-7">
+                    No referrals found for this customer
+                  </div>
+                </div>
               </template>
             </Tabs>
           </div>
@@ -314,6 +425,25 @@ const interactions = ref({
   call_logs: []
 })
 
+// Referral statistics
+const referralStats = ref({
+  total_referrals: 0,
+  referral_details: []
+})
+
+// Parse customer accounts from JSON
+const customerAccounts = computed(() => {
+  if (!customer.value.data?.accounts) return []
+  
+  try {
+    const accounts = JSON.parse(customer.value.data.accounts)
+    return Array.isArray(accounts) ? accounts : []
+  } catch (error) {
+    console.error('Error parsing customer accounts:', error)
+    return []
+  }
+})
+
 const customer = ref({
   data: null,
   loading: true,
@@ -374,6 +504,10 @@ const interactionTabs = computed(() => [
   { 
     name: 'calls', 
     label: `Call Logs (${interactions.value.call_logs?.length || 0})` 
+  },
+  { 
+    name: 'referrals', 
+    label: `Referrals (${referralStats.value.total_referrals || 0})` 
   }
 ])
 
@@ -397,9 +531,62 @@ async function loadCustomerInteractions() {
       customer_mobile: customer.value.data.mobile_no
     })
     interactions.value = result
+    
+    // Also load referral statistics
+    await loadReferralStats()
   } catch (error) {
     console.error('Error loading customer interactions:', error)
   }
+}
+
+async function loadReferralStats() {
+  try {
+    // Get all Client IDs for this customer
+    const clientIds = customerAccounts.value.map(acc => acc.client_id)
+    
+    if (clientIds.length === 0) {
+      referralStats.value = { total_referrals: 0, referral_details: [] }
+      return
+    }
+    
+    // Find all leads that used any of this customer's Client IDs as referral_through
+    const referralLeads = await call('frappe.client.get_list', {
+      doctype: 'CRM Lead',
+      filters: {
+        referral_through: ['in', clientIds]
+      },
+      fields: ['name', 'first_name', 'last_name', 'referral_through', 'status', 'creation', 'lead_category', 'mobile_no']
+    })
+    
+    // Filter out self-referrals (same mobile number)
+    const validReferrals = referralLeads.filter(lead => lead.mobile_no !== customer.value.data.mobile_no)
+    
+    // Process referral data
+    const referralDetails = validReferrals.map(lead => ({
+      lead_id: lead.name,
+      lead_name: `${lead.first_name} ${lead.last_name}`.trim(),
+      referral_through: lead.referral_through,
+      status: lead.status,
+      creation: lead.creation,
+      lead_category: lead.lead_category,
+      mobile_no: lead.mobile_no
+    }))
+    
+    referralStats.value = {
+      total_referrals: referralDetails.length,
+      referral_details: referralDetails
+    }
+    
+  } catch (error) {
+    console.error('Error loading referral stats:', error)
+    referralStats.value = { total_referrals: 0, referral_details: [] }
+  }
+}
+
+function getReferralCountForClientId(clientId) {
+  return referralStats.value.referral_details.filter(
+    ref => ref.referral_through === clientId
+  ).length
 }
 
 function openEditDialog() {

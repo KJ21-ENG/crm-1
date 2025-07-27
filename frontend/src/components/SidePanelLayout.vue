@@ -395,7 +395,7 @@ import { getFormat, evaluateDependsOnValue } from '@/utils'
 import { flt } from '@/utils/numberFormat.js'
 import { Tooltip, DatePicker } from 'frappe-ui'
 import { useDocument } from '@/data/document'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import CustomDateTimePicker from './CustomDateTimePicker.vue'
 
 const props = defineProps({
@@ -455,6 +455,15 @@ const _sections = computed(() => {
   })
 })
 
+// Watch for lead_category changes to update referral_through field state
+watch(() => document.doc?.lead_category, (newLeadCategory, oldLeadCategory) => {
+  if (newLeadCategory !== oldLeadCategory && props.doctype === 'CRM Lead') {
+    console.log('🔍 [SIDE PANEL] Lead category changed:', oldLeadCategory, '->', newLeadCategory)
+    // Force re-computation of sections to update field states
+    // The computed property will automatically re-evaluate
+  }
+}, { immediate: false })
+
 function parsedField(field) {
   if (field.fieldtype == 'Select' && typeof field.options === 'string') {
     field.options = field.options.split('\n').map((option) => {
@@ -488,6 +497,34 @@ function parsedField(field) {
     ),
   }
 
+  // Special handling for lead_category and referral_through fields
+  if (field.fieldname === 'lead_category') {
+    // Make lead_category read-only in side panel
+    _field.read_only = true
+    _field.description = 'Lead category cannot be changed from this view'
+  }
+  
+  if (field.fieldname === 'referral_through' && document.doc?.lead_category) {
+    // Make referral_through read-only when lead_category is 'Direct'
+    _field.read_only = document.doc.lead_category === 'Direct'
+    _field.description = document.doc.lead_category === 'Direct' ? 
+      'Referral through is locked for Direct leads' : 
+      'Referral through can be updated for Indirect leads'
+  }
+  
+  if (field.fieldname === 'account_type') {
+    // Make account_type read-only in side panel
+    _field.read_only = true
+    _field.description = 'Account type cannot be changed from this view'
+  }
+  
+  if (field.fieldname === 'client_id') {
+    // Hide client_id field in side panel
+    _field.hidden = true
+  }
+  
+
+
   _field.visible = isFieldVisible(_field)
   return _field
 }
@@ -495,15 +532,31 @@ function parsedField(field) {
 async function fieldChange(value, df) {
   if (props.preview) return
 
-  await triggerOnChange(df.fieldname, value)
+  try {
+    await triggerOnChange(df.fieldname, value)
 
-  document.save.submit(null, {
-    onSuccess: () => {
-      emit('afterFieldChange', {
-        [df.fieldname]: value,
-      })
-    },
-  })
+    await document.save.submit(null, {
+      onSuccess: () => {
+        emit('afterFieldChange', {
+          [df.fieldname]: value,
+        })
+      },
+      onError: (error) => {
+        console.error('Error saving field change:', error)
+        
+        // Handle TimestampMismatchError
+        if (error.message?.includes('TimestampMismatchError') || 
+            error.message?.includes('timestamp')) {
+          // Refresh the document data
+          if (document.reload) {
+            document.reload()
+          }
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Error during field change:', error)
+  }
 }
 
 function parsedSection(section, editButtonAdded) {

@@ -211,6 +211,10 @@
         </div>
       </div>
     </div>
+                  <!-- Referral Analytics Dashboard Section -->
+            <div class="mt-8">
+              <ReferralAnalyticsDashboard />
+            </div>
   </div>
 </template>
 
@@ -218,6 +222,7 @@
 import { onMounted, onUnmounted, computed } from 'vue'
 import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
 import StatsCard from '@/components/Dashboard/StatsCard.vue'
+import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import QuickActions from '@/components/Dashboard/QuickActions.vue'

@@ -28,7 +28,7 @@
             'lead',
             document,
             lead.data._customStatuses,
-            triggerOnChange,
+            handleStatusChange,
           )
         "
       >
@@ -347,6 +347,15 @@
     :docname="props.leadId"
     name="Leads"
   />
+  <ClientIdModal
+    v-if="showClientIdModal"
+    v-model="showClientIdModal"
+    :leadId="lead.data.name"
+    :targetStatus="pendingStatusChange?.value"
+    :onSuccess="handleClientIdSubmit"
+  />
+  
+
 </template>
 <script setup>
 import ErrorPage from '@/components/ErrorPage.vue'
@@ -416,6 +425,8 @@ import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
+import ClientIdModal from '@/components/Modals/ClientIdModal.vue'
+
 
 const { brand } = getSettings()
 const { user } = sessionStore()
@@ -478,6 +489,8 @@ onMounted(() => {
 const reload = ref(false)
 const showFilesUploader = ref(false)
 
+ // Prevent multiple simultaneous updates
+
 function updateLead(fieldname, value, callback) {
   value = Array.isArray(fieldname) ? '' : value
 
@@ -499,7 +512,40 @@ function updateLead(fieldname, value, callback) {
       callback?.()
     },
     onError: (err) => {
-      toast.error(err.messages?.[0] || __('Error updating lead'))
+      console.error('Error updating lead:', err)
+      
+      // Handle TimestampMismatchError by refreshing the document and retrying
+      if (err.messages?.[0]?.includes('TimestampMismatchError') || 
+          err.messages?.[0]?.includes('timestamp')) {
+        console.log('Timestamp error detected, refreshing and retrying...')
+        lead.reload()
+        
+        // Retry the operation after a short delay
+        setTimeout(() => {
+          createResource({
+            url: 'frappe.client.set_value',
+            params: {
+              doctype: 'CRM Lead',
+              name: props.leadId,
+              fieldname,
+              value,
+            },
+            auto: true,
+            onSuccess: () => {
+              lead.reload()
+              reload.value = true
+              toast.success(__('Lead updated successfully'))
+              callback?.()
+            },
+            onError: (retryErr) => {
+              console.error('Retry failed:', retryErr)
+              toast.error(__('Failed to update after retry. Please refresh the page and try again.'))
+            },
+          })
+        }, 1000)
+      } else {
+        toast.error(err.messages?.[0] || __('Error updating lead'))
+      }
     },
   })
 }
@@ -628,11 +674,37 @@ const sections = createResource({
   auto: true,
 })
 
-function updateField(name, value, callback) {
+async function updateField(name, value, callback) {
+  // Normal field update
   updateLead(name, value, () => {
     lead.data[name] = value
     callback?.()
   })
+}
+
+
+
+
+
+
+
+// Helper function to handle timestamp errors
+function handleTimestampError(error, operation) {
+  console.error(`Timestamp error during ${operation}:`, error)
+  
+  if (error.message?.includes('TimestampMismatchError') || 
+      error.message?.includes('timestamp') ||
+      error.messages?.[0]?.includes('TimestampMismatchError') ||
+      error.messages?.[0]?.includes('timestamp')) {
+    
+    console.log('Refreshing lead data due to timestamp error...')
+    lead.reload()
+    
+    // Show a more helpful error message
+    toast.error(__('Document was modified elsewhere. The page has been refreshed. Please try your action again.'))
+    return true // Indicates timestamp error was handled
+  }
+  return false // Indicates no timestamp error
 }
 
 async function deleteLead(name) {
@@ -657,6 +729,71 @@ const existingOrganization = ref('')
 
 const { triggerConvertToDeal, triggerOnChange, assignees, document } =
   useDocument('CRM Lead', props.leadId)
+
+// Client ID Modal state
+const showClientIdModal = ref(false)
+const pendingStatusChange = ref(null)
+const isUpdating = ref(false)
+
+// Check if status change requires Client ID
+function shouldRequireClientId(status) {
+  return ['Account Opened', 'Account Active', 'Account Activated'].includes(status)
+}
+
+// Handle Client ID submission
+async function handleClientIdSubmit() {
+  isUpdating.value = true
+  
+  try {
+    // The Client ID modal has already saved the client_id
+    // Now reload the document to get the latest timestamp
+    await document.reload()
+    
+    // Now proceed with the pending status change
+    if (pendingStatusChange.value) {
+      await triggerOnChange(
+        pendingStatusChange.value.fieldname, 
+        pendingStatusChange.value.value
+      )
+      await document.save.submit()
+      console.log('✅ Status updated successfully after Client ID submission')
+    }
+  } catch (error) {
+    console.error('Error updating status after Client ID submission:', error)
+    // If there's still a timestamp error, reload the entire page
+    if (error.messages?.[0]?.includes('TimestampMismatchError')) {
+      window.location.reload()
+    }
+  } finally {
+    isUpdating.value = false
+    pendingStatusChange.value = null
+  }
+}
+
+// Handle Client ID modal cancellation
+function handleClientIdCancel() {
+  showClientIdModal.value = false
+  pendingStatusChange.value = null
+}
+
+// Custom function to handle status changes with Client ID check
+async function handleStatusChange(fieldname, value) {
+  if (fieldname === 'status' && !isUpdating.value) {
+    const newStatus = value
+    const currentStatus = document.doc.status
+    
+    // Check if the new status requires Client ID
+    if (shouldRequireClientId(newStatus) && !document.doc.client_id) {
+      // Store the pending status change
+      pendingStatusChange.value = { fieldname, value }
+      showClientIdModal.value = true
+      return
+    }
+  }
+  
+  // Call the original triggerOnChange
+  await triggerOnChange(fieldname, value)
+}
 
 async function convertToDeal() {
   if (existingContactChecked.value && !existingContact.value) {
@@ -768,4 +905,5 @@ function reloadAssignees(data) {
     assignees.reload()
   }
 }
+
 </script>

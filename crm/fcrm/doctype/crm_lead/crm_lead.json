@@ -9,23 +9,24 @@
  "editable_grid": 1,
  "email_append_to": 1,
  "engine": "InnoDB",
- "field_order": [
-  "details",
-  "lead_type",
-  "description",
-  "issue_type",
-  "account_type",
-  "organization",
-  "website",
-  "territory",
-  "industry",
-  "job_title",
-  "source",
-  "lead_owner",
-  "assigned_role",
-  "lead_source",
-  "referral_code",
-  "person_tab",
+   "field_order": [
+   "details",
+   "description",
+   "issue_type",
+   "account_type",
+   "organization",
+   "website",
+   "territory",
+   "industry",
+   "job_title",
+   "source",
+   "lead_owner",
+   "assigned_role",
+   "lead_source",
+   "lead_category",
+   "referral_through",
+   "client_id",
+   "person_tab",
   "salutation",
   "first_name",
   "last_name",
@@ -105,13 +106,6 @@
    "options": "Gender"
   },
   {
-   "fieldname": "lead_type",
-   "fieldtype": "Select",
-   "label": "Lead Type",
-   "options": "Support\nSales",
-   "reqd": 1
-  },
-  {
    "fieldname": "description",
    "fieldtype": "Text Editor",
    "label": "Description"
@@ -120,15 +114,14 @@
    "fieldname": "issue_type",
    "fieldtype": "Select",
    "label": "Issue Type",
-   "options": "Technical\nBilling\nGeneral",
-   "depends_on": "eval:doc.lead_type=='Support'"
+   "options": "Technical\nBilling\nGeneral"
   },
   {
    "fieldname": "account_type",
    "fieldtype": "Select",
    "label": "Account Type",
-   "options": "Individual\nBusiness\nEnterprise",
-   "depends_on": "eval:doc.lead_type=='Sales'"
+   "options": "Individual\nHUF\nCorporate\nNRI\nLLP\nMinor\nPartnership\nOthers",
+   "reqd": 1
   },
   {
    "default": "New",
@@ -173,11 +166,24 @@
    "reqd": 1
   },
   {
-   "fieldname": "referral_code",
+   "fieldname": "lead_category",
+   "fieldtype": "Select",
+   "label": "Lead Category",
+   "options": "Direct\nIndirect",
+   "default": "Direct",
+   "description": "Select whether this is a direct or indirect lead"
+  },
+  {
+   "fieldname": "referral_through",
    "fieldtype": "Data",
-   "label": "Referral Code",
-   "description": "Enter referral code if applicable",
-   "reqd": 1
+   "label": "Referral Through",
+   "description": "Client ID used during lead creation"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "description": "Client identification number assigned when account is opened"
   },
   {
    "fieldname": "section_break_uixv",

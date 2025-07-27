@@ -172,13 +172,14 @@ onMounted(async () => {
     mobile_no: '',
     pan_card_number: '', // Identity document field
     aadhaar_card_number: '', // Identity document field
-    lead_type: 'Sales', // Set default lead type (hidden field)
+    lead_category: 'Direct', // Set default lead category (Direct/Indirect)
     lead_source: 'On Call', // Default value for lead source
     account_type: 'Individual', // Set default account type
     no_of_employees: '1-10',
     status: '',
     assign_to_role: '', // New field for role-based assignment
-    referral_code: '', // Will be set from API
+    referral_through: '', // Client ID used during lead creation
+    client_id: '', // Client identification number assigned when account is opened
     // ... other default values
   }
 
@@ -200,6 +201,9 @@ onMounted(async () => {
   
   // Set default referral code from settings
   await setDefaultReferralCode()
+  
+  // Set default account type
+  setDefaultAccountType()
 })
 
 // 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
@@ -211,29 +215,42 @@ watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
   }
 }, { immediate: false })
 
-// Set default referral code from settings
-async function setDefaultReferralCode() {
-  try {
-    console.log('🔍 [LEAD MODAL] Fetching default referral code from settings...')
+// 🆕 LEAD CATEGORY: Watch for lead category changes to handle referral code validation
+watch(() => lead.doc?.lead_category, (newLeadCategory, oldLeadCategory) => {
+  if (newLeadCategory !== oldLeadCategory) {
+    console.log('🔍 [LEAD CATEGORY] Lead category changed:', oldLeadCategory, '->', newLeadCategory)
     
-    const response = await createResource({
-      url: 'crm.api.settings.get_default_referral_code',
-      params: {}
-    }).fetch()
-    
-    console.log('🔍 [LEAD MODAL] Default referral code response:', response)
-    
-    if (response && response.success && response.default_referral_code) {
-      lead.doc.referral_code = response.default_referral_code
-      console.log('✅ [LEAD MODAL] Default referral code set:', response.default_referral_code)
-    } else {
-      console.log('ℹ️ [LEAD MODAL] No default referral code configured, using empty value')
-      lead.doc.referral_code = ''
+    // If changing to Indirect, clear referral code requirement
+    if (newLeadCategory === 'Indirect') {
+      console.log('ℹ️ [LEAD CATEGORY] Lead category is Indirect - referral code not required')
+    } else if (newLeadCategory === 'Direct') {
+      console.log('ℹ️ [LEAD CATEGORY] Lead category is Direct - referral code is required')
+      // Set default referral through if empty
+      if (!lead.doc.referral_through) {
+        setDefaultReferralThrough()
+      }
     }
-  } catch (error) {
-    console.error('❌ [LEAD MODAL] Error fetching default referral code:', error)
-    // Don't throw error, just log it and continue with empty value
-    lead.doc.referral_code = ''
+  }
+}, { immediate: false })
+
+// Set default referral code from settings for Direct leads
+async function setDefaultReferralThrough() {
+  if (lead.doc.lead_category === 'Direct' && !lead.doc.referral_through) {
+    try {
+      const defaultCode = await call('crm.api.referral_analytics.get_default_referral_code')
+      if (defaultCode) {
+        lead.doc.referral_through = defaultCode
+      }
+    } catch (error) {
+      console.error('Error getting default referral code:', error)
+    }
+  }
+}
+
+// Set default account type
+function setDefaultAccountType() {
+  if (!lead.doc.account_type) {
+    lead.doc.account_type = 'Individual'
   }
 }
 
@@ -263,7 +280,7 @@ async function autoFillCustomerData(mobileNumber) {
       const originalOrganization = lead.doc.organization
       const originalPAN = lead.doc.pan_card_number
       const originalAadhaar = lead.doc.aadhaar_card_number
-      const originalReferralCode = lead.doc.referral_code
+      const originalReferralThrough = lead.doc.referral_through
       
       // Auto-fill form fields with customer data
       lead.doc.first_name = customerData.first_name || lead.doc.first_name
@@ -272,7 +289,7 @@ async function autoFillCustomerData(mobileNumber) {
       lead.doc.organization = customerData.organization || lead.doc.organization
       lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
       lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
-      lead.doc.referral_code = customerData.referral_code || lead.doc.referral_code
+      lead.doc.referral_through = customerData.referral_code || lead.doc.referral_through
       
       console.log('🔍 [LEAD AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', lead.doc.first_name)
@@ -281,7 +298,7 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('  organization:', originalOrganization, '->', lead.doc.organization)
       console.log('  pan_card_number:', originalPAN, '->', lead.doc.pan_card_number)
       console.log('  aadhaar_card_number:', originalAadhaar, '->', lead.doc.aadhaar_card_number)
-      console.log('  referral_code:', originalReferralCode, '->', lead.doc.referral_code)
+      console.log('  referral_through:', originalReferralThrough, '->', lead.doc.referral_through)
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))
@@ -435,6 +452,46 @@ const tabs = createResource({
               }
             }
 
+            // Configure lead_category field
+            if (field.fieldname == 'lead_category') {
+              field.fieldtype = 'Select'
+              field.options = 'Direct\nIndirect'
+              field.default = 'Direct'
+              field.description = 'Select whether this is a direct or indirect lead'
+            }
+
+            // Configure referral_through field based on lead_category
+            if (field.fieldname == 'referral_through') {
+              field.fieldtype = 'Data'
+              field.label = 'Referral Through'
+              // Use mandatory_depends_on for dynamic required field
+              field.mandatory_depends_on = "eval:doc.lead_category=='Direct'"
+              // Use depends_on for dynamic description
+              field.depends_on = "eval:doc.lead_category"
+              field.description = lead.doc.lead_category === 'Direct' ? 
+                'Client ID used during lead creation (required for Direct leads)' : 
+                'Client ID used during lead creation (optional for Indirect leads)'
+            }
+            
+            // Configure account_type field
+            if (field.fieldname == 'account_type') {
+              field.fieldtype = 'Select'
+              field.label = 'Account Type'
+              field.options = 'Individual\nHUF\nCorporate\nNRI\nLLP\nMinor\nPartnership\nOthers'
+              field.mandatory = 1
+              field.description = 'Account type is mandatory'
+            }
+            
+            // Configure client_id field
+            if (field.fieldname == 'client_id') {
+              field.fieldtype = 'Data'
+              field.label = 'Client ID'
+              field.description = 'Client identification number assigned when account is opened'
+              field.read_only = 1 // Read-only in form
+            }
+            
+
+
             // Add custom assign_to_role field for role-based assignments
             if (field.fieldname == 'lead_owner') {
               // Insert assign_to_role field after lead_owner
@@ -497,7 +554,7 @@ function createNewLead() {
   }
 
   createLead.submit(lead.doc, {
-    validate() {
+    async validate() {
       error.value = null
       if (!lead.doc.first_name) {
         error.value = __('First Name is mandatory')
@@ -534,10 +591,43 @@ function createNewLead() {
         error.value = __('Status is required')
         return error.value
       }
-      if (!lead.doc.referral_code) {
-        error.value = __('Referral Code is mandatory')
+      // Conditional validation for referral through based on lead category
+      if (lead.doc.lead_category === 'Direct' && !lead.doc.referral_through) {
+        error.value = __('Referral Through (Client ID) is mandatory for Direct leads')
         return error.value
       }
+      
+      // Validate self-referral (same mobile number using their own Client ID)
+      if (lead.doc.referral_through && lead.doc.mobile_no) {
+        try {
+          const customers = await call('frappe.client.get_list', {
+            doctype: 'CRM Customer',
+            filters: {
+              mobile_no: lead.doc.mobile_no
+            },
+            fields: ['name', 'accounts']
+          })
+          
+          for (const customer of customers) {
+            if (customer.accounts) {
+              try {
+                const accounts = JSON.parse(customer.accounts)
+                const selfReferral = accounts.some(acc => acc.client_id === lead.doc.referral_through)
+                if (selfReferral) {
+                  error.value = __('Self-referral is not allowed. You cannot use your own Client ID as a referral code.')
+                  return error.value
+                }
+              } catch (e) {
+                // Skip if accounts is invalid JSON
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error checking self-referral:', err)
+          // Continue if validation fails
+        }
+      }
+      
       isLeadCreating.value = true
     },
     async onSuccess(data) {
@@ -619,6 +709,35 @@ function createNewLead() {
         }
       }
       
+      // Create or find customer for this lead
+      try {
+        await call('crm.api.customers.create_or_find_customer', {
+          lead_name: data.name,
+          mobile_no: lead.doc.mobile_no,
+          customer_name: `${lead.doc.first_name} ${lead.doc.last_name}`.trim(),
+          email: lead.doc.email
+        })
+        console.log('Customer created/found successfully for lead')
+      } catch (err) {
+        console.error('Failed to create/find customer:', err)
+        // Continue even if customer creation fails
+      }
+      
+      // If referral through is provided, update customer accounts when account is opened
+      if (lead.doc.referral_through && lead.doc.lead_category === 'Direct') {
+        try {
+          await call('crm.api.referral_analytics.update_customer_accounts', {
+            customer_name: data.name,
+            client_id: lead.doc.referral_through,
+            account_type: lead.doc.account_type || 'Individual'
+          })
+          console.log('Customer accounts updated successfully')
+        } catch (err) {
+          console.error('Failed to update customer accounts:', err)
+          // Continue even if account update fails
+        }
+      }
+      
       capture('lead_created')
       isLeadCreating.value = false
       
@@ -656,14 +775,7 @@ watch(showTaskModal, (newValue) => {
 })
 
 onMounted(() => {
-  // Set default lead owner if not provided
-  if (!lead.doc?.lead_owner) {
-    lead.doc.lead_owner = getUser().name
-  }
-
-  // Set default status if not provided
-  if (!lead.doc?.status && leadStatuses.value[0]?.value) {
-    lead.doc.status = leadStatuses.value[0].value
-  }
+  setDefaultAccountType()
+  setDefaultReferralThrough()
 })
 </script>
