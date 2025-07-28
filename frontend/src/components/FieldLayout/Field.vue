@@ -144,13 +144,16 @@
         </Tooltip>
       </template>
     </Link>
-    <CustomDateTimePicker
-      v-else-if="field.fieldtype === 'Datetime'"
-      :model-value="data[field.fieldname]"
-      :placeholder="getPlaceholder(field)"
-      :input-class="'border-none'"
-      @update:modelValue="(v) => fieldChange(v, field)"
-    />
+    <div v-else-if="field.fieldtype === 'Datetime'" class="relative">
+      <div @click="focusDateTimeInput" class="absolute inset-0 cursor-pointer z-10"></div>
+      <CustomDateTimePicker
+        ref="dateTimeInputRef"
+        :model-value="data[field.fieldname]"
+        :placeholder="getPlaceholder(field)"
+        :input-class="'border-none'"
+        @update:modelValue="(v) => fieldChange(v, field)"
+      />
+    </div>
     <DatePicker
       v-else-if="field.fieldtype === 'Date'"
       :value="data[field.fieldname]"
@@ -250,7 +253,7 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { useDocument } from '@/data/document'
 import { Tooltip, DatePicker } from 'frappe-ui'
-import { computed, provide, inject } from 'vue'
+import { ref, computed, provide, inject, nextTick } from 'vue'
 import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
@@ -396,6 +399,16 @@ function getDataValue(value, field) {
     return value || 0
   }
   return value
+}
+
+const dateTimeInputRef = ref(null)
+function focusDateTimeInput() {
+  nextTick(() => {
+    if (dateTimeInputRef.value && dateTimeInputRef.value.$el) {
+      const input = dateTimeInputRef.value.$el.querySelector('input')
+      if (input) input.focus()
+    }
+  })
 }
 </script>
 <style scoped>

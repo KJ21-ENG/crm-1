@@ -1,8 +1,8 @@
 <template>
-  <div class="column flex flex-col gap-4 w-full">
+  <div class="column grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
     <div
       v-if="column.label && !column.hideLabel"
-      class="text-ink-gray-9 max-w-fit text-base"
+      class="text-ink-gray-9 max-w-fit text-base col-span-full"
     >
       {{ column.label }}
     </div>

@@ -92,7 +92,7 @@
             </div>
           </div>
           
-          <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
+          <ErrorMessage class="mt-4" v-if="showError" :message="__(error)" />
           </div>
 
           <!-- Customer History (Right Side) -->
@@ -1150,5 +1150,20 @@ watch(showTaskModal, (newValue) => {
     // TaskModal was closed, restore the ticket modal
     ticketModalHidden.value = false
   }
+})
+
+const showError = computed(() => {
+  if (!error.value) return false
+  // Filter out unwanted or generic errors
+  const unwanted = [
+    'Error creating ticket',
+    'An error occurred',
+    'Unknown error',
+    'Something went wrong',
+    'Error',
+    'Please enter a value',
+    'Please enter a valid value',
+  ]
+  return !unwanted.includes(error.value.trim())
 })
 </script> 
