@@ -33,9 +33,6 @@ crm.patches.v1_0.update_lead_layout_with_referral_code
 crm.patches.v1_0.add_referral_code_to_customer
 crm.patches.v1_0.migrate_referral_code_from_leads_to_customers
 crm.patches.v1_0.remove_issue_type_from_ticket_views
-crm.patches.v1_0.add_lead_category_and_update_referral_code_validation # 25-01-2025
-crm.patches.v1_0.add_lead_details_to_side_panel # 25-01-2025
-crm.patches.v1_0.add_client_id_field_and_modal # 25-01-2025
-crm.patches.v1_0.add_referral_tracking_system # 27-01-2025
+
 crm.patches.v1_0.restructure_referral_system # 27-01-2025
 crm.patches.v1_0.update_lead_form_fields # 27-01-2025
