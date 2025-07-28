@@ -98,27 +98,7 @@
           @refresh="refreshDashboard"
         />
 
-        <!-- Lead Type Distribution -->
-        <ChartCard
-          :title="`Lead Type Distribution (${getViewContext()})`"
-          :data="leadTypeChart"
-          type="bar"
-          :loading="loading"
-          :error="error"
-          :showColorLegend="true"
-          @refresh="refreshDashboard"
-        />
 
-        <!-- Ticket Priority Distribution -->
-        <ChartCard
-          :title="`Ticket Priority Distribution (${getViewContext()})`"
-          :data="ticketPriorityChart"
-          type="bar"
-          :loading="loading"
-          :error="error"
-          :showColorLegend="true"
-          @refresh="refreshDashboard"
-        />
       </div>
 
       <!-- Trends Chart -->
@@ -236,8 +216,6 @@ const {
   statsCards,
   leadStatusChart,
   ticketStatusChart,
-  ticketPriorityChart,
-  leadTypeChart,
   callTypeChart,
   trendsChart,
   recentActivities,

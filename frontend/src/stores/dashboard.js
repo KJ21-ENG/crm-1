@@ -133,19 +133,7 @@ export function useDashboard() {
     })) || []
   )
 
-  const ticketPriorityChart = computed(() => 
-    ticketAnalytics.value.priority_distribution?.map(item => ({
-      label: item.priority,
-      value: item.count
-    })) || []
-  )
 
-  const leadTypeChart = computed(() => 
-    leadAnalytics.value.lead_type_distribution?.map(item => ({
-      label: item.lead_type,
-      value: item.count
-    })) || []
-  )
 
   const callTypeChart = computed(() => 
     callLogAnalytics.value.call_type_distribution?.map(item => ({
@@ -203,8 +191,6 @@ export function useDashboard() {
     statsCards,
     leadStatusChart,
     ticketStatusChart,
-    ticketPriorityChart,
-    leadTypeChart,
     callTypeChart,
     trendsChart,
     topPerformers

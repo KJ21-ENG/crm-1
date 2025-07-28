@@ -138,11 +138,6 @@ def get_lead_analytics(view='daily'):
             group_by="status",
             order_by="count desc"
         ),
-        "lead_type_distribution": frappe.db.get_list("CRM Lead",
-            fields=["lead_type", "count(name) as count"],
-            filters={**date_filter, "lead_type": ["is", "set"]},
-            group_by="lead_type"
-        ),
         "lead_owner_performance": frappe.db.get_list("CRM Lead",
             fields=["lead_owner", "count(name) as count"],
             filters={**date_filter, "lead_owner": ["is", "set"]},
@@ -169,12 +164,6 @@ def get_ticket_analytics(view='daily'):
             fields=["status", "count(name) as count"],
             filters=date_filter,
             group_by="status",
-            order_by="count desc"
-        ),
-        "priority_distribution": frappe.db.get_list("CRM Ticket",
-            fields=["priority", "count(name) as count"],
-            filters=date_filter,
-            group_by="priority",
             order_by="count desc"
         ),
         "issue_type_distribution": frappe.db.get_list("CRM Ticket",
