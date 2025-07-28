@@ -83,7 +83,6 @@
           type="doughnut"
           :loading="loading"
           :error="error"
-          :showColorLegend="true"
           @refresh="refreshDashboard"
         />
 
@@ -94,7 +93,6 @@
           type="doughnut"
           :loading="loading"
           :error="error"
-          :showColorLegend="true"
           @refresh="refreshDashboard"
         />
 
@@ -109,7 +107,6 @@
           type="line"
           :loading="loading"
           :error="error"
-          :showColorLegend="true"
           @refresh="refreshDashboard"
         />
       </div>

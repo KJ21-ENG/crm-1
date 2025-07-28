@@ -36,37 +36,7 @@
       <canvas ref="chartCanvas"></canvas>
     </div>
     
-    <!-- Color Legend -->
-    <div v-if="data && data.length > 0 && showColorLegend" class="mt-4 pt-4 border-t border-gray-200">
-      <!-- Special handling for trends charts -->
-      <div v-if="isTrendsChart" class="flex flex-wrap gap-3">
-        <div class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded">
-          <div class="w-3 h-3 rounded-full" style="background-color: #3B82F6;"></div>
-          <span class="text-xs text-gray-700 font-medium">Leads</span>
-        </div>
-        <div class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded">
-          <div class="w-3 h-3 rounded-full" style="background-color: #10B981;"></div>
-          <span class="text-xs text-gray-700 font-medium">Tickets</span>
-        </div>
-      </div>
-      
-      <!-- Regular legend for other charts -->
-      <div v-else class="flex flex-wrap gap-3">
-        <div 
-          v-for="(item, index) in data" 
-          :key="index"
-          class="flex items-center space-x-2 bg-gray-50 px-2 py-1 rounded"
-        >
-          <div 
-            class="w-3 h-3 rounded-full"
-            :style="{ backgroundColor: getColorForIndex(index) }"
-          ></div>
-          <span class="text-xs text-gray-700 font-medium">{{ item.label || item.name }}</span>
-          <span class="text-xs text-gray-500">({{ item.value || item.count }})</span>
-          <span v-if="getPercentage(item)" class="text-xs text-gray-400">({{ getPercentage(item) }}%)</span>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -99,10 +69,6 @@ const props = defineProps({
   showRefresh: {
     type: Boolean,
     default: false
-  },
-  showColorLegend: {
-    type: Boolean,
-    default: true
   }
 })
 
@@ -122,15 +88,7 @@ const getColorForIndex = (index) => {
   return colors[index % colors.length]
 }
 
-const getPercentage = (item) => {
-  if (!props.data || props.data.length === 0) return null
-  
-  const total = props.data.reduce((sum, dataItem) => sum + (dataItem.value || dataItem.count || 0), 0)
-  if (total === 0) return null
-  
-  const value = item.value || item.count || 0
-  return ((value / total) * 100).toFixed(1)
-}
+
 
 const isDistributionChart = computed(() => {
   return props.type === 'bar' || props.type === 'doughnut' || props.type === 'pie'
