@@ -95,6 +95,7 @@ export function useDashboard() {
   const recentActivities = computed(() => dashboardData.value?.recent_activities || [])
   const trends = computed(() => dashboardData.value?.trends || {})
   const quickActions = computed(() => dashboardData.value?.quick_actions || [])
+  const dateRange = computed(() => dashboardData.value?.date_range || {})
 
   // Stats cards data - removed specified cards
   const statsCards = computed(() => {
@@ -193,6 +194,7 @@ export function useDashboard() {
     ticketStatusChart,
     callTypeChart,
     trendsChart,
-    topPerformers
+    topPerformers,
+    dateRange
   }
 } 

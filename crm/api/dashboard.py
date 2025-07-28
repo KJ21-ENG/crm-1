@@ -46,6 +46,12 @@ def get_dashboard_data(view='daily', _refresh=None):
                 "recent_activities": get_recent_activities(view),
                 "trends": get_trends_data(view),
                 "quick_actions": get_quick_actions(),
+                "date_range": {
+                    "view": view,
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                    "formatted_range": get_formatted_date_range(start_date, end_date, view)
+                },
                 "_debug": {
                     "view": view,
                     "start_date": str(start_date),
@@ -407,6 +413,48 @@ def get_avg_response_time(view='daily'):
         total_time = sum(ticket.first_response_time or 0 for ticket in tickets_with_response)
         return round(total_time / len(tickets_with_response), 2)
     return 0
+
+
+def get_formatted_date_range(start_date, end_date, view):
+    """Get formatted date range string for display"""
+    from frappe.utils import getdate, formatdate
+    from datetime import datetime
+    
+    try:
+        # Handle different date formats
+        if isinstance(start_date, str):
+            start_dt = datetime.fromisoformat(str(start_date).replace('Z', '+00:00'))
+        else:
+            start_dt = start_date
+            
+        if isinstance(end_date, str):
+            end_dt = datetime.fromisoformat(str(end_date).replace('Z', '+00:00'))
+        else:
+            end_dt = end_date
+        
+        if view == 'daily':
+            return f"Today ({formatdate(start_dt.date())})"
+        elif view == 'weekly':
+            start_formatted = formatdate(start_dt.date())
+            end_formatted = formatdate(end_dt.date())
+            return f"{start_formatted} - {end_formatted}"
+        elif view == 'monthly':
+            start_formatted = formatdate(start_dt.date())
+            end_formatted = formatdate(end_dt.date())
+            return f"{start_formatted} - {end_formatted}"
+        else:
+            return f"{formatdate(start_dt.date())} - {formatdate(end_dt.date())}"
+    except Exception as e:
+        # Fallback formatting
+        try:
+            if view == 'daily':
+                return f"Today ({start_date.strftime('%Y-%m-%d') if hasattr(start_date, 'strftime') else str(start_date)})"
+            else:
+                start_str = start_date.strftime('%Y-%m-%d') if hasattr(start_date, 'strftime') else str(start_date)
+                end_str = end_date.strftime('%Y-%m-%d') if hasattr(end_date, 'strftime') else str(end_date)
+                return f"{start_str} - {end_str}"
+        except:
+            return f"Date Range: {view.title()}"
 
 
 def get_quick_actions():

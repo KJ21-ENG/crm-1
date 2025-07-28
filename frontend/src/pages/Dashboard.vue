@@ -20,13 +20,24 @@
                 :key="view.value"
                 @click="changeView(view.value)"
                 :class="[
-                  'px-3 py-1 text-sm font-medium rounded-md transition-colors',
+                  'px-3 py-1 text-sm font-medium rounded-md transition-colors relative group',
                   currentView === view.value
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 ]"
+
               >
                 {{ view.label }}
+                <!-- Tooltip -->
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                  <div class="flex items-center space-x-1">
+                    <FeatherIcon name="calendar" class="w-3 h-3" />
+                    <span>{{ getViewTooltip(view.value) }}</span>
+                    <span v-if="view.value === currentView && dateRange.formatted_range" class="text-green-300">✓</span>
+                  </div>
+                  <!-- Arrow -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                </div>
               </button>
             </div>
           </div>
@@ -218,6 +229,7 @@ const {
   recentActivities,
   quickActions,
   topPerformers,
+  dateRange,
   fetchDashboardData,
   refreshDashboard,
   changeView,
@@ -272,6 +284,32 @@ const getViewContext = () => {
       return 'This Month'
     default:
       return 'All Time'
+  }
+}
+
+const getViewTooltip = (viewType) => {
+  if (loading.value) return 'Loading...'
+  
+  // For the current view, show the actual date range
+  if (viewType === currentView.value && dateRange.value.formatted_range) {
+    return dateRange.value.formatted_range
+  }
+  
+  // For other views, show what the range would be
+  const today = new Date()
+  const formatDate = (date) => date.toISOString().split('T')[0]
+  
+  switch (viewType) {
+    case 'daily':
+      return `Today (${formatDate(today)})`
+    case 'weekly':
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+      return `${formatDate(weekAgo)} - ${formatDate(today)}`
+    case 'monthly':
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+      return `${formatDate(monthAgo)} - ${formatDate(today)}`
+    default:
+      return 'Date range'
   }
 }
 
