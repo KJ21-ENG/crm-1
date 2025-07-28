@@ -73,13 +73,12 @@ export function useDashboard() {
   }
 
   const startAutoRefresh = () => {
-    // Auto-refresh every 30 seconds
-    autoRefreshInterval.value = setInterval(() => {
-      fetchDashboardData(currentView.value)
-    }, 30000)
+    // Auto-refresh disabled - function kept for compatibility but does nothing
+    console.log('Auto-refresh is disabled')
   }
 
   const stopAutoRefresh = () => {
+    // Auto-refresh disabled - function kept for compatibility but does nothing
     if (autoRefreshInterval.value) {
       clearInterval(autoRefreshInterval.value)
       autoRefreshInterval.value = null

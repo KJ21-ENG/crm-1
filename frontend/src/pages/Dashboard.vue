@@ -302,10 +302,10 @@ const getViewContext = () => {
 
 onMounted(() => {
   fetchDashboardData()
-  startAutoRefresh()
+  // Auto-refresh disabled - removed startAutoRefresh() call
 })
 
 onUnmounted(() => {
-  stopAutoRefresh()
+  // Auto-refresh disabled - removed stopAutoRefresh() call
 })
 </script>
