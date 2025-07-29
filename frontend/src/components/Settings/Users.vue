@@ -84,7 +84,8 @@
           :options="[
             { label: __('All'), value: 'All' },
             { label: __('Admin'), value: 'System Manager' },
-            { label: __('Manager'), value: 'Sales Manager' },
+            { label: __('Sales Manager'), value: 'Sales Manager' },
+            { label: __('Support Manager'), value: 'Support Manager' },
             { label: __('Sales User'), value: 'Sales User' },
             { label: __('Support User'), value: 'Support User' },
           ]"
@@ -142,6 +143,8 @@
                       ? 'shield'
                       : user.role === 'Sales Manager'
                         ? 'briefcase'
+                        : user.role === 'Support Manager'
+                          ? 'headphones'
                         : user.role === 'Support User'
                           ? 'headphones'
                         : 'user-check',
@@ -190,7 +193,8 @@ const currentRole = ref('All')
 
 const roleMap = {
   'System Manager': __('Admin'),
-  'Sales Manager': __('Manager'),
+  'Sales Manager': __('Sales Manager'),
+  'Support Manager': __('Support Manager'),
   'Sales User': __('Sales User'),
   'Support User': __('Support User'),
 }
@@ -262,14 +266,26 @@ function getDropdownOptions(user) {
       condition: () => isAdmin(),
     },
     {
-      label: __('Manager'),
+      label: __('Sales Manager'),
       component: (props) =>
         DropdownOption({
-          option: __('Manager'),
+          option: __('Sales Manager'),
           icon: 'briefcase',
           active: props.active,
           selected: user.role === 'Sales Manager',
           onClick: () => updateRole(user, 'Sales Manager'),
+        }),
+      condition: () => isManager(),
+    },
+    {
+      label: __('Support Manager'),
+      component: (props) =>
+        DropdownOption({
+          option: __('Support Manager'),
+          icon: 'headphones',
+          active: props.active,
+          selected: user.role === 'Support Manager',
+          onClick: () => updateRole(user, 'Support Manager'),
         }),
       condition: () => isManager(),
     },

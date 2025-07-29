@@ -23,7 +23,7 @@ def get_users():
 		if frappe.session.user == user.name:
 			user.session_user = True
 
-		user.is_manager = "Sales Manager" in frappe.get_roles(user.name)
+		user.is_manager = "Sales Manager" in frappe.get_roles(user.name) or "Support Manager" in frappe.get_roles(user.name)
 		user.is_admin = user.name == "Administrator"
 
 		user.roles = frappe.get_roles(user.name)
@@ -34,6 +34,8 @@ def get_users():
 			user.role = "System Manager"
 		elif "Sales Manager" in user.roles:
 			user.role = "Sales Manager"
+		elif "Support Manager" in user.roles:
+			user.role = "Support Manager"
 		elif "Sales User" in user.roles:
 			user.role = "Sales User"
 		elif "Support User" in user.roles:
@@ -48,9 +50,9 @@ def get_users():
 
 	crm_users = []
 
-	# crm users are users with role Sales User, Sales Manager, or Support User
+	# crm users are users with role Sales User, Sales Manager, Support Manager, or Support User
 	for user in users:
-		if any(role in user.roles for role in ["Sales User", "Sales Manager", "Support User"]):
+		if any(role in user.roles for role in ["Sales User", "Sales Manager", "Support Manager", "Support User"]):
 			crm_users.append(user)
 
 	return users, crm_users

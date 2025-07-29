@@ -407,9 +407,9 @@ def accept_invitation(key: str | None = None):
 
 @frappe.whitelist()
 def invite_by_email(emails: str, role: str):
-	frappe.only_for(["Sales Manager", "System Manager"])
+	frappe.only_for(["Sales Manager", "Support Manager", "System Manager"])
 
-	if role not in ["System Manager", "Sales Manager", "Sales User", "Support User"]:
+	if role not in ["System Manager", "Sales Manager", "Support Manager", "Sales User", "Support User"]:
 		frappe.throw("Cannot invite for this role")
 
 	if not emails:
@@ -424,7 +424,7 @@ def invite_by_email(emails: str, role: str):
 		"CRM Invitation",
 		filters={
 			"email": ["in", email_list],
-			"role": ["in", ["System Manager", "Sales Manager", "Sales User", "Support User"]],
+			"role": ["in", ["System Manager", "Sales Manager", "Support Manager", "Sales User", "Support User"]],
 		},
 		pluck="email",
 	)

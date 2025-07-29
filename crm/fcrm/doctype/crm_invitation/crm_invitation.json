@@ -27,7 +27,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Role",
-   "options": "\nSales User\nSupport User\nSales Manager\nSystem Manager",
+   "options": "\nSales User\nSupport User\nSales Manager\nSupport Manager\nSystem Manager",
    "reqd": 1
   },
   {
