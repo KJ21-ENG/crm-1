@@ -95,7 +95,7 @@
             </template>
           </Link>
           <CustomDateTimePicker
-            class="datepicker w-36"
+            class="datepicker"
             v-model="_task.due_date"
             :placeholder="__('01/04/2024 11:30 PM')"
             :input-class="'border-none'"
