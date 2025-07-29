@@ -82,12 +82,15 @@ const description = computed(() => {
       'Can manage and invite new users, and create public & private views (reports).',
     'Sales User':
       'Can work with leads and deals and create private views (reports).',
+    'Support User':
+      'Can work with tickets and support-related activities.',
   }[role.value]
 })
 
 const roleOptions = computed(() => {
   return [
     { value: 'Sales User', label: __('Sales User') },
+    { value: 'Support User', label: __('Support User') },
     ...(isManager() ? [{ value: 'Sales Manager', label: __('Manager') }] : []),
     ...(isAdmin() ? [{ value: 'System Manager', label: __('Admin') }] : []),
   ]
