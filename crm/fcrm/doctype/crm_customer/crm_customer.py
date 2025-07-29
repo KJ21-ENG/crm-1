@@ -40,10 +40,21 @@ class CRMCustomer(Document):
             if self.last_name:
                 name_parts.append(self.last_name)
             self.customer_name = " ".join(name_parts)
+        elif self.customer_name and not (self.first_name or self.last_name):
+            # If only customer_name is provided, split it into first and last name
+            name_parts = self.customer_name.split()
+            if len(name_parts) >= 2:
+                self.first_name = name_parts[0]
+                self.last_name = " ".join(name_parts[1:])
+            else:
+                self.first_name = self.customer_name
+                self.last_name = ""
         elif not self.customer_name:
             # Only set default if customer_name is empty
             if self.mobile_no:
                 self.customer_name = f"Customer {self.mobile_no}"
+                self.first_name = "Customer"
+                self.last_name = str(self.mobile_no)
             else:
                 frappe.throw(_("Customer Name is required"))
 
