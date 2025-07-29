@@ -8,6 +8,13 @@
         v-if="tasksListView?.customListActions"
         :actions="tasksListView.customListActions"
       />
+      <Button 
+        variant="secondary" 
+        :label="showTodayTasks ? 'Show All Tasks' : 'Show Today\'s Tasks'"
+        @click="toggleTodayTasks"
+      >
+        <template #prefix><FeatherIcon name="calendar" class="h-4" /></template>
+      </Button>
       <Button variant="solid" :label="__('Create')" @click="createTask">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
@@ -20,6 +27,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Task"
+    :filters="defaultFilters"
     :options="{
       allowedViews: ['list', 'kanban'],
     }"
@@ -211,16 +219,14 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTodayTaskFilter } from '@/utils/taskFilter'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
 const { getUser } = usersStore()
 
 const router = useRouter()
-
 const tasksListView = ref(null)
 
 // tasks data is loaded in the ViewControls component
@@ -229,6 +235,35 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+// Track if showing today's tasks
+const showTodayTasks = ref(true)
+
+// Default filters including today's tasks filter
+const defaultFilters = computed(() => {
+  if (!showTodayTasks.value) return {}
+  
+  return {
+    due_date: ['timespan', 'Today']
+  }
+})
+
+// Toggle today's tasks filter
+function toggleTodayTasks() {
+  showTodayTasks.value = !showTodayTasks.value
+  if (viewControls.value) {
+    viewControls.value.updateFilter(defaultFilters.value)
+  }
+}
+
+// Add quick filter button in the header
+const quickActions = [
+  {
+    label: computed(() => showTodayTasks.value ? 'Show All Tasks' : "Show Today's Tasks"),
+    icon: 'calendar',
+    onClick: toggleTodayTasks,
+  }
+]
 
 function getRow(name, field) {
   function getValue(value) {
@@ -404,16 +439,5 @@ const openTaskFromURL = () => {
     window.history.replaceState(null, '', window.location.pathname)
   }
 }
-
-// Auto-apply today's filter when page loads
-const { applyFilterWithRetry } = useTodayTaskFilter(viewControls, tasks)
-
-onMounted(() => {
-  // Apply today's filter after component is mounted with retry mechanism
-  applyFilterWithRetry()
-})
-
-
-
 
 </script>
