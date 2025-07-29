@@ -149,7 +149,9 @@
    "fieldname": "mobile_no",
    "fieldtype": "Data",
    "label": "Mobile No",
-   "options": "Phone"
+   "options": "Phone",
+   "maxlength": 10,
+   "description": "Enter 10-digit mobile number only"
   },
   {
    "fieldname": "phone",

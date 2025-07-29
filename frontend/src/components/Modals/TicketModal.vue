@@ -493,6 +493,7 @@ onMounted(async () => {
     status: 'New',
     department: 'Support',
     issue_type: 'Account',
+    ticket_source: 'On Call', // New field for ticket source
     assign_to_role: '', // New field for role-based assignment
     ticket_owner: user,
     assigned_role: ''
@@ -510,7 +511,8 @@ onMounted(async () => {
       mobile_no: customerNumber,
       ticket_subject: `Support request from call ${customerNumber}`,
       subject: `Support request from call ${customerNumber}`,
-      description: `Customer called on ${props.callLog.start_time}`
+      description: `Customer called on ${props.callLog.start_time}`,
+      ticket_source: 'On Call' // Set ticket source for call-based tickets
     })
   }
 
@@ -749,11 +751,25 @@ const tabs = createResource({
             if (field.fieldname == 'mobile_no') {
               field.fieldtype = 'Data'
               field.label = 'Mobile No'
+              field.maxlength = 10
+              field.description = 'Enter 10-digit mobile number only'
               // Add change handler to trigger customer history lookup and auto-fill
               field.onChange = () => {
                 if (ticket.doc.mobile_no) {
                   customerHistory.reload()
                   // Auto-fill will be triggered by the watcher above
+                }
+              }
+              // Add input handler to restrict to numbers only
+              field.onInput = (event) => {
+                // Remove non-numeric characters
+                const value = event.target.value.replace(/[^0-9]/g, '')
+                // Limit to 10 digits
+                if (value.length > 10) {
+                  event.target.value = value.substring(0, 10)
+                  ticket.doc.mobile_no = value.substring(0, 10)
+                } else {
+                  ticket.doc.mobile_no = value
                 }
               }
             }
@@ -936,6 +952,7 @@ function validateFields() {
     ticket_subject: 'Subject',
     priority: 'Priority',
     issue_type: 'Issue Type',
+    ticket_source: 'Ticket Source',
     status: 'Status'
   }
   
@@ -948,6 +965,31 @@ function validateFields() {
         error: `${label} is required`
       }
     }
+  }
+
+  // Validate mobile number if provided
+  if (ticket.doc.mobile_no) {
+    // Remove all non-numeric characters
+    const cleanMobile = ticket.doc.mobile_no.replace(/[^0-9]/g, '')
+    
+    // Check if it's a valid number
+    if (isNaN(cleanMobile) || cleanMobile.length === 0) {
+      return {
+        isValid: false,
+        error: 'Mobile No should contain only numbers'
+      }
+    }
+    
+    // Check if it's exactly 10 digits
+    if (cleanMobile.length !== 10) {
+      return {
+        isValid: false,
+        error: 'Mobile No should be exactly 10 digits'
+      }
+    }
+    
+    // Update the mobile number to clean format
+    ticket.doc.mobile_no = cleanMobile
   }
 
   return { isValid: true }

@@ -445,10 +445,24 @@ const tabs = createResource({
             if (field.fieldname == 'mobile_no') {
               field.fieldtype = 'Data'
               field.label = 'Mobile No'
-              // Add change handler to trigger auto-fill
+              field.maxlength = 10
+              field.description = 'Enter 10-digit mobile number only'
+              // Add change handler to trigger auto-fill and validation
               field.onChange = () => {
                 // Auto-fill will be triggered by the watcher above
                 console.log('🔍 [LEAD] Mobile number field changed:', lead.doc.mobile_no)
+              }
+              // Add input handler to restrict to numbers only
+              field.onInput = (event) => {
+                // Remove non-numeric characters
+                const value = event.target.value.replace(/[^0-9]/g, '')
+                // Limit to 10 digits
+                if (value.length > 10) {
+                  event.target.value = value.substring(0, 10)
+                  lead.doc.mobile_no = value.substring(0, 10)
+                } else {
+                  lead.doc.mobile_no = value
+                }
               }
             }
 
@@ -576,12 +590,24 @@ function createNewLead() {
           return error.value
         }
       }
-      if (
-        lead.doc.mobile_no &&
-        isNaN(lead.doc.mobile_no.replace(/[-+() ]/g, ''))
-      ) {
-        error.value = __('Mobile No should be a number')
-        return error.value
+      if (lead.doc.mobile_no) {
+        // Remove all non-numeric characters
+        const cleanMobile = lead.doc.mobile_no.replace(/[^0-9]/g, '')
+        
+        // Check if it's a valid number
+        if (isNaN(cleanMobile) || cleanMobile.length === 0) {
+          error.value = __('Mobile No should contain only numbers')
+          return error.value
+        }
+        
+        // Check if it's exactly 10 digits
+        if (cleanMobile.length !== 10) {
+          error.value = __('Mobile No should be exactly 10 digits')
+          return error.value
+        }
+        
+        // Update the mobile number to clean format
+        lead.doc.mobile_no = cleanMobile
       }
       if (lead.doc.email && !lead.doc.email.includes('@')) {
         error.value = __('Invalid Email')
