@@ -136,7 +136,7 @@ def get_assignable_users():
         return []
 
 @frappe.whitelist()
-def assign_to_role(lead_name, role_name, assigned_by=None):
+def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=False):
     """Assign a lead to a role using round-robin logic"""
     try:
         if not assigned_by:
@@ -183,48 +183,52 @@ def assign_to_role(lead_name, role_name, assigned_by=None):
         
         lead_doc.save(ignore_permissions=True)
         
-        # Create follow-up task
-        task_doc = frappe.get_doc({
-            "doctype": "CRM Task",
-            "title": f"Follow up on lead: {lead_doc.first_name or lead_name}",
-            "assigned_to": assigned_user,
-            "reference_doctype": "CRM Lead",
-            "reference_docname": lead_name,
-            "description": f"Task created for lead assignment to {role_name} role - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
-            "priority": "Medium",
-            "status": "Backlog"
-        })
-        task_doc.insert(ignore_permissions=True)
-        
-        # Create activity for task creation
-        task_activity = {
-            "activity_type": "task",
-            "name": task_doc.name,
-            "creation": frappe.utils.now(),
-            "owner": assigned_by,
-            "data": {
-                "title": task_doc.title,
-                "description": task_doc.description,
-                "due_date": task_doc.due_date,
-                "priority": task_doc.priority,
-                "status": task_doc.status,
-                "reference_doctype": task_doc.reference_doctype,
-                "reference_docname": task_doc.reference_docname
-            },
-            "is_lead": True
-        }
-        
-        # Add activity to timeline
-        activity_comment = frappe.get_doc({
-            "doctype": "Comment",
-            "comment_type": "Comment",  # Changed to Comment so it shows in docinfo.comments
-            "reference_doctype": "CRM Lead", 
-            "reference_name": lead_name,
-            "content": f"📋 Task created: {task_doc.title}",
-            "comment_email": assigned_by,
-            "creation": frappe.utils.now(),
-        })
-        activity_comment.insert(ignore_permissions=True)
+        task_created = None
+        # Only create follow-up task if not explicitly skipped
+        if not skip_task_creation:
+            # Create follow-up task
+            task_doc = frappe.get_doc({
+                "doctype": "CRM Task",
+                "title": f"Follow up on lead: {lead_doc.first_name or lead_name}",
+                "assigned_to": assigned_user,
+                "reference_doctype": "CRM Lead",
+                "reference_docname": lead_name,
+                "description": f"Task created for lead assignment to {role_name} role - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
+                "priority": "Medium",
+                "status": "Backlog"
+            })
+            task_doc.insert(ignore_permissions=True)
+            
+            # Create activity for task creation
+            task_activity = {
+                "activity_type": "task",
+                "name": task_doc.name,
+                "creation": frappe.utils.now(),
+                "owner": assigned_by,
+                "data": {
+                    "title": task_doc.title,
+                    "description": task_doc.description,
+                    "due_date": task_doc.due_date,
+                    "priority": task_doc.priority,
+                    "status": task_doc.status,
+                    "reference_doctype": task_doc.reference_doctype,
+                    "reference_docname": task_doc.reference_docname
+                },
+                "is_lead": True
+            }
+            
+            # Add activity to timeline
+            activity_comment = frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Comment",  # Changed to Comment so it shows in docinfo.comments
+                "reference_doctype": "CRM Lead", 
+                "reference_name": lead_name,
+                "content": f"📋 Task created: {task_doc.title}",
+                "comment_email": assigned_by,
+                "creation": frappe.utils.now(),
+            })
+            activity_comment.insert(ignore_permissions=True)
+            task_created = task_doc.name
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Lead", lead_name)
@@ -236,7 +240,7 @@ def assign_to_role(lead_name, role_name, assigned_by=None):
             "assigned_user": assigned_user,
             "role": role_name,
             "message": f"Lead successfully assigned to {assigned_user} from {role_name} role",
-            "task_created": task_doc.name
+            "task_created": task_created
         }
         
     except Exception as e:

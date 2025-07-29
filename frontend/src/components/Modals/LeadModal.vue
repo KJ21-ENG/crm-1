@@ -218,15 +218,19 @@ watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
 // 🆕 LEAD CATEGORY: Watch for lead category changes to handle referral code validation
 watch(() => lead.doc?.lead_category, (newLeadCategory, oldLeadCategory) => {
   if (newLeadCategory !== oldLeadCategory) {
-    console.log('🔍 [LEAD CATEGORY] Lead category changed:', oldLeadCategory, '->', newLeadCategory)
     
-    // If changing to Indirect, clear referral code requirement
-    if (newLeadCategory === 'Indirect') {
-      console.log('ℹ️ [LEAD CATEGORY] Lead category is Indirect - referral code not required')
+    // Store the previous referral code when switching from Direct to Indirect
+    if (oldLeadCategory === 'Direct' && newLeadCategory === 'Indirect') {
+      // Store the current referral code temporarily
+      lead.doc._previousReferralCode = lead.doc.referral_through
+      // Clear the referral code
+      lead.doc.referral_through = ''
     } else if (newLeadCategory === 'Direct') {
-      console.log('ℹ️ [LEAD CATEGORY] Lead category is Direct - referral code is required')
-      // Set default referral through if empty
-      if (!lead.doc.referral_through) {
+      // Restore previous referral code if available, otherwise get default
+      if (lead.doc._previousReferralCode) {
+        lead.doc.referral_through = lead.doc._previousReferralCode
+        delete lead.doc._previousReferralCode
+      } else {
         setDefaultReferralThrough()
       }
     }
@@ -667,7 +671,8 @@ function createNewLead() {
           const assignmentResult = await call('crm.api.role_assignment.assign_to_role', {
             lead_name: data.name,
             role_name: lead.doc.assign_to_role,
-            assigned_by: null // Will use current user
+            assigned_by: null, // Will use current user
+            skip_task_creation: pendingTaskData.value != null // Skip task creation if we have a pending task
           })
           
           if (assignmentResult.success) {
