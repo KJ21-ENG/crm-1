@@ -169,13 +169,26 @@ const createChart = () => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: !isTrendsChart.value,
+        display: true, // Always show legend for all charts
         position: 'bottom',
         labels: {
           usePointStyle: true,
           padding: 15,
           font: {
-            size: 12
+            size: 12,
+            weight: '500'
+          },
+          generateLabels: function(chart) {
+            const datasets = chart.data.datasets;
+            return datasets.map((dataset, index) => ({
+              text: dataset.label,
+              fillStyle: dataset.borderColor || dataset.backgroundColor,
+              strokeStyle: dataset.borderColor || dataset.backgroundColor,
+              lineWidth: 2,
+              pointStyle: props.type === 'line' ? 'line' : 'circle',
+              hidden: false,
+              index: index
+            }));
           }
         }
       },
