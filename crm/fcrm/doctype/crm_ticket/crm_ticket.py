@@ -6,6 +6,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as assign
 from frappe.model.document import Document
 from frappe.utils import has_gravatar, validate_email_address
+from frappe.utils import now_datetime
 
 from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
@@ -14,6 +15,7 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 from crm.api.activities import emit_activity_update
 # Import ticket notification handler
 from crm.api.ticket_notifications import handle_ticket_assignment_change
+from crm.fcrm.utils.validation import validate_identity_documents
 
 
 class CRMTicket(Document):
@@ -24,6 +26,7 @@ class CRMTicket(Document):
 		self.set_customer_name()
 		self.set_title()
 		self.validate_email()
+		validate_identity_documents(self)
 		# Handle ticket_owner assignment logic
 		if not self.is_new() and self.has_value_changed("ticket_owner") and self.ticket_owner:
 			self.share_with_agent(self.ticket_owner)
@@ -164,7 +167,6 @@ class CRMTicket(Document):
 				organization=self.organization,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
-				referral_code=self.referral_code,
 				customer_source="Ticket",
 				reference_doctype="CRM Ticket",
 				reference_docname=self.name

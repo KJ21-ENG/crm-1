@@ -13,6 +13,7 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 )
 from crm.api.activities import emit_activity_update
 from crm.api.lead_notifications import handle_lead_assignment_change
+from crm.fcrm.utils.validation import validate_identity_documents
 
 
 class CRMLead(Document):
@@ -25,6 +26,7 @@ class CRMLead(Document):
 		self.set_lead_name()
 		self.set_title()
 		self.validate_email()
+		validate_identity_documents(self)
 		if not self.is_new() and self.has_value_changed("lead_owner") and self.lead_owner:
 			self.share_with_agent(self.lead_owner)
 			self.assign_agent(self.lead_owner)
@@ -155,7 +157,7 @@ class CRMLead(Document):
 				job_title=self.job_title,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
-				referral_code=self.referral_code,
+				referral_through=self.referral_through,
 				customer_source="Lead",
 				reference_doctype="CRM Lead",
 				reference_docname=self.name

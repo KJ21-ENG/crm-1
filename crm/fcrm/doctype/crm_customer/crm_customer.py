@@ -6,6 +6,7 @@ import json
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, now, now_datetime
+from crm.fcrm.utils.validation import validate_identity_documents
 
 
 class CRMCustomer(Document):
@@ -18,6 +19,7 @@ class CRMCustomer(Document):
         self.validate_mobile_number()
         self.set_customer_name()
         self.validate_email()
+        validate_identity_documents(self)
 
     def validate_mobile_number(self):
         """Ensure mobile number is unique and valid"""
