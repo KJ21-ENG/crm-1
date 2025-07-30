@@ -22,6 +22,9 @@ def get_dashboard_data(view='daily', _refresh=None):
         # Get date range for debugging
         start_date, end_date = get_date_range(view)
         
+        # Debug: Log the date range being used
+        print(f"Dashboard Debug - View: {view}, Start Date: {start_date}, End Date: {end_date}")
+        
         # Debug: Get recent leads to verify data
         recent_leads = frappe.db.get_list("CRM Lead",
             fields=["name", "lead_name", "creation"],
@@ -34,6 +37,9 @@ def get_dashboard_data(view='daily', _refresh=None):
         total_leads_in_range = frappe.db.count("CRM Lead", filters={
             "creation": ["between", [start_date, end_date]]
         })
+        
+        print(f"Dashboard Debug - Total leads in range: {total_leads_in_range}")
+        print(f"Dashboard Debug - Recent leads: {recent_leads}")
         
         try:
             result = {
@@ -76,7 +82,7 @@ def get_dashboard_data(view='daily', _refresh=None):
 
 def get_date_range(view):
     """Get date range based on view type"""
-    from frappe.utils import getdate, now_datetime, add_days, add_to_date
+    from frappe.utils import getdate, now_datetime, add_days, add_to_date, get_datetime
     from datetime import datetime, timedelta
     
     today = getdate()
@@ -84,8 +90,9 @@ def get_date_range(view):
     
     if view == 'daily':
         # For daily view, use the entire day from 00:00:00 to 23:59:59
-        start_date = get_datetime(today)  # Start of day
-        end_date = get_datetime(add_to_date(today, days=1))  # Start of next day as datetime
+        # Fix: Use explicit datetime objects to avoid timezone issues
+        start_date = datetime.combine(today, datetime.min.time())  # Start of day (00:00:00)
+        end_date = datetime.combine(today, datetime.max.time())    # End of day (23:59:59.999999)
     elif view == 'weekly':
         start_date = get_datetime(add_days(today, -7))
         end_date = now
@@ -338,7 +345,11 @@ def get_recent_activities(view='daily'):
 
 def get_trends_data(view='daily'):
     """Get trends data for charts"""
+    from frappe.utils import getdate, now_datetime, add_days
+    from datetime import datetime, timedelta
+    
     today = getdate()
+    now = now_datetime()
     dates = []
     lead_counts = []
     ticket_counts = []
@@ -346,9 +357,9 @@ def get_trends_data(view='daily'):
     if view == 'daily':
         # Show last 24 hours (hourly data points)
         for i in range(24):
-            hour_start = add_days(today, 0)  # Today
-            hour_start = hour_start.replace(hour=i, minute=0, second=0, microsecond=0)
-            hour_end = hour_start.replace(hour=i+1, minute=0, second=0, microsecond=0) if i < 23 else today.replace(hour=23, minute=59, second=59, microsecond=999999)
+            # Fix: Use proper datetime objects for hourly calculations
+            hour_start = datetime.combine(today, datetime.min.time()) + timedelta(hours=i)
+            hour_end = hour_start + timedelta(hours=1) if i < 23 else datetime.combine(today, datetime.max.time())
             
             dates.insert(0, hour_start.strftime("%H:00"))
             
