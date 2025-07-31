@@ -26,6 +26,7 @@
    "lead_category",
    "referral_through",
    "client_id",
+   "customer_id",
    "person_tab",
   "salutation",
   "first_name",
@@ -186,6 +187,14 @@
    "fieldtype": "Data",
    "label": "Client ID",
    "description": "Client identification number assigned when account is opened"
+  },
+  {
+   "fieldname": "customer_id",
+   "fieldtype": "Link",
+   "label": "Customer ID",
+   "options": "CRM Customer",
+   "read_only": 1,
+   "description": "Reference to customer record"
   },
   {
    "fieldname": "section_break_uixv",

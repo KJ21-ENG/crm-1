@@ -42,3 +42,4 @@ crm.patches.v1_0.update_ticket_layout_with_source # 28-01-2025
 crm.patches.v1_0.update_mobile_validation # 28-01-2025
 crm.patches.v1_0.add_client_id_metadata # 28-01-2025
 crm.patches.v1_0.add_support_manager_role # 28-01-2025
+crm.patches.v1_0.update_customer_id_references # 31-07-2025

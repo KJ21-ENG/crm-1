@@ -148,7 +148,7 @@ class CRMLead(Document):
 			# Import the customer API function
 			from crm.api.customers import create_or_update_customer
 			
-			customer = create_or_update_customer(
+			customer_result = create_or_update_customer(
 				mobile_no=self.mobile_no,
 				first_name=self.first_name,
 				last_name=self.last_name,
@@ -163,7 +163,13 @@ class CRMLead(Document):
 				reference_docname=self.name
 			)
 			
-			frappe.logger().info(f"Customer record processed for lead {self.name}: {customer}")
+			# Update the customer_id field with the customer name using db.set_value to avoid activity log
+			if customer_result and customer_result.get("name"):
+				frappe.db.set_value("CRM Lead", self.name, "customer_id", customer_result["name"])
+				# Update the instance variable to keep it in sync
+				self.customer_id = customer_result["name"]
+			
+			frappe.logger().info(f"Customer record processed for lead {self.name}: {customer_result}")
 			
 		except Exception as e:
 			# Log error but don't fail the lead creation

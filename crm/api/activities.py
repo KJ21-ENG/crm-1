@@ -199,6 +199,7 @@ def get_lead_activities(name, limit=20, offset=0):
 		"sla",
 		"first_response_time",
 		"first_responded_on",
+		"customer_id",
 	]
 
 	doc = frappe.db.get_values("CRM Lead", name, ["creation", "owner"])[0]
@@ -332,6 +333,8 @@ def get_ticket_activities(name, limit=20, offset=0):
 		"sla",
 		"first_response_time",
 		"first_responded_on",
+		"customer_id",
+		"assigned_to",
 	]
 
 	# Get ticket basic info

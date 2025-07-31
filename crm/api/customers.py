@@ -29,17 +29,22 @@ def create_or_update_customer(mobile_no, first_name=None, last_name=None,
     if existing_customer:
         # Update existing customer
         from crm.fcrm.doctype.crm_customer.crm_customer import update_customer_data
-        return update_customer_data(mobile_no, 
+        result = update_customer_data(mobile_no, 
                                   first_name=first_name,
                                   last_name=last_name,
                                   email=email,
                                   organization=organization,
                                   job_title=job_title,
                                   **kwargs)
+        return {
+            "name": existing_customer.name,
+            "action": "updated",
+            "message": "Customer updated successfully"
+        }
     else:
         # Create new customer
         from crm.fcrm.doctype.crm_customer.crm_customer import create_customer_from_lead_or_ticket
-        return create_customer_from_lead_or_ticket(mobile_no,
+        result = create_customer_from_lead_or_ticket(mobile_no,
                                                  first_name=first_name,
                                                  last_name=last_name,
                                                  email=email,
@@ -49,6 +54,11 @@ def create_or_update_customer(mobile_no, first_name=None, last_name=None,
                                                  reference_doctype=reference_doctype,
                                                  reference_docname=reference_docname,
                                                  **kwargs)
+        return {
+            "name": result["name"],
+            "action": "created",
+            "message": "Customer created successfully"
+        }
 
 
 @frappe.whitelist()
@@ -244,3 +254,125 @@ def create_or_find_customer(lead_name, mobile_no, customer_name, email=None):
     except Exception as e:
         frappe.log_error(f"Error in create_or_find_customer: {str(e)}")
         return {"success": False, "message": str(e)} 
+
+
+@frappe.whitelist()
+def get_customer_by_id(customer_id):
+    """Get customer details by customer ID (customer name)"""
+    if not customer_id:
+        return None
+    
+    customer = frappe.db.get_value(
+        "CRM Customer",
+        {"name": customer_id},
+        ["name", "customer_name", "first_name", "last_name", "email", 
+         "mobile_no", "organization", "status", "customer_source",
+         "pan_card_number", "aadhaar_card_number", "referral_code"],
+        as_dict=True
+    )
+    
+    return customer
+
+
+@frappe.whitelist()
+def get_customer_data_for_lead(lead_name):
+    """Get customer data for a specific lead using customer_id"""
+    if not lead_name:
+        return None
+    
+    # Get the customer_id from the lead
+    customer_id = frappe.db.get_value("CRM Lead", lead_name, "customer_id")
+    
+    if not customer_id:
+        return None
+    
+    # Get customer data using customer_id
+    return get_customer_by_id(customer_id)
+
+
+@frappe.whitelist()
+def get_customer_data_for_ticket(ticket_name):
+    """Get customer data for a specific ticket using customer_id"""
+    if not ticket_name:
+        return None
+    
+    # Get the customer_id from the ticket
+    customer_id = frappe.db.get_value("CRM Ticket", ticket_name, "customer_id")
+    
+    if not customer_id:
+        return None
+    
+    # Get customer data using customer_id
+    return get_customer_by_id(customer_id)
+
+
+@frappe.whitelist()
+def update_lead_customer_data(lead_name, customer_data):
+    """Update customer data for a lead - updates both lead and customer records"""
+    if not lead_name:
+        frappe.throw(_("Lead name is required"))
+    
+    lead = frappe.get_doc("CRM Lead", lead_name)
+    customer_id = lead.customer_id
+    
+    if not customer_id:
+        frappe.throw(_("No customer associated with this lead"))
+    
+    # Update customer record
+    customer = frappe.get_doc("CRM Customer", customer_id)
+    
+    # Update customer fields
+    for field, value in customer_data.items():
+        if hasattr(customer, field) and value is not None:
+            setattr(customer, field, value)
+    
+    customer.save()
+    
+    # Update lead fields to match customer
+    sync_fields = ['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number']
+    for field in sync_fields:
+        if field in customer_data and customer_data[field] is not None:
+            setattr(lead, field, customer_data[field])
+    
+    lead.save()
+    
+    return {
+        "success": True,
+        "message": "Customer and lead data updated successfully"
+    }
+
+
+@frappe.whitelist()
+def update_ticket_customer_data(ticket_name, customer_data):
+    """Update customer data for a ticket - updates both ticket and customer records"""
+    if not ticket_name:
+        frappe.throw(_("Ticket name is required"))
+    
+    ticket = frappe.get_doc("CRM Ticket", ticket_name)
+    customer_id = ticket.customer_id
+    
+    if not customer_id:
+        frappe.throw(_("No customer associated with this ticket"))
+    
+    # Update customer record
+    customer = frappe.get_doc("CRM Customer", customer_id)
+    
+    # Update customer fields
+    for field, value in customer_data.items():
+        if hasattr(customer, field) and value is not None:
+            setattr(customer, field, value)
+    
+    customer.save()
+    
+    # Update ticket fields to match customer
+    sync_fields = ['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number']
+    for field in sync_fields:
+        if field in customer_data and customer_data[field] is not None:
+            setattr(ticket, field, customer_data[field])
+    
+    ticket.save()
+    
+    return {
+        "success": True,
+        "message": "Customer and ticket data updated successfully"
+    } 
