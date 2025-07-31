@@ -37,7 +37,7 @@
           class="flex-1"
           size="md"
           type="text"
-          :placeholder="__('My Open Deals')"
+          :placeholder="__('My Custom View')"
           v-model="view.label"
         />
       </div>

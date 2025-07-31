@@ -48,11 +48,11 @@
           </Button>
         </template>
       </Dropdown>
-      <Button
+      <!-- <Button
         :label="__('Convert to Deal')"
         variant="solid"
         @click="showConvertToDealModal = true"
-      />
+      /> -->
     </template>
   </LayoutHeader>
   <div v-if="lead?.data" class="flex h-full overflow-hidden">
@@ -227,7 +227,8 @@
     :errorTitle="errorTitle"
     :errorMessage="errorMessage"
   />
-  <Dialog
+  <!-- Commented out - Deal module not in use -->
+  <!-- <Dialog
     v-model="showConvertToDealModal"
     :options="{
       size: 'xl',
@@ -318,17 +319,8 @@
           {{ __("New contact will be created based on the person's details") }}
         </div>
       </div>
-
-      <div v-if="dealTabs.data?.length" class="h-px w-full border-t my-6" />
-
-      <FieldLayout
-        v-if="dealTabs.data?.length"
-        :tabs="dealTabs.data"
-        :data="deal"
-        doctype="CRM Deal"
-      />
     </template>
-  </Dialog>
+  </Dialog> -->
   <FilesUploader
     v-if="lead.data?.name"
     v-model="showFilesUploader"
@@ -374,8 +366,9 @@ import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import CameraIcon from '@/components/Icons/CameraIcon.vue'
 import LinkIcon from '@/components/Icons/LinkIcon.vue'
-import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+// Commented out - Organizations and Contacts modules not in use
+// import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
+// import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
@@ -433,7 +426,7 @@ const { brand } = getSettings()
 const { user } = sessionStore()
 const { isManager } = usersStore()
 const { $dialog, $socket, makeCall } = globalStore()
-const { statusOptions, getLeadStatus, getDealStatus } = statusesStore()
+const { statusOptions, getLeadStatus } = statusesStore()
 const { doctypeMeta } = getMeta('CRM Lead')
 
 const { updateOnboardingStep } = useOnboarding('frappecrm')
@@ -728,15 +721,16 @@ async function deleteLeadWithModal(name) {
   showDeleteLinkedDocModal.value = true
 }
 
-// Convert to Deal
-const showConvertToDealModal = ref(false)
-const existingContactChecked = ref(false)
-const existingOrganizationChecked = ref(false)
+// Commented out - Deal module not in use
+// // Convert to Deal
+// const showConvertToDealModal = ref(false)
+// const existingContactChecked = ref(false)
+// const existingOrganizationChecked = ref(false)
 
-const existingContact = ref('')
-const existingOrganization = ref('')
+// const existingContact = ref('')
+// const existingOrganization = ref('')
 
-const { triggerConvertToDeal, triggerOnChange, assignees, document } =
+const { triggerOnChange, assignees, document } =
   useDocument('CRM Lead', props.leadId)
 
 // Client ID Modal state
@@ -804,52 +798,49 @@ async function handleStatusChange(fieldname, value) {
   await triggerOnChange(fieldname, value)
 }
 
-async function convertToDeal() {
-  if (existingContactChecked.value && !existingContact.value) {
-    toast.error(__('Please select an existing contact'))
-    return
-  }
+// Commented out - Deal module not in use
+// async function convertToDeal() {
+//   if (existingContactChecked.value && !existingContact.value) {
+//     toast.error(__('Please select an existing contact'))
+//     return
+//   }
 
-  if (existingOrganizationChecked.value && !existingOrganization.value) {
-    toast.error(__('Please select an existing organization'))
-    return
-  }
+//   if (existingOrganizationChecked.value && !existingOrganization.value) {
+//     toast.error(__('Please select an existing organization'))
+//     return
+//   }
 
-  if (!existingContactChecked.value && existingContact.value) {
-    existingContact.value = ''
-  }
+//   if (!existingContactChecked.value && existingContact.value) {
+//     existingContact.value = ''
+//   }
 
-  if (!existingOrganizationChecked.value && existingOrganization.value) {
-    existingOrganization.value = ''
-  }
+//   if (!existingOrganizationChecked.value && existingOrganization.value) {
+//     existingOrganization.value = ''
+//   }
 
-  await triggerConvertToDeal?.(
-    lead.data,
-    deal,
-    () => (showConvertToDealModal.value = false),
-  )
+//   await triggerConvertToDeal?.(
+//     lead.data,
+//     deal,
+//     () => (showConvertToDealModal.value = false),
+//   )
 
-  let _deal = await call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
-    lead: lead.data.name,
-    deal,
-    existing_contact: existingContact.value,
-    existing_organization: existingOrganization.value,
-  }).catch((err) => {
-    toast.error(__('Error converting to deal: {0}', [err.messages?.[0]]))
-  })
-  if (_deal) {
-    showConvertToDealModal.value = false
-    existingContactChecked.value = false
-    existingOrganizationChecked.value = false
-    existingContact.value = ''
-    existingOrganization.value = ''
-    updateOnboardingStep('convert_lead_to_deal', true, false, () => {
-      localStorage.setItem('firstDeal' + user, _deal)
-    })
-    capture('convert_lead_to_deal')
-    router.push({ name: 'Deal', params: { dealId: _deal } })
-  }
-}
+//   let _deal = await call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
+//     lead: lead.data.name,
+//     deal,
+//     existing_contact: existingContact.value,
+//     existing_organization: existingOrganization.value,
+//   })
+
+//   if (_deal) {
+//     showConvertToDealModal.value = false
+//     existingContactChecked.value = false
+//     existingOrganizationChecked.value = false
+//     existingContact.value = ''
+//     existingOrganization.value = ''
+//     capture('convert_lead_to_deal')
+//     router.push({ name: 'Deal', params: { dealId: _deal } })
+//   }
+// }
 
 const activities = ref(null)
 
@@ -861,53 +852,54 @@ function openEmailBox() {
   nextTick(() => (activities.value.emailBox.show = true))
 }
 
-const deal = reactive({})
+// Commented out - Deal module not in use
+// const deal = reactive({})
 
-const dealStatuses = computed(() => {
-  let statuses = statusOptions('deal')
-  if (!deal.status) {
-    deal.status = statuses[0].value
-  }
-  return statuses
-})
+// const dealStatuses = computed(() => {
+//   let statuses = statusOptions('deal')
+//   if (!deal.status) {
+//     deal.status = statuses[0].value
+//   }
+//   return statuses
+// })
 
-const dealTabs = createResource({
-  url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
-  cache: ['RequiredFields', 'CRM Deal'],
-  params: { doctype: 'CRM Deal', type: 'Required Fields' },
-  auto: true,
-  transform: (_tabs) => {
-    let hasFields = false
-    let parsedTabs = _tabs?.forEach((tab) => {
-      tab.sections?.forEach((section) => {
-        section.columns?.forEach((column) => {
-          column.fields?.forEach((field) => {
-            hasFields = true
-            if (field.fieldname == 'status') {
-              field.fieldtype = 'Select'
-              field.options = dealStatuses.value
-              field.prefix = getDealStatus(deal.status).color
-            }
+// const dealTabs = createResource({
+//   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
+//   cache: ['RequiredFields', 'CRM Deal'],
+//   params: { doctype: 'CRM Deal', type: 'Required Fields' },
+//   auto: true,
+//   transform: (_tabs) => {
+//     let hasFields = false
+//     let parsedTabs = _tabs?.forEach((tab) => {
+//       tab.sections?.forEach((section) => {
+//         section.columns?.forEach((column) => {
+//           column.fields?.forEach((field) => {
+//             hasFields = true
+//             if (field.fieldname == 'status') {
+//               field.fieldtype = 'Select'
+//               field.options = dealStatuses.value
+//               field.prefix = getDealStatus(deal.status).color
+//             }
 
-            if (field.fieldtype === 'Table') {
-              deal[field.fieldname] = []
-            }
-          })
-        })
-      })
-    })
-    return hasFields ? parsedTabs : []
-  },
-})
+//             if (field.fieldtype === 'Table') {
+//               deal[field.fieldname] = []
+//             }
+//           })
+//         })
+//       })
+//     })
+//     return hasFields ? parsedTabs : []
+//   },
+// })
 
-function openQuickEntryModal() {
-  showQuickEntryModal.value = true
-  quickEntryProps.value = {
-    doctype: 'CRM Deal',
-    onlyRequired: true,
-  }
-  showConvertToDealModal.value = false
-}
+// function openQuickEntryModal() {
+//   showQuickEntryModal.value = true
+//   quickEntryProps.value = {
+//     doctype: 'CRM Deal',
+//     onlyRequired: true,
+//   }
+//   showConvertToDealModal.value = false
+// }
 
 function reloadAssignees(data) {
   if (data?.hasOwnProperty('lead_owner')) {

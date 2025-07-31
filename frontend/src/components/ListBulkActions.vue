@@ -75,35 +75,36 @@ function editValues(selections, unselectAll) {
   unselectAllAction.value = unselectAll
 }
 
-function convertToDeal(selections, unselectAll) {
-  $dialog({
-    title: __('Convert to Deal'),
-    message: __('Are you sure you want to convert {0} Lead(s) to Deal(s)?', [
-      selections.size,
-    ]),
-    variant: 'solid',
-    theme: 'blue',
-    actions: [
-      {
-        label: __('Convert'),
-        variant: 'solid',
-        onClick: (close) => {
-          capture('bulk_convert_to_deal')
-          Array.from(selections).forEach((name) => {
-            call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
-              lead: name,
-            }).then(() => {
-              toast.success(__('Converted successfully'))
-              list.value.reload()
-              unselectAll()
-              close()
-            })
-          })
-        },
-      },
-    ],
-  })
-}
+// Commented out - Deal module not in use
+// function convertToDeal(selections, unselectAll) {
+//   $dialog({
+//     title: __('Convert to Deal'),
+//     message: __('Are you sure you want to convert {0} Lead(s) to Deal(s)?', [
+//       selections.size,
+//     ]),
+//     variant: 'solid',
+//     theme: 'blue',
+//     actions: [
+//       {
+//         label: __('Convert'),
+//         variant: 'solid',
+//         onClick: (close) => {
+//           capture('bulk_convert_to_deal')
+//           Array.from(selections).forEach((name) => {
+//             call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
+//               lead: name,
+//             }).then(() => {
+//               toast.success(__('Converted successfully'))
+//               list.value.reload()
+//               unselectAll()
+//               close()
+//             })
+//           })
+//         },
+//       },
+//     ],
+//   })
+// }
 
 function deleteValues(selections, unselectAll) {
   const selectedDocs = Array.from(selections)
@@ -286,12 +287,13 @@ function bulkActions(selections, unselectAll) {
     })
   }
 
-  if (props.doctype === 'CRM Lead') {
-    actions.push({
-      label: __('Convert to Deal'),
-      onClick: () => convertToDeal(selections, unselectAll),
-    })
-  }
+  // Commented out - Deal module not in use
+  // if (props.doctype === 'CRM Lead') {
+  //   actions.push({
+  //     label: __('Convert to Deal'),
+  //     onClick: () => convertToDeal(selections, unselectAll),
+  //   })
+  // }
 
   if (props.doctype === 'CRM Ticket') {
     actions.push({

@@ -42,18 +42,19 @@ const routes = [
     component: () => import(`@/pages/${handleMobileView('Lead')}.vue`),
     props: true,
   },
-  {
-    alias: '/deals',
-    path: '/deals/view/:viewType?',
-    name: 'Deals',
-    component: () => import('@/pages/Deals.vue'),
-  },
-  {
-    path: '/deals/:dealId',
-    name: 'Deal',
-    component: () => import(`@/pages/${handleMobileView('Deal')}.vue`),
-    props: true,
-  },
+  // Commented out - Deal module not in use
+  // {
+  //   alias: '/deals',
+  //   path: '/deals/view/:viewType?',
+  //   name: 'Deals',
+  //   component: () => import('@/pages/Deals.vue'),
+  // },
+  // {
+  //   path: '/deals/:dealId',
+  //   name: 'Deal',
+  //   component: () => import(`@/pages/${handleMobileView('Deal')}.vue`),
+  //   props: true,
+  // },
   {
     alias: '/notes',
     path: '/notes/view/:viewType?',
@@ -66,18 +67,19 @@ const routes = [
     name: 'Tasks',
     component: () => import('@/pages/Tasks.vue'),
   },
-  {
-    alias: '/contacts',
-    path: '/contacts/view/:viewType?',
-    name: 'Contacts',
-    component: () => import('@/pages/Contacts.vue'),
-  },
-  {
-    path: '/contacts/:contactId',
-    name: 'Contact',
-    component: () => import(`@/pages/${handleMobileView('Contact')}.vue`),
-    props: true,
-  },
+  // Commented out - Contacts module not in use
+  // {
+  //   alias: '/contacts',
+  //   path: '/contacts/view/:viewType?',
+  //   name: 'Contacts',
+  //   component: () => import('@/pages/Contacts.vue'),
+  // },
+  // {
+  //   path: '/contacts/:contactId',
+  //   name: 'Contact',
+  //   component: () => import(`@/pages/${handleMobileView('Contact')}.vue`),
+  //   props: true,
+  // },
   {
     alias: '/customers',
     path: '/customers/view/:viewType?',
@@ -90,24 +92,25 @@ const routes = [
     component: () => import(`@/pages/${handleMobileView('Customer')}.vue`),
     props: true,
   },
-  {
-    alias: '/organizations',
-    path: '/organizations/view/:viewType?',
-    name: 'Organizations',
-    component: () => import('@/pages/Organizations.vue'),
-  },
+  // Commented out - Organizations module not in use
+  // {
+  //   alias: '/organizations',
+  //   path: '/organizations/view/:viewType?',
+  //   name: 'Organizations',
+  //   component: () => import('@/pages/Organizations.vue'),
+  // },
   {
     alias: '/support-pages',
     path: '/support-pages/view/:viewType?',
     name: 'Support Pages',
     component: () => import('@/pages/SupportPages.vue'),
   },
-  {
-    path: '/organizations/:organizationId',
-    name: 'Organization',
-    component: () => import(`@/pages/${handleMobileView('Organization')}.vue`),
-    props: true,
-  },
+  // {
+  //   path: '/organizations/:organizationId',
+  //   name: 'Organization',
+  //   component: () => import(`@/pages/${handleMobileView('Organization')}.vue`),
+  //   props: true,
+  // },
   {
     alias: '/call-logs',
     path: '/call-logs/view/:viewType?',
@@ -162,8 +165,8 @@ router.beforeEach(async (to, from, next) => {
     window.location.href = '/login?redirect-to=/crm'
   } else if (to.matched.length === 0) {
     next({ name: 'Invalid Page' })
-  } else if (['Deal', 'Lead'].includes(to.name) && !to.hash) {
-    let storageKey = to.name === 'Deal' ? 'lastDealTab' : 'lastLeadTab'
+  } else if (['Lead'].includes(to.name) && !to.hash) {
+    let storageKey = 'lastLeadTab'
     const activeTab = localStorage.getItem(storageKey) || 'activity'
     const hash = '#' + activeTab
     next({ ...to, hash })

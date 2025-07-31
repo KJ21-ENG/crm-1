@@ -186,7 +186,8 @@ import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import DurationIcon from '@/components/Icons/DurationIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import Dealsicon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Deal module not in use
+// import Dealsicon from '@/components/Icons/DealsIcon.vue'
 import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
@@ -258,23 +259,31 @@ const detailFields = computed(() => {
       },
     },
     {
-      icon: data._lead ? LeadsIcon : Dealsicon,
+      // Commented out - Deal module not in use
+      // icon: data._lead ? LeadsIcon : Dealsicon,
+      icon: LeadsIcon, // Only show Leads icon since Deals are not in use
       name: 'reference_doc',
-      value: data._lead ? 'Lead' : 'Deal',
+      // Commented out - Deal module not in use
+      // value: data._lead ? 'Lead' : 'Deal',
+      value: 'Lead', // Only show Lead since Deals are not in use
       link: () => {
         if (data._lead) {
           router.push({
             name: 'Lead',
             params: { leadId: data._lead },
           })
-        } else {
-          router.push({
-            name: 'Deal',
-            params: { dealId: data._deal },
-          })
         }
+        // Commented out - Deal module not in use
+        // else {
+        //   router.push({
+        //     name: 'Deal',
+        //     params: { dealId: data._deal },
+        //   })
+        // }
       },
-      condition: () => data._lead || data._deal,
+      // Commented out - Deal module not in use
+      // condition: () => data._lead || data._deal,
+      condition: () => data._lead, // Only show for leads since deals are not in use
     },
     {
       icon: CalendarIcon,

@@ -173,10 +173,13 @@ import PinIcon from '@/components/Icons/PinIcon.vue'
 import UserDropdown from '@/components/UserDropdown.vue'
 import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+// Commented out - Deal module not in use
+// import DealsIcon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Contacts module not in use
+// import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import CustomersIcon from '@/components/Icons/CustomersIcon.vue'
-import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
+// Commented out - Organizations module not in use
+// import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
@@ -242,26 +245,29 @@ const links = [
     icon: LeadsIcon,
     to: 'Leads',
   },
-  {
-    label: 'Deals',
-    icon: DealsIcon,
-    to: 'Deals',
-  },
-  {
-    label: 'Contacts',
-    icon: ContactsIcon,
-    to: 'Contacts',
-  },
+  // Commented out - Deal module not in use
+  // {
+  //   label: 'Deals',
+  //   icon: DealsIcon,
+  //   to: 'Deals',
+  // },
+  // Commented out - Contacts module not in use
+  // {
+  //   label: 'Contacts',
+  //   icon: ContactsIcon,
+  //   to: 'Contacts',
+  // },
   {
     label: 'Customers',
     icon: CustomersIcon,
     to: 'Customers',
   },
-  {
-    label: 'Organizations',
-    icon: OrganizationsIcon,
-    to: 'Organizations',
-  },
+  // Commented out - Organizations module not in use
+  // {
+  //   label: 'Organizations',
+  //   icon: OrganizationsIcon,
+  //   to: 'Organizations',
+  // },
   {
     label: 'Support Pages',
     icon: SupportPagesIcon,
@@ -331,14 +337,17 @@ function getIcon(routeName, icon) {
   switch (routeName) {
     case 'Leads':
       return LeadsIcon
-    case 'Deals':
-      return DealsIcon
-    case 'Contacts':
-      return ContactsIcon
+    // Commented out - Deal module not in use
+    // case 'Deals':
+    //   return DealsIcon
+    // Commented out - Contacts module not in use
+    // case 'Contacts':
+    //   return ContactsIcon
     case 'Customers':
       return CustomersIcon
-    case 'Organizations':
-      return OrganizationsIcon
+    // Commented out - Organizations module not in use
+    // case 'Organizations':
+    //   return OrganizationsIcon
     case 'Notes':
       return NoteIcon
     case 'Call Logs':

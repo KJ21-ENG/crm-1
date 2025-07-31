@@ -543,7 +543,8 @@ import WhatsAppBox from '@/components/Activities/WhatsAppBox.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import MultiActionButton from '@/components/MultiActionButton.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Deal module not in use
+// import DealsIcon from '@/components/Icons/DealsIcon.vue'
 import DotIcon from '@/components/Icons/DotIcon.vue'
 import CommentIcon from '@/components/Icons/CommentIcon.vue'
 import SelectIcon from '@/components/Icons/SelectIcon.vue'
@@ -884,12 +885,15 @@ function timelineIcon(activity_type, is_lead, is_ticket) {
       } else if (is_lead) {
         icon = LeadsIcon
       } else {
-        icon = DealsIcon
+        // Commented out - Deal module not in use
+        // icon = DealsIcon
+        icon = DotIcon // Fallback icon
       }
       break
-    case 'deal':
-      icon = DealsIcon
-      break
+    // Commented out - Deal module not in use
+    // case 'deal':
+    //   icon = DealsIcon
+    //   break
     case 'comment':
       icon = CommentIcon
       break
