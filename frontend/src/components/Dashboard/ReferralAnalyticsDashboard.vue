@@ -165,15 +165,15 @@
             </div>
             
             <!-- Top Referrers Pagination -->
-            <div v-if="topReferrers.length > itemsPerPage" class="mt-4 flex items-center justify-between">
+            <div class="mt-4 flex items-center justify-between">
               <div class="flex items-center space-x-4">
                 <div class="text-sm text-gray-600">
-                  Showing {{ (topReferrersCurrentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(topReferrersCurrentPage * itemsPerPage, topReferrers.length) }} of {{ topReferrers.length }} results
+                  Showing {{ (topReferrersCurrentPage - 1) * topReferrersItemsPerPage + 1 }} to {{ Math.min(topReferrersCurrentPage * topReferrersItemsPerPage, topReferrers.length) }} of {{ topReferrers.length }} results
                 </div>
                 <div class="flex items-center space-x-2">
                   <span class="text-sm text-gray-600">Show:</span>
                   <select 
-                    v-model="itemsPerPage" 
+                    v-model="topReferrersItemsPerPage" 
                     class="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @change="topReferrersCurrentPage = 1"
                   >
@@ -184,7 +184,7 @@
                   </select>
                 </div>
               </div>
-              <div class="flex items-center space-x-2">
+              <div v-if="topReferrersTotalPages > 1" class="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -435,16 +435,16 @@
           </table>
           
           <!-- Source Table Pagination -->
-          <div v-if="sourceTable.length > itemsPerPage" class="px-4 py-3 border-t border-gray-200">
+          <div class="px-4 py-3 border-t border-gray-200">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-4">
                 <div class="text-sm text-gray-600">
-                  Showing {{ (sourceTableCurrentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(sourceTableCurrentPage * itemsPerPage, sourceTable.length) }} of {{ sourceTable.length }} results
+                  Showing {{ (sourceTableCurrentPage - 1) * sourceTableItemsPerPage + 1 }} to {{ Math.min(sourceTableCurrentPage * sourceTableItemsPerPage, sourceTable.length) }} of {{ sourceTable.length }} results
                 </div>
                 <div class="flex items-center space-x-2">
                   <span class="text-sm text-gray-600">Show:</span>
                   <select 
-                    v-model="itemsPerPage" 
+                    v-model="sourceTableItemsPerPage" 
                     class="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @change="sourceTableCurrentPage = 1"
                   >
@@ -455,7 +455,7 @@
                   </select>
                 </div>
               </div>
-              <div class="flex items-center space-x-2">
+              <div v-if="sourceTableTotalPages > 1" class="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -519,8 +519,9 @@ const topReferrers = ref([])
 const sourceTable = ref([])
 const conversionFunnel = ref({})
 
-// Pagination state
-const itemsPerPage = ref(5)
+// Pagination state - Separate for each table
+const topReferrersItemsPerPage = ref(5)
+const sourceTableItemsPerPage = ref(5)
 const topReferrersCurrentPage = ref(1)
 const sourceTableCurrentPage = ref(1)
 
@@ -538,25 +539,25 @@ const filters = ref({
 
 // Computed properties for pagination
 const topReferrersTotalPages = computed(() => {
-  if (!topReferrers.value || !Array.isArray(topReferrers.value) || itemsPerPage.value <= 0) {
+  if (!topReferrers.value || !Array.isArray(topReferrers.value) || topReferrersItemsPerPage.value <= 0) {
     return 1
   }
-  return Math.ceil(topReferrers.value.length / itemsPerPage.value)
+  return Math.ceil(topReferrers.value.length / topReferrersItemsPerPage.value)
 })
 
 const sourceTableTotalPages = computed(() => {
-  if (!sourceTable.value || !Array.isArray(sourceTable.value) || itemsPerPage.value <= 0) {
+  if (!sourceTable.value || !Array.isArray(sourceTable.value) || sourceTableItemsPerPage.value <= 0) {
     return 1
   }
-  return Math.ceil(sourceTable.value.length / itemsPerPage.value)
+  return Math.ceil(sourceTable.value.length / sourceTableItemsPerPage.value)
 })
 
 const paginatedTopReferrers = computed(() => {
   if (!topReferrers.value || !Array.isArray(topReferrers.value)) {
     return []
   }
-  const start = (topReferrersCurrentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
+  const start = (topReferrersCurrentPage.value - 1) * topReferrersItemsPerPage.value
+  const end = start + topReferrersItemsPerPage.value
   return topReferrers.value.slice(start, end)
 })
 
@@ -564,8 +565,8 @@ const paginatedSourceTable = computed(() => {
   if (!sourceTable.value || !Array.isArray(sourceTable.value)) {
     return []
   }
-  const start = (sourceTableCurrentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
+  const start = (sourceTableCurrentPage.value - 1) * sourceTableItemsPerPage.value
+  const end = start + sourceTableItemsPerPage.value
   return sourceTable.value.slice(start, end)
 })
 
