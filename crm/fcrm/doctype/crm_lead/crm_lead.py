@@ -49,17 +49,33 @@ class CRMLead(Document):
 		handle_lead_assignment_change(self, method="after_insert")
 
 	def on_update(self):
-		# Sync customer-related field changes to customer record
-		customer_fields = ['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number']
-		if any(self.has_value_changed(field) for field in customer_fields):
-			self.create_or_update_customer()
-		
+		# No longer sync customer-related field changes since we're not storing duplicate data
+		# Customer data is now managed only in the customer table
 		emit_activity_update("CRM Lead", self.name)
 
 	def before_save(self):
 		self.apply_sla()
 
 	def set_full_name(self):
+		"""Set full name from customer data if available, otherwise use lead-specific data"""
+		if self.customer_id:
+			# Try to get customer data
+			customer_data = self.get_customer_data()
+			if customer_data:
+				self.lead_name = " ".join(
+					filter(
+						None,
+						[
+							customer_data.get('salutation'),
+							customer_data.get('first_name'),
+							customer_data.get('middle_name'),
+							customer_data.get('last_name'),
+						],
+					)
+				)
+				return
+		
+		# Fallback to lead-specific data if no customer data available
 		if self.first_name:
 			self.lead_name = " ".join(
 				filter(
@@ -148,6 +164,7 @@ class CRMLead(Document):
 			# Import the customer API function
 			from crm.api.customers import create_or_update_customer
 			
+			# Only pass customer-specific data to customer creation
 			customer_result = create_or_update_customer(
 				mobile_no=self.mobile_no,
 				first_name=self.first_name,
@@ -168,6 +185,18 @@ class CRMLead(Document):
 				frappe.db.set_value("CRM Lead", self.name, "customer_id", customer_result["name"])
 				# Update the instance variable to keep it in sync
 				self.customer_id = customer_result["name"]
+				
+				# Clear customer-specific fields from lead table to avoid duplication
+				customer_fields_to_clear = [
+					'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
+					'phone', 'salutation', 'gender', 'organization', 'job_title',
+					'pan_card_number', 'aadhaar_card_number', 'image', 'lead_name'
+				]
+				
+				for field in customer_fields_to_clear:
+					if hasattr(self, field):
+						frappe.db.set_value("CRM Lead", self.name, field, None)
+						setattr(self, field, None)
 			
 			frappe.logger().info(f"Customer record processed for lead {self.name}: {customer_result}")
 			
@@ -175,6 +204,18 @@ class CRMLead(Document):
 			# Log error but don't fail the lead creation
 			frappe.log_error(f"Error creating/updating customer for lead {self.name}: {str(e)}", "Customer Creation Error")
 			frappe.logger().error(f"Customer creation failed for lead {self.name}: {str(e)}")
+
+	def get_customer_data(self):
+		"""Get customer data from customer table using customer_id"""
+		if not self.customer_id:
+			return None
+		
+		try:
+			from crm.api.customers import get_customer_by_id
+			return get_customer_by_id(self.customer_id)
+		except Exception as e:
+			frappe.log_error(f"Error fetching customer data for lead {self.name}: {str(e)}", "Customer Data Fetch Error")
+			return None
 
 	def create_contact(self, existing_contact=None, throw=True):
 		if not self.lead_name:

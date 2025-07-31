@@ -376,3 +376,37 @@ def update_ticket_customer_data(ticket_name, customer_data):
         "success": True,
         "message": "Customer and ticket data updated successfully"
     } 
+
+@frappe.whitelist()
+def get_lead_with_customer_data(lead_name):
+	"""Get lead data with customer data merged"""
+	if not lead_name: return None
+	lead = frappe.get_doc("CRM Lead", lead_name)
+	lead_dict = lead.as_dict()
+	
+	# Get customer data
+	customer_data = get_customer_data_for_lead(lead_name)
+	if customer_data:
+		# Merge customer data into lead data
+		for key, value in customer_data.items():
+			if key not in lead_dict or lead_dict[key] is None:
+				lead_dict[key] = value
+	
+	return lead_dict
+
+@frappe.whitelist()
+def get_ticket_with_customer_data(ticket_name):
+	"""Get ticket data with customer data merged"""
+	if not ticket_name: return None
+	ticket = frappe.get_doc("CRM Ticket", ticket_name)
+	ticket_dict = ticket.as_dict()
+	
+	# Get customer data
+	customer_data = get_customer_data_for_ticket(ticket_name)
+	if customer_data:
+		# Merge customer data into ticket data
+		for key, value in customer_data.items():
+			if key not in ticket_dict or ticket_dict[key] is None:
+				ticket_dict[key] = value
+	
+	return ticket_dict 

@@ -51,17 +51,93 @@ class CRMTicket(Document):
 		handle_ticket_assignment_change(self, method="after_insert")
 
 	def on_update(self):
-		# Sync customer-related field changes to customer record
-		customer_fields = ['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number']
-		if any(self.has_value_changed(field) for field in customer_fields):
-			self.create_or_update_customer()
-		
+		# No longer sync customer-related field changes since we're not storing duplicate data
+		# Customer data is now managed only in the customer table
 		emit_activity_update("CRM Ticket", self.name)
 
 	def before_save(self):
 		self.apply_sla()
 
+	def create_or_update_customer(self):
+		"""Create or update customer record based on ticket data"""
+		if not self.mobile_no:
+			return
+		
+		try:
+			# Import the customer API function
+			from crm.api.customers import create_or_update_customer
+			
+			# Only pass customer-specific data to customer creation
+			customer_result = create_or_update_customer(
+				mobile_no=self.mobile_no,
+				first_name=self.first_name,
+				last_name=self.last_name,
+				email=self.email,
+				organization=self.organization,
+				pan_card_number=self.pan_card_number,
+				aadhaar_card_number=self.aadhaar_card_number,
+				customer_source="Ticket",
+				reference_doctype="CRM Ticket",
+				reference_docname=self.name
+			)
+			
+			# Update the customer_id field with the customer name using db.set_value to avoid activity log
+			if customer_result and customer_result.get("name"):
+				frappe.db.set_value("CRM Ticket", self.name, "customer_id", customer_result["name"])
+				# Update the instance variable to keep it in sync
+				self.customer_id = customer_result["name"]
+				
+				# Clear customer-specific fields from ticket table to avoid duplication
+				customer_fields_to_clear = [
+					'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
+					'phone', 'salutation', 'organization', 'pan_card_number', 
+					'aadhaar_card_number', 'image', 'customer_name'
+				]
+				
+				for field in customer_fields_to_clear:
+					if hasattr(self, field):
+						frappe.db.set_value("CRM Ticket", self.name, field, None)
+						setattr(self, field, None)
+			
+			frappe.logger().info(f"Customer record processed for ticket {self.name}: {customer_result}")
+			
+		except Exception as e:
+			# Log error but don't fail the ticket creation
+			frappe.log_error(f"Error creating/updating customer for ticket {self.name}: {str(e)}", "Customer Creation Error")
+			frappe.logger().error(f"Customer creation failed for ticket {self.name}: {str(e)}")
+
+	def get_customer_data(self):
+		"""Get customer data from customer table using customer_id"""
+		if not self.customer_id:
+			return None
+		
+		try:
+			from crm.api.customers import get_customer_by_id
+			return get_customer_by_id(self.customer_id)
+		except Exception as e:
+			frappe.log_error(f"Error fetching customer data for ticket {self.name}: {str(e)}", "Customer Data Fetch Error")
+			return None
+
 	def set_customer_name(self):
+		"""Set customer name from customer data if available, otherwise use ticket-specific data"""
+		if self.customer_id:
+			# Try to get customer data
+			customer_data = self.get_customer_data()
+			if customer_data:
+				self.customer_name = " ".join(
+					filter(
+						None,
+						[
+							customer_data.get('salutation'),
+							customer_data.get('first_name'),
+							customer_data.get('middle_name'),
+							customer_data.get('last_name'),
+						],
+					)
+				)
+				return
+		
+		# Fallback to ticket-specific data if no customer data available
 		if self.first_name:
 			self.customer_name = " ".join(
 				filter(
@@ -149,41 +225,6 @@ class CRMTicket(Document):
 				)
 			elif user != agent:
 				frappe.share.remove(self.doctype, self.name, user)
-
-	def create_or_update_customer(self):
-		"""Create or update customer record based on ticket data"""
-		if not self.mobile_no:
-			return
-		
-		try:
-			# Import the customer API function
-			from crm.api.customers import create_or_update_customer
-			
-			customer_result = create_or_update_customer(
-				mobile_no=self.mobile_no,
-				first_name=self.first_name,
-				last_name=self.last_name,
-				email=self.email,
-				organization=self.organization,
-				pan_card_number=self.pan_card_number,
-				aadhaar_card_number=self.aadhaar_card_number,
-				customer_source="Ticket",
-				reference_doctype="CRM Ticket",
-				reference_docname=self.name
-			)
-			
-			# Update the customer_id field with the customer name using db.set_value to avoid activity log
-			if customer_result and customer_result.get("name"):
-				frappe.db.set_value("CRM Ticket", self.name, "customer_id", customer_result["name"])
-				# Update the instance variable to keep it in sync
-				self.customer_id = customer_result["name"]
-			
-			frappe.logger().info(f"Customer record processed for ticket {self.name}: {customer_result}")
-			
-		except Exception as e:
-			# Log error but don't fail the ticket creation
-			frappe.log_error(f"Error creating/updating customer for ticket {self.name}: {str(e)}", "Customer Creation Error")
-			frappe.logger().error(f"Customer creation failed for ticket {self.name}: {str(e)}")
 
 	def set_sla(self):
 		"""

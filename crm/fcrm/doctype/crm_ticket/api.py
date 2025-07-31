@@ -2,6 +2,7 @@ import frappe
 
 from crm.api.doc import get_assigned_users, get_fields_meta
 from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
+from crm.api.customers import get_ticket_with_customer_data
 
 
 @frappe.whitelist()
@@ -9,13 +10,16 @@ def get_ticket(name):
 	ticket = frappe.get_doc("CRM Ticket", name)
 	ticket.check_permission("read")
 
-	ticket = ticket.as_dict()
+	# Get ticket data with customer data merged
+	ticket_data = get_ticket_with_customer_data(name)
+	if not ticket_data:
+		ticket_data = ticket.as_dict()
 
-	ticket["fields_meta"] = get_fields_meta("CRM Ticket")
-	ticket["_form_script"] = get_form_script("CRM Ticket")
-	ticket["_assign"] = get_assigned_users("CRM Ticket", name)
+	ticket_data["fields_meta"] = get_fields_meta("CRM Ticket")
+	ticket_data["_form_script"] = get_form_script("CRM Ticket")
+	ticket_data["_assign"] = get_assigned_users("CRM Ticket", name)
 
-	return ticket
+	return ticket_data
 
 
 @frappe.whitelist()
