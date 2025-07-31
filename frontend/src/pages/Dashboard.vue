@@ -59,6 +59,44 @@
       </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="px-6">
+        <nav class="flex space-x-8" role="tablist">
+          <button
+            v-for="(tab, index) in tabs"
+            :key="tab.id"
+            @click="activeTab = tab.id"
+            @keydown.enter="activeTab = tab.id"
+            @keydown.space.prevent="activeTab = tab.id"
+            :class="[
+              'py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+              activeTab === tab.id
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ]"
+            :role="'tab'"
+            :aria-selected="activeTab === tab.id"
+            :aria-controls="`tab-panel-${tab.id}`"
+            :tabindex="activeTab === tab.id ? 0 : -1"
+          >
+            <div class="flex items-center space-x-2">
+              <FeatherIcon :name="tab.icon" class="w-4 h-4" />
+              <span>{{ tab.label }}</span>
+              <Badge v-if="tab.badge" :variant="tab.badge.variant" size="sm">
+                {{ tab.badge.text }}
+              </Badge>
+            </div>
+            <!-- Active indicator -->
+            <div 
+              v-if="activeTab === tab.id"
+              class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t"
+            ></div>
+          </button>
+        </nav>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="p-6">
       <!-- Error State -->
@@ -71,143 +109,165 @@
         </Alert>
       </div>
 
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <StatsCard
-          v-for="card in statsCards"
-          :key="card.title"
-          :title="card.title"
-          :value="card.value"
-          :subtitle="card.subtitle"
-          :icon="card.icon"
-          :color="card.color"
-          :change="card.change"
-        />
+      <!-- Tab Content Header -->
+      <div class="mb-6">
+        <div class="flex items-center space-x-2 text-sm text-gray-600">
+          <FeatherIcon name="home" class="w-4 h-4" />
+          <span>/</span>
+          <span class="font-medium text-gray-900">{{ getActiveTabLabel() }}</span>
+        </div>
       </div>
 
-      <!-- Charts and Analytics -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Lead Status Distribution -->
-        <ChartCard
-          :title="`Lead Status Distribution (${getViewContext()})`"
-          :data="leadStatusChart"
-          type="doughnut"
-          :loading="loading"
-          :error="error"
-          @refresh="refreshDashboard"
-        />
+      <!-- Analytics Tab Content -->
+      <div 
+        v-if="activeTab === 'analytics'"
+        :id="`tab-panel-analytics`"
+        role="tabpanel"
+        :aria-labelledby="`tab-analytics`"
+      >
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <StatsCard
+            v-for="card in statsCards"
+            :key="card.title"
+            :title="card.title"
+            :value="card.value"
+            :subtitle="card.subtitle"
+            :icon="card.icon"
+            :color="card.color"
+            :change="card.change"
+          />
+        </div>
 
-        <!-- Ticket Status Distribution -->
-        <ChartCard
-          :title="`Ticket Status Distribution (${getViewContext()})`"
-          :data="ticketStatusChart"
-          type="doughnut"
-          :loading="loading"
-          :error="error"
-          @refresh="refreshDashboard"
-        />
+        <!-- Charts and Analytics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <!-- Lead Status Distribution -->
+          <ChartCard
+            :title="`Lead Status Distribution (${getViewContext()})`"
+            :data="leadStatusChart"
+            type="doughnut"
+            :loading="loading"
+            :error="error"
+            @refresh="refreshDashboard"
+          />
 
-
-      </div>
-
-      <!-- Trends Chart -->
-      <div class="mb-8">
-        <ChartCard
-          :title="trendsChartTitle"
-          :data="trendsChart"
-          type="line"
-          :loading="loading"
-          :error="error"
-          @refresh="refreshDashboard"
-        />
-      </div>
-
-      <!-- Bottom Section -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Recent Activities -->
-        <div class="lg:col-span-2">
-          <ActivityFeed
-            :activities="recentActivities"
+          <!-- Ticket Status Distribution -->
+          <ChartCard
+            :title="`Ticket Status Distribution (${getViewContext()})`"
+            :data="ticketStatusChart"
+            type="doughnut"
             :loading="loading"
             :error="error"
             @refresh="refreshDashboard"
           />
         </div>
 
-        <!-- Quick Actions and Top Performers -->
-        <div class="space-y-6">
-          <!-- Quick Actions -->
-          <QuickActions :actions="quickActions" />
-          
-          <!-- Top Performers -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Performers</h3>
+        <!-- Trends Chart -->
+        <div class="mb-8">
+          <ChartCard
+            :title="trendsChartTitle"
+            :data="trendsChart"
+            type="line"
+            :loading="loading"
+            :error="error"
+            @refresh="refreshDashboard"
+          />
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Recent Activities -->
+          <div class="lg:col-span-2">
+            <ActivityFeed
+              :activities="recentActivities"
+              :loading="loading"
+              :error="error"
+              @refresh="refreshDashboard"
+            />
+          </div>
+
+          <!-- Quick Actions and Top Performers -->
+          <div class="space-y-6">
+            <!-- Quick Actions -->
+            <QuickActions :actions="quickActions" />
             
-            <div v-if="loading" class="space-y-4">
-              <div v-for="i in 5" :key="i" class="animate-pulse">
-                <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
-                  <div class="flex-1">
-                    <div class="h-4 bg-gray-200 rounded w-1/2"></div>
-                    <div class="h-3 bg-gray-200 rounded w-1/3 mt-2"></div>
+            <!-- Top Performers -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Performers</h3>
+              
+              <div v-if="loading" class="space-y-4">
+                <div v-for="i in 5" :key="i" class="animate-pulse">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div class="flex-1">
+                      <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div class="h-3 bg-gray-200 rounded w-1/3 mt-2"></div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div v-else-if="error" class="text-center py-8 text-red-600">
-              <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
-              <p>{{ error }}</p>
-            </div>
-            
-            <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-8 text-gray-500">
-              <FeatherIcon name="users" class="w-8 h-8 mx-auto mb-2" />
-              <p>No performance data available</p>
-            </div>
-            
-            <div v-else class="space-y-4">
-              <div 
-                v-for="(performer, index) in topPerformers" 
-                :key="performer.user.name"
-                class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div class="flex-shrink-0">
-                  <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span class="text-sm font-medium text-blue-600">
-                      {{ performer.user.full_name?.charAt(0) || performer.user.name?.charAt(0) }}
-                    </span>
+              
+              <div v-else-if="error" class="text-center py-8 text-red-600">
+                <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
+                <p>{{ error }}</p>
+              </div>
+              
+              <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-8 text-gray-500">
+                <FeatherIcon name="users" class="w-8 h-8 mx-auto mb-2" />
+                <p>No performance data available</p>
+              </div>
+              
+              <div v-else class="space-y-4">
+                <div 
+                  v-for="(performer, index) in topPerformers" 
+                  :key="performer.user.name"
+                  class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span class="text-sm font-medium text-blue-600">
+                        {{ performer.user.full_name?.charAt(0) || performer.user.name?.charAt(0) }}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900">
-                    {{ performer.user.full_name || performer.user.name }}
-                  </p>
-                  <p class="text-sm text-gray-600">
-                    {{ performer.leads_assigned }} leads • {{ performer.tickets_assigned }} tickets
-                  </p>
-                </div>
-                
-                <div class="flex-shrink-0">
-                  <Badge variant="blue" size="sm">
-                    #{{ index + 1 }}
-                  </Badge>
+                  
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">
+                      {{ performer.user.full_name || performer.user.name }}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                      {{ performer.leads_assigned }} leads • {{ performer.tickets_assigned }} tickets
+                    </p>
+                  </div>
+                  
+                  <div class="flex-shrink-0">
+                    <Badge variant="blue" size="sm">
+                      #{{ index + 1 }}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Referral Analytics Tab Content -->
+      <div 
+        v-if="activeTab === 'referral'"
+        :id="`tab-panel-referral`"
+        role="tabpanel"
+        :aria-labelledby="`tab-referral`"
+      >
+        <ReferralAnalyticsDashboard />
+      </div>
     </div>
-                  <!-- Referral Analytics Dashboard Section -->
-            <div class="mt-8">
-              <ReferralAnalyticsDashboard />
-            </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, computed } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
 import StatsCard from '@/components/Dashboard/StatsCard.vue'
 import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
@@ -215,6 +275,9 @@ import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import QuickActions from '@/components/Dashboard/QuickActions.vue'
 import { useDashboard } from '@/stores/dashboard'
+
+const route = useRoute()
+const router = useRouter()
 
 const {
   loading,
@@ -236,6 +299,50 @@ const {
   startAutoRefresh,
   stopAutoRefresh
 } = useDashboard()
+
+// Tab system with URL routing
+const activeTab = ref('analytics')
+
+// Initialize tab from URL query parameter
+const initializeTabFromURL = () => {
+  const tabFromURL = route.query.tab
+  if (tabFromURL && ['analytics', 'referral'].includes(tabFromURL)) {
+    activeTab.value = tabFromURL
+  }
+}
+
+// Update URL when tab changes
+const updateURLForTab = (tabId) => {
+  router.replace({
+    query: {
+      ...route.query,
+      tab: tabId
+    }
+  })
+}
+
+// Watch for tab changes and update URL
+watch(activeTab, (newTab) => {
+  updateURLForTab(newTab)
+})
+
+const tabs = [
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: 'bar-chart-2',
+    badge: null
+  },
+  {
+    id: 'referral',
+    label: 'Referral Analytics',
+    icon: 'users',
+    badge: {
+      text: 'New',
+      variant: 'green'
+    }
+  }
+]
 
 // View options
 const viewOptions = [
@@ -313,7 +420,13 @@ const getViewTooltip = (viewType) => {
   }
 }
 
+const getActiveTabLabel = () => {
+  const tab = tabs.find(t => t.id === activeTab.value)
+  return tab ? tab.label : 'Dashboard'
+}
+
 onMounted(() => {
+  initializeTabFromURL()
   fetchDashboardData()
   // Auto-refresh disabled - removed startAutoRefresh() call
 })

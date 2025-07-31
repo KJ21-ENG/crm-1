@@ -34,19 +34,26 @@ def get_top_referrers(limit=10, date_from=None, date_to=None, account_type=None,
             filters += " AND l.branch = %s"
             params.append(branch)
         
-        # Simpler query that works reliably
+        # Fixed query: Find the actual referrer by looking for customers with matching referral codes
+        # First try to find customers with referral_code field, then fallback to accounts JSON
         query = f"""
             SELECT 
-                c.customer_name as referrer_name,
-                c.name as customer_id,
-                c.mobile_no as referrer_mobile,
-                l.referral_through as client_id,
+                COALESCE(
+                    referrer.customer_name,
+                    CONCAT('Referrer (', l.referral_through, ')')
+                ) as referrer_name,
+                referrer.name as customer_id,
+                COALESCE(referrer.mobile_no, 'No mobile') as referrer_mobile,
+                l.referral_through as referral_code,
                 l.account_type,
                 COUNT(l.name) as total_referrals,
-                COUNT(CASE WHEN l.status = 'Account Opened' THEN 1 END) as successful_referrals,
+                COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') THEN 1 END) as successful_referrals,
                 MAX(l.modified) as last_referral_date
             FROM `tabCRM Lead` l
-            LEFT JOIN `tabCRM Customer` c ON c.mobile_no = l.mobile_no
+            LEFT JOIN `tabCRM Customer` referrer ON (
+                referrer.referral_code = l.referral_through 
+                OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
+            )
             WHERE {filters} AND l.referral_through IS NOT NULL AND l.referral_through != ''
             GROUP BY l.referral_through
             ORDER BY total_referrals DESC, last_referral_date DESC
@@ -90,20 +97,26 @@ def get_referral_source_table(date_from=None, date_to=None, account_type=None, l
             filters += " AND l.branch = %s"
             params.append(branch)
         
-        # Simpler query that works reliably
+        # Fixed query: Find the actual referrer by looking for customers with matching referral codes
         query = f"""
             SELECT 
-                c.customer_name as referrer_name,
-                c.mobile_no as referrer_mobile,
-                l.referral_through as client_id,
+                COALESCE(
+                    referrer.customer_name,
+                    CONCAT('Referrer (', l.referral_through, ')')
+                ) as referrer_name,
+                COALESCE(referrer.mobile_no, 'No mobile') as referrer_mobile,
+                l.referral_through as referral_code,
                 l.account_type,
                 COUNT(l.name) as total_referrals,
-                COUNT(CASE WHEN l.status = 'Account Opened' THEN 1 END) as successful_referrals,
+                COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') THEN 1 END) as successful_referrals,
                 COUNT(DISTINCT l.name) as total_leads_referred,
                 MAX(l.modified) as last_referral_date,
                 MIN(l.modified) as first_referral_date
             FROM `tabCRM Lead` l
-            LEFT JOIN `tabCRM Customer` c ON c.mobile_no = l.mobile_no
+            LEFT JOIN `tabCRM Customer` referrer ON (
+                referrer.referral_code = l.referral_through 
+                OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
+            )
             WHERE {filters} AND l.referral_through IS NOT NULL AND l.referral_through != ''
             GROUP BY l.referral_through
             ORDER BY total_referrals DESC, last_referral_date DESC
@@ -149,8 +162,8 @@ def get_conversion_funnel(date_from=None, date_to=None, account_type=None, lead_
         query = f"""
             SELECT 
                 COUNT(CASE WHEN l.referral_through IS NOT NULL AND l.referral_through != '' THEN 1 END) as total_leads_with_referral,
-                COUNT(CASE WHEN l.status = 'Account Opened' AND l.referral_through IS NOT NULL AND l.referral_through != '' THEN 1 END) as converted_leads,
-                COUNT(CASE WHEN l.status = 'Account Opened' THEN 1 END) as total_converted_leads,
+                COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') AND l.referral_through IS NOT NULL AND l.referral_through != '' THEN 1 END) as converted_leads,
+                COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') THEN 1 END) as total_converted_leads,
                 COUNT(*) as total_leads,
                 COUNT(CASE WHEN l.lead_category = 'Direct' THEN 1 END) as direct_leads,
                 COUNT(CASE WHEN l.lead_category = 'Indirect' THEN 1 END) as indirect_leads
@@ -177,7 +190,7 @@ def get_referral_trends(date_from=None, date_to=None, account_type=None):
     """Get referral trends over time"""
     try:
         # Build filters
-        filters = "l.status = 'Account Opened'"
+        filters = "l.status IN ('Account Opened', 'Account Activated')"
         params = []
         
         if date_from:
@@ -199,7 +212,10 @@ def get_referral_trends(date_from=None, date_to=None, account_type=None):
                 COUNT(l.name) as referrals_count,
                 COUNT(DISTINCT c.name) as unique_referrers
             FROM `tabCRM Lead` l
-            JOIN `tabCRM Customer` c ON JSON_CONTAINS(c.accounts, JSON_OBJECT('client_id', l.referral_through))
+            JOIN `tabCRM Customer` c ON (
+                c.referral_code = l.referral_through 
+                OR JSON_CONTAINS(c.accounts, JSON_OBJECT('client_id', l.referral_through))
+            )
             WHERE {filters}
             GROUP BY DATE(l.modified)
             ORDER BY date DESC
@@ -215,7 +231,7 @@ def get_referral_trends(date_from=None, date_to=None, account_type=None):
         return []
 
 @frappe.whitelist()
-def update_customer_accounts(customer_name, client_id, account_type):
+def update_customer_accounts(customer_name, referral_code, account_type):
     """Update customer accounts when account is opened/activated"""
     try:
         customer = frappe.get_doc("CRM Customer", customer_name)
@@ -229,7 +245,7 @@ def update_customer_accounts(customer_name, client_id, account_type):
         # Check if account already exists
         account_exists = False
         for account in customer.accounts:
-            if account.get('client_id') == client_id:
+            if account.get('client_id') == referral_code:
                 account_exists = True
                 break
         
@@ -237,7 +253,7 @@ def update_customer_accounts(customer_name, client_id, account_type):
         if not account_exists:
             customer.accounts.append({
                 "account_type": account_type,
-                "client_id": client_id,
+                "client_id": referral_code,
                 "created_date": today()
             })
             
@@ -263,7 +279,7 @@ def update_referral_count(customer_name):
             customer.referral_count = 0
         else:
             # Count successful referrals
-            client_ids = []
+            referral_codes = []
             if isinstance(customer.accounts, str):
                 accounts = json.loads(customer.accounts)
             else:
@@ -271,11 +287,11 @@ def update_referral_count(customer_name):
                 
             for account in accounts:
                 if account.get('client_id'):
-                    client_ids.append(account['client_id'])
+                    referral_codes.append(account['client_id'])
             
-            if client_ids:
+            if referral_codes:
                 successful_referrals = frappe.db.count("CRM Lead", {
-                    "referral_through": ["in", client_ids],
+                    "referral_through": ["in", referral_codes],
                     "status": "Account Opened"
                 })
                 customer.referral_count = successful_referrals
@@ -341,3 +357,72 @@ def export_referral_analytics(date_from=None, date_to=None, account_type=None, l
     except Exception as e:
         frappe.log_error(f"Error in export_referral_analytics: {str(e)}")
         return {"error": str(e)} 
+
+@frappe.whitelist()
+def get_referral_details(referral_code, date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
+    """Get detailed referral information for a specific referral code"""
+    try:
+        # Build filters
+        filters = "l.referral_through = %s"
+        params = [referral_code]
+        
+        if date_from:
+            filters += " AND l.modified >= %s"
+            params.append(date_from)
+        
+        if date_to:
+            filters += " AND l.modified <= %s"
+            params.append(date_to)
+        
+        if account_type:
+            filters += " AND l.account_type = %s"
+            params.append(account_type)
+            
+        if lead_category:
+            filters += " AND l.lead_category = %s"
+            params.append(lead_category)
+            
+        if branch:
+            filters += " AND l.branch = %s"
+            params.append(branch)
+        
+        # Query for detailed referral information
+        query = f"""
+            SELECT 
+                l.name,
+                l.lead_name,
+                l.mobile_no,
+                l.email,
+                l.account_type,
+                l.lead_category,
+                l.status,
+                l.client_id,
+                l.lead_owner,
+                l.creation,
+                l.modified,
+                l.referral_through,
+                l.organization,
+                l.job_title,
+                l.territory,
+                l.industry,
+                l.annual_revenue,
+                l.no_of_employees,
+                l.website,
+                l.description,
+                l.converted,
+                l.sla_status,
+                l.communication_status,
+                l.first_response_time,
+                l.first_responded_on
+            FROM `tabCRM Lead` l
+            WHERE {filters}
+            ORDER BY l.creation DESC
+        """
+        
+        results = frappe.db.sql(query, params, as_dict=True)
+        
+        return results
+        
+    except Exception as e:
+        frappe.log_error(f"Error in get_referral_details: {str(e)}")
+        return [] 
