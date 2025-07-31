@@ -410,16 +410,23 @@ def get_data(
 			rows.append(group_by_field)
 
 		frappe.logger().info(f"🔍 Backend Debug - Final order_by used: {order_by}")
-		data = (
-			frappe.get_list(
-				doctype,
-				fields=rows,
-				filters=filters,
-				order_by=order_by,
-				page_length=page_length,
+		
+		# Special handling for CRM Ticket and CRM Lead to join with customer table
+		if doctype == "CRM Ticket" and "customer_name" in rows:
+			data = get_ticket_list_with_customer_data(rows, filters, order_by, page_length)
+		elif doctype == "CRM Lead" and "lead_name" in rows:
+			data = get_lead_list_with_customer_data(rows, filters, order_by, page_length)
+		else:
+			data = (
+				frappe.get_list(
+					doctype,
+					fields=rows,
+					filters=filters,
+					order_by=order_by,
+					page_length=page_length,
+				)
+				or []
 			)
-			or []
-		)
 		data = parse_list_data(data, doctype)
 
 	if view_type == "kanban":
@@ -877,3 +884,139 @@ def delete_bulk_docs(doctype, items, delete_linked=False):
 	else:
 		delete_bulk(doctype, items)
 	return "success"
+
+
+def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
+	"""
+	Get ticket list data with customer information joined from customer table.
+	Prioritizes customer_name from customer table over ticket table.
+	"""
+	from frappe.database.database import Database
+	
+	# Build the query to join tickets with customer table
+	fields = []
+	for field in rows:
+		if field == "customer_name":
+			# Use customer name from customer table if available, fallback to ticket table
+			fields.append(f"COALESCE(c.customer_name, t.customer_name) as customer_name")
+		elif field == "email":
+			# Use email from customer table if available, fallback to ticket table
+			fields.append(f"COALESCE(c.email, t.email) as email")
+		elif field == "mobile_no":
+			# Use mobile from customer table if available, fallback to ticket table
+			fields.append(f"COALESCE(c.mobile_no, t.mobile_no) as mobile_no")
+		else:
+			fields.append(f"t.{field}")
+	
+	fields_str = ", ".join(fields)
+	
+	# Build WHERE clause from filters
+	where_conditions = []
+	for key, value in filters.items():
+		if key == "customer_name":
+			# Handle customer name filter to search in both tables
+			where_conditions.append(f"(c.customer_name LIKE '%{value}%' OR t.customer_name LIKE '%{value}%')")
+		elif key == "email":
+			# Handle email filter to search in both tables
+			where_conditions.append(f"(c.email LIKE '%{value}%' OR t.email LIKE '%{value}%')")
+		elif key == "mobile_no":
+			# Handle mobile filter to search in both tables
+			where_conditions.append(f"(c.mobile_no LIKE '%{value}%' OR t.mobile_no LIKE '%{value}%')")
+		else:
+			where_conditions.append(f"t.{key} = '{value}'")
+	
+	where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+	
+	# Build ORDER BY clause
+	order_clause = order_by.replace("modified", "t.modified").replace("creation", "t.creation")
+	
+	query = f"""
+		SELECT {fields_str}
+		FROM `tabCRM Ticket` t
+		LEFT JOIN `tabCRM Customer` c ON t.customer_id = c.name
+		WHERE {where_clause}
+		ORDER BY {order_clause}
+		LIMIT {page_length}
+	"""
+	
+	try:
+		result = frappe.db.sql(query, as_dict=True)
+		return result
+	except Exception as e:
+		frappe.logger().error(f"Error in get_ticket_list_with_customer_data: {str(e)}")
+		# Fallback to regular query if join fails
+		return frappe.get_list(
+			"CRM Ticket",
+			fields=rows,
+			filters=filters,
+			order_by=order_by,
+			page_length=page_length,
+		) or []
+
+
+def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
+	"""
+	Get lead list data with customer information joined from customer table.
+	Prioritizes customer_name from customer table over lead_name in lead table.
+	"""
+	from frappe.database.database import Database
+	
+	# Build the query to join leads with customer table
+	fields = []
+	for field in rows:
+		if field == "lead_name":
+			# Use customer name from customer table if available, fallback to lead table
+			fields.append(f"COALESCE(c.customer_name, l.lead_name) as lead_name")
+		elif field == "email":
+			# Use email from customer table if available, fallback to lead table
+			fields.append(f"COALESCE(c.email, l.email) as email")
+		elif field == "mobile_no":
+			# Use mobile from customer table if available, fallback to lead table
+			fields.append(f"COALESCE(c.mobile_no, l.mobile_no) as mobile_no")
+		else:
+			fields.append(f"l.{field}")
+	
+	fields_str = ", ".join(fields)
+	
+	# Build WHERE clause from filters
+	where_conditions = []
+	for key, value in filters.items():
+		if key == "lead_name":
+			# Handle lead name filter to search in both tables
+			where_conditions.append(f"(c.customer_name LIKE '%{value}%' OR l.lead_name LIKE '%{value}%')")
+		elif key == "email":
+			# Handle email filter to search in both tables
+			where_conditions.append(f"(c.email LIKE '%{value}%' OR l.email LIKE '%{value}%')")
+		elif key == "mobile_no":
+			# Handle mobile filter to search in both tables
+			where_conditions.append(f"(c.mobile_no LIKE '%{value}%' OR l.mobile_no LIKE '%{value}%')")
+		else:
+			where_conditions.append(f"l.{key} = '{value}'")
+	
+	where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+	
+	# Build ORDER BY clause
+	order_clause = order_by.replace("modified", "l.modified").replace("creation", "l.creation")
+	
+	query = f"""
+		SELECT {fields_str}
+		FROM `tabCRM Lead` l
+		LEFT JOIN `tabCRM Customer` c ON l.customer_id = c.name
+		WHERE {where_clause}
+		ORDER BY {order_clause}
+		LIMIT {page_length}
+	"""
+	
+	try:
+		result = frappe.db.sql(query, as_dict=True)
+		return result
+	except Exception as e:
+		frappe.logger().error(f"Error in get_lead_list_with_customer_data: {str(e)}")
+		# Fallback to regular query if join fails
+		return frappe.get_list(
+			"CRM Lead",
+			fields=rows,
+			filters=filters,
+			order_by=order_by,
+			page_length=page_length,
+		) or []
