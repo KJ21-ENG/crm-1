@@ -74,7 +74,7 @@
         class="flex h-10.5 cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
         @click="copyToClipboard(lead.data.name)"
       >
-        {{ __(lead.data.name) }}
+        {{ title }}
       </div>
       <FileUploader
         @success="(file) => updateField('image', file.file_url)"
@@ -215,6 +215,7 @@
           :sections="sections.data"
           doctype="CRM Lead"
           :docname="lead.data.name"
+          :documentData="lead.data"
           @reload="sections.reload"
           @afterFieldChange="reloadAssignees"
         />
@@ -585,6 +586,14 @@ const breadcrumbs = computed(() => {
 })
 
 const title = computed(() => {
+  // Prioritize customer name over lead ID
+  if (lead.data?.first_name || lead.data?.last_name) {
+    const firstName = lead.data.first_name || ''
+    const lastName = lead.data.last_name || ''
+    return `${firstName} ${lastName}`.trim() || lead.data.name
+  }
+  
+  // Fallback to lead name if no customer name available
   let t = doctypeMeta['CRM Lead']?.title_field || 'name'
   return lead.data?.[t] || props.leadId
 })

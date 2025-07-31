@@ -1,6 +1,23 @@
 <template>
   <div
-    v-if="!document.get?.loading"
+    v-if="document.get?.loading"
+    class="flex h-full items-center justify-center"
+  >
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+      <div class="text-lg text-ink-gray-6">{{ __('Loading...') }}</div>
+    </div>
+  </div>
+  <div
+    v-else-if="!document.doc"
+    class="flex h-full items-center justify-center"
+  >
+    <div class="text-center">
+      <div class="text-lg text-ink-gray-6">{{ __('No data available') }}</div>
+    </div>
+  </div>
+  <div
+    v-else-if="!document.get?.loading && document.doc"
     class="sections flex flex-col overflow-y-auto"
   >
     <template v-for="(section, i) in _sections" :key="section.name">
@@ -332,6 +349,11 @@
                           :placeholder="field.placeholder"
                           :debounce="500"
                           @change.stop="fieldChange($event.target.value, field)"
+                          @mounted="() => {
+                            if (['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number'].includes(field.fieldname)) {
+                              console.log(`Field ${field.fieldname}:`, document.doc[field.fieldname])
+                            }
+                          }"
                         />
                       </div>
                       <div class="ml-1">
@@ -418,6 +440,11 @@ const props = defineProps({
   addContact: {
     type: Function,
   },
+  // Add new prop for document data
+  documentData: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['afterFieldChange', 'reload'])
@@ -432,7 +459,25 @@ const showSidePanelModal = ref(false)
 let document = { doc: {} }
 let triggerOnChange
 
-if (props.docname) {
+// Use provided document data if available, otherwise fetch it
+if (props.documentData) {
+  document = { doc: props.documentData }
+  console.log('SidePanelLayout received documentData:', props.documentData)
+  console.log('Customer data in SidePanelLayout:', {
+    first_name: props.documentData.first_name,
+    last_name: props.documentData.last_name,
+    email: props.documentData.email,
+    mobile_no: props.documentData.mobile_no,
+    pan_card_number: props.documentData.pan_card_number,
+    aadhaar_card_number: props.documentData.aadhaar_card_number
+  })
+  // Create a simple triggerOnChange function for the provided data
+  triggerOnChange = (fieldname, value) => {
+    if (document.doc) {
+      document.doc[fieldname] = value
+    }
+  }
+} else if (props.docname) {
   let d = useDocument(props.doctype, props.docname)
   document = d.document
   triggerOnChange = d.triggerOnChange

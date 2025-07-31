@@ -82,6 +82,7 @@
               :sections="sections.data"
               doctype="CRM Lead"
               :docname="lead.data.name"
+              :documentData="lead.data"
               @reload="sections.reload"
               @afterFieldChange="reloadAssignees"
             />

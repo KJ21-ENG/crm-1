@@ -107,7 +107,7 @@
         class="flex h-10.5 cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
         @click="copyToClipboard(ticket.data.name)"
       >
-        {{ __(ticket.data.name) }}
+        {{ customerName }}
       </div>
       
       <!-- Customer Info Section -->
@@ -331,6 +331,7 @@
           :sections="sections.data"
           doctype="CRM Ticket"
           :docname="ticket.data.name"
+          :documentData="ticket.data"
           @reload="sections.reload"
           @afterFieldChange="reloadAssignees"
         />
@@ -650,14 +651,22 @@ const escalateTo = ref(null)
 
 // Main ticket resource
 const ticket = createResource({
-  url: 'frappe.client.get',
+  url: 'crm.fcrm.doctype.crm_ticket.api.get_ticket',
   params: { 
-    doctype: 'CRM Ticket',
     name: props.ticketId
   },
   cache: ['ticket', props.ticketId],
   onSuccess: (data) => {
     console.log('Ticket data loaded:', data)
+    console.log('Customer data in ticket:', {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      mobile_no: data.mobile_no,
+      pan_card_number: data.pan_card_number,
+      aadhaar_card_number: data.aadhaar_card_number,
+      customer_id: data.customer_id
+    })
     errorTitle.value = ''
     errorMessage.value = ''
   },
@@ -781,6 +790,17 @@ const breadcrumbs = computed(() => {
 })
 
 const title = computed(() => {
+  // Prioritize customer name over ticket subject
+  if (ticket.data?.first_name || ticket.data?.last_name) {
+    const firstName = ticket.data.first_name || ''
+    const lastName = ticket.data.last_name || ''
+    const customerName = `${firstName} ${lastName}`.trim()
+    if (customerName) {
+      return customerName
+    }
+  }
+  
+  // Fallback to ticket subject or name
   return ticket.data?.subject || ticket.data?.name || props.ticketId
 })
 
