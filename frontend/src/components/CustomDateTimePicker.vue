@@ -135,11 +135,12 @@ const emit = defineEmits(['update:modelValue', 'change']);
 
 // Reactive data
 const isOpen = ref(false);
-const currentDate = ref(new Date());
-const selectedDate = ref(null);
-const selectedHour = ref(12);
-const selectedMinute = ref(0);
-const selectedPeriod = ref('AM');
+const now = new Date();
+const currentDate = ref(new Date(now.getFullYear(), now.getMonth(), 1));
+const selectedDate = ref(now);
+const selectedHour = ref(now.getHours() % 12 || 12);
+const selectedMinute = ref(now.getMinutes());
+const selectedPeriod = ref(now.getHours() >= 12 ? 'PM' : 'AM');
 const pickerPosition = ref({ top: '0px', left: '0px' });
 
 // Constants
@@ -312,10 +313,11 @@ function selectDate(date) {
 }
 
 function clearSelection() {
-  selectedDate.value = null;
-  selectedHour.value = 12;
-  selectedMinute.value = 0;
-  selectedPeriod.value = 'AM';
+  const now = new Date();
+  selectedDate.value = now;
+  selectedHour.value = now.getHours() % 12 || 12;
+  selectedMinute.value = now.getMinutes();
+  selectedPeriod.value = now.getHours() >= 12 ? 'PM' : 'AM';
 }
 
 function setToday() {
@@ -347,16 +349,12 @@ function applySelection() {
   
   finalDate.setHours(hour, selectedMinute.value, 0, 0);
   
-  // Format as MySQL datetime string
-  const mysqlString = finalDate.getFullYear() + '-' +
-    String(finalDate.getMonth() + 1).padStart(2, '0') + '-' +
-    String(finalDate.getDate()).padStart(2, '0') + ' ' +
-    String(finalDate.getHours()).padStart(2, '0') + ':' +
-    String(finalDate.getMinutes()).padStart(2, '0') + ':' +
-    String(finalDate.getSeconds()).padStart(2, '0');
+  // Format as ISO datetime string (Frappe standard)
+  const isoString = finalDate.toISOString().slice(0, 19).replace('T', ' ');
   
-  emit('update:modelValue', mysqlString);
-  emit('change', mysqlString);
+  console.log('DateTimePicker output:', isoString)
+  emit('update:modelValue', isoString);
+  emit('change', isoString);
   closePicker();
 }
 
@@ -374,7 +372,18 @@ watch(
         currentDate.value = new Date(date.getFullYear(), date.getMonth(), 1);
       }
     } else {
-      selectedDate.value = null;
+      // Set to current date and time when no value is provided
+      const now = new Date();
+      selectedDate.value = now;
+      selectedHour.value = now.getHours() % 12 || 12;
+      selectedMinute.value = now.getMinutes();
+      selectedPeriod.value = now.getHours() >= 12 ? 'PM' : 'AM';
+      currentDate.value = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // Emit the default value so parent components know about it
+      const isoString = now.toISOString().slice(0, 19).replace('T', ' ');
+      emit('update:modelValue', isoString);
+      console.log('DateTimePicker emitting default value:', isoString);
     }
   },
   { immediate: true }
@@ -456,6 +465,7 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   padding: 16px;
+  padding-bottom: 20px;
   width: 320px;
   max-height: 450px;
   overflow: hidden;
@@ -632,6 +642,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
 .action-btn {

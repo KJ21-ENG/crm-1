@@ -43,7 +43,10 @@
           <div class="flex items-center gap-2 truncate text-base">
             <div><CalendarIcon /></div>
             <div v-if="item" class="truncate">
-              {{ formatDate(item, 'D MMM, hh:mm a') }}
+              {{ item }}
+            </div>
+            <div v-else class="text-gray-400 text-sm">
+              No date set
             </div>
           </div>
         </Tooltip>

@@ -313,7 +313,7 @@ function parseRows(rows, columns = []) {
       if (
         fieldType &&
         ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation', 'due_date'].includes(row)
+        !['modified', 'creation'].includes(row)
       ) {
         _rows[row] = formatDate(task[row], '', true, fieldType == 'Datetime')
       }
@@ -340,6 +340,9 @@ function parseRows(rows, columns = []) {
           label: task.assigned_to && getUser(task.assigned_to).full_name,
           ...(task.assigned_to && getUser(task.assigned_to)),
         }
+      } else if (row == 'due_date') {
+        // Ensure due_date is properly formatted
+        _rows[row] = task[row] ? formatDate(task[row], 'D MMM, hh:mm a') : null;
       }
     })
     return _rows

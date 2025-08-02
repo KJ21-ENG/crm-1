@@ -205,6 +205,14 @@ async function updateTask() {
   if (!_task.value.assigned_to) {
     _task.value.assigned_to = getUser().name
   }
+  
+  // Ensure due_date is always set to current date/time if not provided
+  if (!_task.value.due_date) {
+    const now = new Date();
+    const isoString = now.toISOString().slice(0, 19).replace('T', ' ');
+    _task.value.due_date = isoString;
+    console.log('Setting default due_date:', isoString);
+  }
   if (_task.value.name) {
     let d = await call('frappe.client.set_value', {
       doctype: 'CRM Task',
@@ -233,6 +241,7 @@ async function updateTask() {
       return
     }
     // Normal task creation with proper reference
+    console.log('Creating task with data:', _task.value)
     let d = await call(
       'frappe.client.insert',
       {
@@ -245,6 +254,7 @@ async function updateTask() {
       },
       {
         onError: (err) => {
+          console.error('Task creation error:', err)
           if (err.error.exc_type == 'MandatoryError') {
             error.value = 'Title is mandatory'
           }
