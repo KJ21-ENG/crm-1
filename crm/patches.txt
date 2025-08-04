@@ -44,3 +44,4 @@ crm.patches.v1_0.add_client_id_metadata # 28-01-2025
 crm.patches.v1_0.add_support_manager_role # 28-01-2025
 crm.patches.v1_0.update_customer_id_references # 31-07-2025
 crm.patches.v1_0.fix_customer_fields_in_creation_forms # 31-01-2025
+crm.patches.v1_add_final_overdue_fields # 04-08-2025
