@@ -31,6 +31,7 @@ def auto_reassign_overdue_tasks():
         frappe.logger().info(f"Found {len(overdue_tasks)} overdue tasks to reassign")
         
         reassigned_count = 0
+        exhaustion_data = {}  # Store exhaustion state for each task
         
         for task in overdue_tasks:
             try:
@@ -82,6 +83,17 @@ def auto_reassign_overdue_tasks():
                 
                 # Check if all users have been assigned to this task
                 unassigned_users = [user for user in role_users if user not in current_assignees]
+                
+                # Store exhaustion state for this task
+                exhaustion_data[task.name] = {
+                    "all_users_assigned": len(unassigned_users) == 0,
+                    "role_name": role_name,
+                    "total_users": len(role_users),
+                    "assigned_users": current_assignees.copy(),
+                    "unassigned_users": unassigned_users.copy(),
+                    "reference_doctype": task_doc.reference_doctype,
+                    "reference_docname": task_doc.reference_docname
+                }
                 
                 if not unassigned_users:
                     # All users have been assigned, notify admin and stop
@@ -195,7 +207,8 @@ def auto_reassign_overdue_tasks():
         return {
             "success": True,
             "message": f"Successfully reassigned {reassigned_count} overdue tasks",
-            "reassigned_count": reassigned_count
+            "reassigned_count": reassigned_count,
+            "exhaustion_data": exhaustion_data  # Pass exhaustion state to second function
         }
         
     except Exception as e:
@@ -306,9 +319,16 @@ def test_document_assignment_update(task_name):
         }
 
 @frappe.whitelist()
-def update_parent_document_assignments():
+def update_parent_document_assignments(exhaustion_data=None):
     """Update parent document assignments based on latest task assignments"""
     try:
+        # Parse exhaustion_data if it's passed as a string (from frontend)
+        if exhaustion_data and isinstance(exhaustion_data, str):
+            try:
+                exhaustion_data = json.loads(exhaustion_data)
+            except (json.JSONDecodeError, TypeError):
+                exhaustion_data = None
+                frappe.logger().warning("Failed to parse exhaustion_data, proceeding without it")
         current_time = get_datetime(now())
         
         # Get all active tasks (Todo status) for CRM Lead and CRM Ticket
@@ -327,39 +347,17 @@ def update_parent_document_assignments():
         
         for task in active_tasks:
             try:
-                # Check if all eligible users have been exhausted for this task
-                # Determine the role based on reference_doctype
-                if task.reference_doctype == "CRM Lead":
-                    role_name = "Sales User"
-                elif task.reference_doctype == "CRM Ticket":
-                    role_name = "Support User"
-                else:
-                    continue  # Skip if not Lead or Ticket
+                # Check if this task was processed in the first function
+                task_exhaustion_data = None
+                if exhaustion_data and task.name in exhaustion_data:
+                    task_exhaustion_data = exhaustion_data[task.name]
+                    frappe.logger().info(f"Using exhaustion data for task {task.name}: all_users_assigned={task_exhaustion_data.get('all_users_assigned')}")
                 
-                # Get task's current assignment history
-                task_assign_data = frappe.db.get_value("CRM Task", task.name, "_assign")
-                current_task_assignees = []
-                if task_assign_data:
-                    try:
-                        current_task_assignees = json.loads(task_assign_data)
-                        if not isinstance(current_task_assignees, list):
-                            current_task_assignees = []
-                    except (json.JSONDecodeError, TypeError):
-                        current_task_assignees = []
-                
-                # Get all users for this role
-                role_users = RoleAssignmentTracker.get_role_users(role_name)
-                if role_users:
-                    # Filter out admin users
-                    role_users = [user for user in role_users if user not in ["Administrator", "admin@example.com"]]
-                    
-                    # Check if all users have been assigned to this task
-                    unassigned_users = [user for user in role_users if user not in current_task_assignees]
-                    
-                    if not unassigned_users:
-                        # All users have been assigned, skip parent update to avoid duplicate reassignment comments
-                        frappe.logger().info(f"Skipping parent update for task {task.name} - all users exhausted")
-                        continue
+                # If we have exhaustion data and all users were assigned, skip this task
+                if task_exhaustion_data and task_exhaustion_data.get("all_users_assigned"):
+                    frappe.logger().info(f"Skipping task {task.name} - all users already assigned based on exhaustion data")
+                    continue
+
                 
                 # Get current _assign value to append to it
                 current_assign = frappe.db.get_value(task.reference_doctype, task.reference_docname, "_assign")

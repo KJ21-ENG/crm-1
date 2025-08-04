@@ -813,24 +813,49 @@ async function handleStatusChange(fieldname, value) {
 // Auto assign function to trigger task reassignment
 async function triggerAutoAssign() {
   autoAssignLoading.value = true
+  let reassignmentSuccess = false
+  let parentUpdateSuccess = false
+  let exhaustionData = null
   
   try {
-    // Call the auto reassignment function
-    await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
-    
-    // Reload the lead data to see the changes
-    await lead.reload()
-    await document.reload()
-    
-    // Show success message
-    toast.success(__('Auto assignment completed successfully!'))
-    
+    // Step 1: Call task reassignment function and get exhaustion data
+    const result = await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
+    reassignmentSuccess = true
+    exhaustionData = result.exhaustion_data // Get exhaustion data from response
+    console.log('Task reassignment completed successfully', { exhaustionData })
   } catch (error) {
-    console.error('Auto assign error:', error)
-    toast.error(__('Auto assignment failed. Please try again.'))
-  } finally {
-    autoAssignLoading.value = false
+    console.error('Task reassignment error:', error)
+    toast.error(__('Task reassignment failed, but will try to update parent documents.'))
   }
+  
+  try {
+    // Step 2: Call parent document update function with exhaustion data
+    await call('crm.api.task_reassignment.update_parent_document_assignments', {
+      exhaustion_data: exhaustionData
+    })
+    parentUpdateSuccess = true
+    console.log('Parent document update completed successfully')
+  } catch (error) {
+    console.error('Parent document update error:', error)
+    toast.error(__('Parent document update failed.'))
+  }
+  
+  // Reload the lead data to see the changes
+  await lead.reload()
+  await document.reload()
+  
+  // Show appropriate success message
+  if (reassignmentSuccess && parentUpdateSuccess) {
+    toast.success(__('Auto assignment completed successfully!'))
+  } else if (parentUpdateSuccess) {
+    toast.success(__('Parent document updated successfully!'))
+  } else if (reassignmentSuccess) {
+    toast.success(__('Task reassignment completed, but parent document update failed.'))
+  } else {
+    toast.error(__('Auto assignment failed. Please try again.'))
+  }
+  
+  autoAssignLoading.value = false
 }
 
 // Commented out - Deal module not in use

@@ -1056,20 +1056,24 @@ async function escalateTicket() {
 async function autoAssignTicket() {
   let reassignmentSuccess = false
   let parentUpdateSuccess = false
+  let exhaustionData = null
   
   try {
-    // Step 1: Call our task reassignment function
-    await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
+    // Step 1: Call task reassignment function and get exhaustion data
+    const result = await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
     reassignmentSuccess = true
-    console.log('Task reassignment completed successfully')
+    exhaustionData = result.exhaustion_data // Get exhaustion data from response
+    console.log('Task reassignment completed successfully', { exhaustionData })
   } catch (error) {
     console.error('Task reassignment error:', error)
     toast.error(__('Task reassignment failed, but will try to update parent documents.'))
   }
   
   try {
-    // Step 2: Call the parent document update function (independent of step 1)
-    await call('crm.api.task_reassignment.update_parent_document_assignments')
+    // Step 2: Call parent document update function with exhaustion data
+    await call('crm.api.task_reassignment.update_parent_document_assignments', {
+      exhaustion_data: exhaustionData
+    })
     parentUpdateSuccess = true
     console.log('Parent document update completed successfully')
   } catch (error) {
