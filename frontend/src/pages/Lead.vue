@@ -48,6 +48,17 @@
           </Button>
         </template>
       </Dropdown>
+      <Button
+        v-if="document.doc"
+        :label="__('Auto Assign')"
+        variant="outline"
+        :loading="autoAssignLoading"
+        @click="triggerAutoAssign"
+      >
+        <template #prefix>
+          <FeatherIcon name="refresh-cw" class="h-4" />
+        </template>
+      </Button>
       <!-- <Button
         :label="__('Convert to Deal')"
         variant="solid"
@@ -482,6 +493,7 @@ onMounted(() => {
 
 const reload = ref(false)
 const showFilesUploader = ref(false)
+const autoAssignLoading = ref(false)
 
  // Prevent multiple simultaneous updates
 
@@ -796,6 +808,29 @@ async function handleStatusChange(fieldname, value) {
   
   // Call the original triggerOnChange
   await triggerOnChange(fieldname, value)
+}
+
+// Auto assign function to trigger task reassignment
+async function triggerAutoAssign() {
+  autoAssignLoading.value = true
+  
+  try {
+    // Call the auto reassignment function
+    await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
+    
+    // Reload the lead data to see the changes
+    await lead.reload()
+    await document.reload()
+    
+    // Show success message
+    toast.success(__('Auto assignment completed successfully!'))
+    
+  } catch (error) {
+    console.error('Auto assign error:', error)
+    toast.error(__('Auto assignment failed. Please try again.'))
+  } finally {
+    autoAssignLoading.value = false
+  }
 }
 
 // Commented out - Deal module not in use

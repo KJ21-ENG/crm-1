@@ -42,9 +42,9 @@ class RoleAssignmentTracker(Document):
 		tracker = frappe.db.get_value("Role Assignment Tracker", role_name, "name")
 		
 		if not tracker:
-			# Get users with this role
+			# Get users with this role (exclude admin and system users)
 			users = frappe.get_all("Has Role", 
-				filters={"role": role_name, "parent": ["!=", "Administrator"]},
+				filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]},
 				fields=["parent"]
 			)
 			
@@ -73,9 +73,9 @@ class RoleAssignmentTracker(Document):
 		"""Get the next user in round-robin for the specified role"""
 		tracker = RoleAssignmentTracker.get_or_create_tracker(role_name)
 		
-		# Refresh user list to handle user changes
+		# Refresh user list to handle user changes (exclude admin and system users)
 		users = frappe.get_all("Has Role", 
-			filters={"role": role_name, "parent": ["!=", "Administrator"]},
+			filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]},
 			fields=["parent"]
 		)
 		
@@ -94,15 +94,32 @@ class RoleAssignmentTracker(Document):
 		
 		# Update user list if it has changed
 		if json.dumps(sorted(current_user_list)) != json.dumps(sorted(stored_user_list)):
+			# Smart position management when user list changes
+			old_position = tracker.current_position
+			old_user_list = stored_user_list
+			
 			tracker.user_list = json.dumps(current_user_list)
 			tracker.total_users = len(current_user_list)
-			tracker.current_position = 0  # Reset position when user list changes
+			
+			# Smart position adjustment
+			if len(current_user_list) > len(old_user_list):
+				# Users were added - preserve current position
+				tracker.current_position = min(old_position, len(current_user_list) - 1)
+			elif len(current_user_list) < len(old_user_list):
+				# Users were removed - adjust position if needed
+				tracker.current_position = min(old_position, len(current_user_list) - 1)
+			else:
+				# Same number of users but different users - keep position
+				tracker.current_position = min(old_position, len(current_user_list) - 1)
 		
 		# Get next user
 		if tracker.current_position >= len(current_user_list):
 			tracker.current_position = 0
 		
 		next_user = current_user_list[tracker.current_position]
+		
+		# Log position management for debugging
+		frappe.logger().info(f"Role: {role_name}, Position: {tracker.current_position}/{len(current_user_list)}, Next User: {next_user}")
 		
 		return next_user, tracker
 
@@ -154,6 +171,14 @@ class RoleAssignmentTracker(Document):
 			
 			next_user, _ = RoleAssignmentTracker.get_next_user_for_role(role_name)
 			
+			# Parse user list for detailed info
+			user_list = []
+			if tracker.user_list:
+				try:
+					user_list = json.loads(tracker.user_list) if isinstance(tracker.user_list, str) else tracker.user_list
+				except json.JSONDecodeError:
+					user_list = []
+			
 			return {
 				"role_name": role_name,
 				"total_users": tracker.total_users,
@@ -162,7 +187,12 @@ class RoleAssignmentTracker(Document):
 				"last_assigned_user": tracker.last_assigned_user,
 				"last_assigned_on": tracker.last_assigned_on,
 				"assignment_count": tracker.assignment_count,
-				"user_list": tracker.user_list
+				"user_list": user_list,
+				"position_info": {
+					"current_user_at_position": user_list[tracker.current_position] if user_list and tracker.current_position < len(user_list) else None,
+					"next_user_will_be": next_user,
+					"position_percentage": (tracker.current_position / len(user_list) * 100) if user_list else 0
+				}
 			}
 		except Exception as e:
 			return {"error": str(e)}
@@ -173,4 +203,73 @@ class RoleAssignmentTracker(Document):
 		tracker = frappe.get_doc("Role Assignment Tracker", role_name)
 		tracker.current_position = 0
 		tracker.save(ignore_permissions=True)
-		return "Role tracker reset successfully" 
+		return "Role tracker reset successfully"
+
+	@staticmethod
+	def get_role_users(role_name):
+		"""Get all users for a specific role (excluding admin)"""
+		users = frappe.get_all("Has Role", 
+			filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]},
+			fields=["parent"]
+		)
+		
+		user_list = [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]
+		return user_list
+
+	@staticmethod
+	def assign_to_next_user_from_list(role_name, user_list, document_type, document_name, assigned_by=None):
+		"""Assign a document to the next user from a specific user list using round-robin"""
+		if not user_list:
+			frappe.throw(f"No users provided for role: {role_name}")
+		
+		# Get or create tracker for this role
+		tracker = RoleAssignmentTracker.get_or_create_tracker(role_name)
+		
+		# Find the current position in the provided user list
+		current_position = 0
+		if tracker.last_assigned_user in user_list:
+			try:
+				current_position = (user_list.index(tracker.last_assigned_user) + 1) % len(user_list)
+			except ValueError:
+				current_position = 0
+		
+		# Get next user from the provided list
+		next_user = user_list[current_position]
+		
+		# Update tracker
+		tracker.current_position = (current_position + 1) % len(user_list)
+		tracker.last_assigned_user = next_user
+		tracker.last_assigned_on = datetime.now()
+		tracker.assignment_count += 1
+		
+		# Parse and update assignment history
+		assignment_history = []
+		if tracker.assignment_history:
+			try:
+				assignment_history = json.loads(tracker.assignment_history) if isinstance(tracker.assignment_history, str) else tracker.assignment_history
+			except json.JSONDecodeError:
+				assignment_history = []
+		
+		history_entry = {
+			"user": next_user,
+			"document_type": document_type,
+			"document_name": document_name,
+			"assigned_on": tracker.last_assigned_on.isoformat(),
+			"assigned_by": assigned_by or frappe.session.user,
+			"position": current_position,
+			"user_list": user_list  # Store the user list used for this assignment
+		}
+		
+		assignment_history.append(history_entry)
+		
+		# Keep only last 100 assignments in history
+		if len(assignment_history) > 100:
+			assignment_history = assignment_history[-100:]
+		
+		tracker.assignment_history = json.dumps(assignment_history)
+		
+		tracker.save(ignore_permissions=True)
+		
+		frappe.logger().info(f"Assigned {document_type} {document_name} to {next_user} from user list: {user_list}")
+		
+		return next_user 

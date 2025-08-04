@@ -22,6 +22,8 @@ class CRMTaskNotification(Document):
 		if not self.notification_text:
 			if self.notification_type == "Lead Assignment":
 				self.notification_text = self.get_lead_assignment_text()
+			elif self.notification_type == "Task Reassignment Limit":
+				self.notification_text = self.get_task_reassignment_limit_text()
 			elif self.task:
 				task_doc = frappe.get_doc("CRM Task", self.task)
 				
@@ -107,6 +109,33 @@ class CRMTaskNotification(Document):
 				<div class="mt-1">
 					<span>A new lead has been assigned to you</span>
 				</div>
+			</div>
+		"""
+	
+	def get_task_reassignment_limit_text(self):
+		"""Generate task reassignment limit notification text"""
+		if self.task:
+			task_doc = frappe.get_doc("CRM Task", self.task)
+			document_type = "Lead" if task_doc.reference_doctype == "CRM Lead" else "Ticket"
+			return f"""
+				<div class="mb-2 leading-5 text-ink-gray-5">
+					<span class="font-medium text-red-600">⚠️ Task Reassignment Limit Reached</span>
+					<div class="mt-1">
+						<span class="font-medium text-ink-gray-9">{task_doc.title}</span>
+						<span> - All eligible users have been assigned</span>
+					</div>
+					<div class="text-sm text-ink-gray-6">Reference: {document_type} - {task_doc.reference_docname}</div>
+					<div class="text-sm text-ink-gray-6">Current Assignee: {task_doc.assigned_to or 'Unassigned'}</div>
+					<div class="text-sm text-ink-gray-6">Manual intervention required</div>
+				</div>
+			"""
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-red-600">⚠️ Task Reassignment Limit Reached</span>
+				<div class="mt-1">
+					<span>All eligible users have been assigned to a task</span>
+				</div>
+				<div class="text-sm text-ink-gray-6">Manual intervention required</div>
 			</div>
 		"""
 	

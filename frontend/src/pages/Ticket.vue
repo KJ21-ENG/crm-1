@@ -1054,20 +1054,40 @@ async function escalateTicket() {
 }
 
 async function autoAssignTicket() {
+  let reassignmentSuccess = false
+  let parentUpdateSuccess = false
+  
   try {
-    const result = await call('crm.api.ticket.auto_assign_ticket', {
-      ticket_name: props.ticketId
-    })
-    
-    if (result) {
-      ticket.reload()
-      assignees.reload()
-      toast.success(__('Ticket auto-assigned successfully'))
-    } else {
-      toast.error(__('No suitable agent found for auto-assignment'))
-    }
+    // Step 1: Call our task reassignment function
+    await call('crm.api.task_reassignment.auto_reassign_overdue_tasks')
+    reassignmentSuccess = true
+    console.log('Task reassignment completed successfully')
   } catch (error) {
-    toast.error(error.messages?.[0] || __('Error auto-assigning ticket'))
+    console.error('Task reassignment error:', error)
+    toast.error(__('Task reassignment failed, but will try to update parent documents.'))
+  }
+  
+  try {
+    // Step 2: Call the parent document update function (independent of step 1)
+    await call('crm.api.task_reassignment.update_parent_document_assignments')
+    parentUpdateSuccess = true
+    console.log('Parent document update completed successfully')
+  } catch (error) {
+    console.error('Parent document update error:', error)
+    toast.error(__('Parent document update failed.'))
+  }
+  
+  // Reload the ticket data to see the changes
+  ticket.reload()
+  assignees.reload()
+  
+  // Show appropriate success message
+  if (reassignmentSuccess && parentUpdateSuccess) {
+    toast.success(__('Auto assignment completed successfully!'))
+  } else if (parentUpdateSuccess) {
+    toast.success(__('Parent document updated successfully!'))
+  } else {
+    toast.error(__('Auto assignment failed. Please try again.'))
   }
 }
 
