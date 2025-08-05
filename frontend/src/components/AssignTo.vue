@@ -1,12 +1,6 @@
 <template>
-  <component
-    v-if="assignees?.length"
-    :is="assignees?.length == 1 ? 'Button' : 'div'"
-  >
-    <MultipleAvatar :avatars="assignees" @click="showRoleAssignmentModal = true" />
-  </component>
-  <Button v-else @click="showRoleAssignmentModal = true">
-    {{ __('Assign to Role') }}
+  <Button @click="showRoleAssignmentModal = true">
+    {{ __('Assign') }}
   </Button>
   <RoleAssignmentModal
     v-if="showRoleAssignmentModal"
@@ -17,7 +11,6 @@
   />
 </template>
 <script setup>
-import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import RoleAssignmentModal from '@/components/Modals/RoleAssignmentModal.vue'
 import { usersStore } from '@/stores/users'
 import { ref } from 'vue'
