@@ -356,26 +356,37 @@ def process_overdue_task_reassignments():
     try:
         current_time = get_datetime(now())
         
-        # Get tasks where due_date has passed and status is Todo
+        # Calculate grace period: 30 minutes after due date
+        grace_period_minutes = 30
+        grace_period_time = current_time - timedelta(minutes=grace_period_minutes)
+        
+        # Get tasks where due_date has passed the grace period and status is Todo
         overdue_tasks = frappe.get_list(
             "CRM Task",
             filters={
-                "due_date": ["<", current_time],
+                "due_date": ["<", grace_period_time],  # Due date must be 30+ minutes ago
                 "status": "Todo",
                 "reference_doctype": ["in", ["CRM Lead", "CRM Ticket"]],
                 "final_overdue": ["!=", 1]
             },
-            fields=["name", "title", "assigned_to", "reference_doctype", "reference_docname", "_assign"]
+            fields=["name", "title", "assigned_to", "reference_doctype", "reference_docname", "_assign", "due_date"]
         )
         
-        frappe.logger().info(f"Found {len(overdue_tasks)} overdue tasks to process.")
+        frappe.logger().info(f"Found {len(overdue_tasks)} overdue tasks (after {grace_period_minutes}min grace period) to process.")
+        frappe.logger().info(f"Current time: {current_time}, Grace period cutoff: {grace_period_time}")
         
         reassigned_count = 0
         exhausted_tasks_count = 0
         
         for task in overdue_tasks:
             try:
-                frappe.logger().info(f"Processing task {task.name} for reassignment and parent update.")
+                # Double-check grace period before processing
+                task_due_date = get_datetime(task.due_date)
+                if task_due_date >= grace_period_time:
+                    frappe.logger().info(f"Skipping task {task.name} - still within grace period. Due: {task_due_date}, Grace cutoff: {grace_period_time}")
+                    continue
+                
+                frappe.logger().info(f"Processing task {task.name} for reassignment and parent update. Due: {task_due_date}, Grace cutoff: {grace_period_time}")
                 
                 # Get the full task document
                 task_doc = frappe.get_doc("CRM Task", task.name)
@@ -496,7 +507,7 @@ def process_overdue_task_reassignments():
                     
                     # Create a comment on the parent for the activity log
                     document_type = "Lead" if task_doc.reference_doctype == "CRM Lead" else "Ticket"
-                    comment_content = f"🔄 **{document_type} Reassigned**\n\n**New Assignee:** {get_fullname(new_assignee)}\n**Reason:** Overdue task auto-reassigned."
+                    comment_content = f"🔄 **{document_type} Reassigned**\n\n**New Assignee:** {get_fullname(new_assignee)}\n**Reason:** Overdue task auto-reassigned (after 30min grace period)."
                     frappe.get_doc({
                         "doctype": "Comment", "comment_type": "Comment",
                         "reference_doctype": task_doc.reference_doctype, "reference_name": task_doc.reference_docname,
