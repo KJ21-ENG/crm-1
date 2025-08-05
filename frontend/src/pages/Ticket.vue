@@ -122,7 +122,7 @@
                 size="3xl"
                 class="size-12"
                 :label="customerName"
-                :image="ticket.data.image"
+                :image="customerData.data?.image || ticket.data.image"
               />
               <component
                 :is="ticket.data.image ? Dropdown : 'div'"
@@ -166,7 +166,7 @@
                 </div>
               </Tooltip>
               <div class="text-sm text-ink-gray-7">
-                Customer: {{ customerName }}
+                Customer: {{ customerData.data?.full_name || customerData.data?.first_name || customerName }}
               </div>
               <div class="flex gap-1.5">
                 <Tooltip v-if="callEnabled" :text="__('Make a call')">
@@ -702,6 +702,13 @@ const sections = createResource({
   auto: true,
 })
 
+// Load customer data for avatar and details
+const customerData = createResource({
+  url: 'crm.api.customers.get_customer_data_for_ticket',
+  params: { ticket_name: props.ticketId },
+  auto: false,
+})
+
 // Load related tickets for the same customer
 const relatedTickets = createResource({
   url: 'frappe.client.get_list',
@@ -718,7 +725,13 @@ const relatedTickets = createResource({
   auto: false,
 })
 
-// Watch for ticket data changes to load related tickets
+// Watch for ticket data changes to load customer data and related tickets
+watch(() => ticket.data?.customer_id, (customer_id) => {
+  if (customer_id) {
+    customerData.fetch()
+  }
+})
+
 watch(() => ticket.data?.mobile_no, (mobile_no) => {
   if (mobile_no) {
     relatedTickets.update({
@@ -805,7 +818,7 @@ const title = computed(() => {
 })
 
 const customerName = computed(() => {
-  return ticket.data?.first_name || ticket.data?.customer_name || 'Customer'
+  return customerData.data?.full_name || customerData.data?.first_name || ticket.data?.first_name || ticket.data?.customer_name || 'Customer'
 })
 
 usePageMeta(() => {

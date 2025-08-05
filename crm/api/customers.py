@@ -267,7 +267,7 @@ def get_customer_by_id(customer_id):
         {"name": customer_id},
         ["name", "customer_name", "first_name", "last_name", "email", 
          "mobile_no", "organization", "status", "customer_source",
-         "pan_card_number", "aadhaar_card_number", "referral_code"],
+         "pan_card_number", "aadhaar_card_number", "referral_code", "image"],
         as_dict=True
     )
     
@@ -393,6 +393,29 @@ def get_lead_with_customer_data(lead_name):
 				lead_dict[key] = value
 	
 	return lead_dict
+
+@frappe.whitelist()
+def update_customer_image(customer_id, image):
+    """Update customer image"""
+    if not customer_id:
+        frappe.throw(_("Customer ID is required"))
+    
+    if not image:
+        frappe.throw(_("Image URL is required"))
+    
+    try:
+        customer = frappe.get_doc("CRM Customer", customer_id)
+        customer.image = image
+        customer.save()
+        
+        return {
+            "success": True,
+            "message": "Customer image updated successfully"
+        }
+    except Exception as e:
+        frappe.log_error(f"Error updating customer image: {str(e)}", "Customer Image Update Error")
+        frappe.throw(_("Error updating customer image: {0}").format(str(e)))
+
 
 @frappe.whitelist()
 def get_ticket_with_customer_data(ticket_name):

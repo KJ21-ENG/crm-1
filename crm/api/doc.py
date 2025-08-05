@@ -413,8 +413,14 @@ def get_data(
 		
 		# Special handling for CRM Ticket and CRM Lead to join with customer table
 		if doctype == "CRM Ticket" and "customer_name" in rows:
+			# Ensure image field is included for customer avatar display
+			if "image" not in rows:
+				rows.append("image")
 			data = get_ticket_list_with_customer_data(rows, filters, order_by, page_length)
 		elif doctype == "CRM Lead" and "lead_name" in rows:
+			# Ensure image field is included for customer avatar display
+			if "image" not in rows:
+				rows.append("image")
 			data = get_lead_list_with_customer_data(rows, filters, order_by, page_length)
 		else:
 			data = (
@@ -905,6 +911,9 @@ def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
 		elif field == "mobile_no":
 			# Use mobile from customer table if available, fallback to ticket table
 			fields.append(f"COALESCE(c.mobile_no, t.mobile_no) as mobile_no")
+		elif field == "image":
+			# Use customer image from customer table if available, fallback to ticket table
+			fields.append(f"COALESCE(c.image, t.image) as image")
 		else:
 			fields.append(f"t.{field}")
 	
@@ -973,6 +982,9 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
 		elif field == "mobile_no":
 			# Use mobile from customer table if available, fallback to lead table
 			fields.append(f"COALESCE(c.mobile_no, l.mobile_no) as mobile_no")
+		elif field == "image":
+			# Use customer image from customer table if available, fallback to lead table
+			fields.append(f"COALESCE(c.image, l.image) as image")
 		else:
 			fields.append(f"l.{field}")
 	

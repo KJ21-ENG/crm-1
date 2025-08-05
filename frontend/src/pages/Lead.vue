@@ -88,7 +88,7 @@
         {{ title }}
       </div>
       <FileUploader
-        @success="(file) => updateField('image', file.file_url)"
+        @success="(file) => updateCustomerImage(file.file_url)"
         :validateFile="validateIsImageFile"
       >
         <template #default="{ openFileSelector, error }">
@@ -98,7 +98,7 @@
                 size="3xl"
                 class="size-12"
                 :label="title"
-                :image="lead.data.image"
+                :image="customerData.data?.image || lead.data.image"
               />
               <component
                 :is="lead.data.image ? Dropdown : 'div'"
@@ -116,7 +116,7 @@
                           {
                             icon: 'trash-2',
                             label: __('Remove image'),
-                            onClick: () => updateField('image', ''),
+                            onClick: () => updateCustomerImage(''),
                           },
                         ],
                       }
@@ -491,6 +491,13 @@ onMounted(() => {
   lead.fetch()
 })
 
+// Watch for lead data changes to load customer data
+watch(() => lead.data?.customer_id, (customer_id) => {
+  if (customer_id) {
+    customerData.fetch()
+  }
+})
+
 const reload = ref(false)
 const showFilesUploader = ref(false)
 const autoAssignLoading = ref(false)
@@ -681,6 +688,13 @@ watch(tabs, (value) => {
   }
 })
 
+// Load customer data for avatar and details
+const customerData = createResource({
+  url: 'crm.api.customers.get_customer_data_for_lead',
+  params: { lead_name: props.leadId },
+  auto: false,
+})
+
 const sections = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections',
   cache: ['sidePanelSections', 'CRM Lead'],
@@ -694,6 +708,27 @@ async function updateField(name, value, callback) {
     lead.data[name] = value
     callback?.()
   })
+}
+
+async function updateCustomerImage(imageUrl) {
+  if (!lead.data?.customer_id) {
+    toast.error(__('No customer associated with this lead'))
+    return
+  }
+  
+  try {
+    await call('crm.api.customers.update_customer_image', {
+      customer_id: lead.data.customer_id,
+      image: imageUrl
+    })
+    
+    // Reload customer data to show updated image
+    customerData.reload()
+    toast.success(__('Customer image updated successfully'))
+  } catch (error) {
+    console.error('Error updating customer image:', error)
+    toast.error(error.messages?.[0] || __('Error updating customer image'))
+  }
 }
 
 
