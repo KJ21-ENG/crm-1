@@ -434,6 +434,26 @@ def process_overdue_task_reassignments():
                             "content": notification_content, "comment_email": "Administrator"
                         }).insert(ignore_permissions=True)
                     
+                    # Create admin notification for Task Reminder interface
+                    try:
+                        from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+                        
+                        admin_notification = create_task_notification(
+                            task_name=task_doc.name,
+                            notification_type="Task Reassignment Limit",
+                            assigned_to="Administrator",
+                            message=f"All eligible users have been assigned to task: {task_doc.title} - Marked as Final Overdue",
+                            reference_doctype=task_doc.reference_doctype,
+                            reference_docname=task_doc.reference_docname
+                        )
+                        
+                        if admin_notification:
+                            # Mark notification as sent immediately to show in Task Reminder interface
+                            admin_notification.mark_as_sent()
+                            frappe.logger().info(f"Admin notification created for task reassignment limit: {admin_notification.name}")
+                    except Exception as e:
+                        frappe.logger().error(f"Error creating admin notification for task {task_doc.name}: {str(e)}")
+                    
                     exhausted_tasks_count += 1
                 
                 else:
