@@ -421,7 +421,7 @@ const taskData = ref({
   description: '',
   assigned_to: '',
   due_date: '',
-  status: 'Backlog',
+  status: 'Todo',
   priority: 'Medium',
   reference_doctype: 'CRM Ticket',
   reference_docname: '',
@@ -607,7 +607,7 @@ function openTaskModalForAssignment() {
     assigned_to: '', // Will be set when ticket is created with role assignment
     role_for_assignment: ticket.doc.assign_to_role, // Store role for later assignment
     due_date: '',
-    status: 'Backlog',
+    status: 'Todo',
     priority: ticket.doc.priority || 'Medium',
     reference_doctype: 'CRM Ticket',
     reference_docname: '', // Will be empty until ticket is created
@@ -652,7 +652,7 @@ function clearAssignedTask() {
     description: '',
     assigned_to: '',
     due_date: '',
-    status: 'Backlog',
+    status: 'Todo',
     priority: 'Medium',
     reference_doctype: 'CRM Ticket',
     reference_docname: '',

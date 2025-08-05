@@ -551,7 +551,7 @@ const task = ref({
   assigned_to: '',
   due_date: '',
   priority: 'Low',
-  status: 'Backlog',
+  status: 'Todo',
 })
 
 function showTask(name) {

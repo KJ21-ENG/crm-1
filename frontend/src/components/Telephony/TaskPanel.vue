@@ -90,7 +90,7 @@ const props = defineProps({
       description: '',
       assigned_to: '',
       due_date: '',
-      status: 'Backlog',
+      status: 'Todo',
       priority: 'Low',
     }),
   },

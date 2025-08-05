@@ -152,7 +152,7 @@ const taskData = ref({
   description: '',
   assigned_to: '',
   due_date: '',
-  status: 'Backlog',
+  status: 'Todo',
   priority: 'Medium',
   reference_doctype: 'CRM Lead',
   reference_docname: '',
@@ -375,7 +375,7 @@ function openTaskModalForAssignment() {
     assigned_to: '', // Will be set when lead is created with role assignment
     role_for_assignment: lead.doc.assign_to_role, // Store role for later assignment
     due_date: '',
-    status: 'Backlog',
+    status: 'Todo',
     priority: 'Medium',
     reference_doctype: 'CRM Lead',
     reference_docname: '', // Will be empty until lead is created
@@ -420,7 +420,7 @@ function clearAssignedTask() {
     description: '',
     assigned_to: '',
     due_date: '',
-    status: 'Backlog',
+    status: 'Todo',
     priority: 'Medium',
     reference_doctype: 'CRM Lead',
     reference_docname: '',
