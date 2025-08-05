@@ -33,30 +33,60 @@ def test_role_assignment_tracker():
 
 @frappe.whitelist()
 def get_current_assignments(doc_name, doctype="CRM Lead"):
-    """Get current assignments for a document"""
+    """Get current assignments for a document from _assign field"""
     try:
-        # Get all current assignments for the document
-        assignments = frappe.get_all("ToDo",
-            filters={
-                "reference_type": doctype,
-                "reference_name": doc_name,
-                "status": ["in", ["Open", "Working"]]
-            },
-            fields=["name", "allocated_to", "creation", "status", "description"],
-            order_by="creation desc"
-        )
+        import json
         
-        # Get user details for each assignment
-        for assignment in assignments:
-            if assignment.allocated_to:
-                user = frappe.get_doc("User", assignment.allocated_to)
-                assignment.user_full_name = user.full_name or user.name
-                assignment.user_image = user.user_image
+        # Get the document to access _assign field
+        doc = frappe.get_doc(doctype, doc_name)
+        
+        if not doc or not doc._assign:
+            return []
+        
+        # Parse the _assign field (JSON array of user emails)
+        try:
+            assigned_users = json.loads(doc._assign)
+        except (json.JSONDecodeError, TypeError):
+            # If _assign is not valid JSON, try to handle as string
+            if isinstance(doc._assign, str):
+                assigned_users = [doc._assign.strip()]
+            else:
+                assigned_users = []
+        
+        assignments = []
+        
+        # Create assignment objects for each assigned user
+        for user_email in assigned_users:
+            if user_email:
+                try:
+                    user = frappe.get_doc("User", user_email)
+                    assignment = {
+                        "name": f"assignment_{user_email}_{doc_name}",
+                        "allocated_to": user_email,
+                        "creation": doc.creation,  # Use document creation time
+                        "status": "Open",
+                        "description": f"Assigned to {user.full_name or user_email}",
+                        "user_full_name": user.full_name or user.name,
+                        "user_image": user.user_image
+                    }
+                    assignments.append(assignment)
+                except Exception as user_error:
+                    # If user doesn't exist, still show the assignment
+                    assignment = {
+                        "name": f"assignment_{user_email}_{doc_name}",
+                        "allocated_to": user_email,
+                        "creation": doc.creation,
+                        "status": "Open",
+                        "description": f"Assigned to {user_email}",
+                        "user_full_name": user_email,
+                        "user_image": None
+                    }
+                    assignments.append(assignment)
         
         return assignments
         
     except Exception as e:
-        frappe.log_error(f"Error getting current assignments: {str(e)}", "Role Assignment Error")
+        frappe.log_error(f"Error getting current assignments from _assign: {str(e)}", "Role Assignment Error")
         return []
 
 @frappe.whitelist()
