@@ -48,7 +48,7 @@
           </Button>
         </template>
       </Dropdown>
-      <Button
+      <!-- <Button
         v-if="document.doc"
         :label="__('Auto Assign')"
         variant="outline"
@@ -58,7 +58,7 @@
         <template #prefix>
           <FeatherIcon name="refresh-cw" class="h-4" />
         </template>
-      </Button>
+      </Button> -->
       <!-- <Button
         :label="__('Convert to Deal')"
         variant="solid"

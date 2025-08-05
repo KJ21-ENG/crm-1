@@ -44,7 +44,7 @@
           </Button>
         </template>
       </Dropdown>
-      <Dropdown
+      <!-- <Dropdown
         v-if="document.doc?.status !== 'Closed'"
         :options="[
           {
@@ -78,7 +78,7 @@
             </template>
           </Button>
         </template>
-      </Dropdown>
+      </Dropdown> -->
       <Button
         v-if="document.doc?.status !== 'Closed'"
         :label="__('Close Ticket')"
