@@ -2,7 +2,7 @@
   <div class="custom-datetime-picker relative">
     <!-- Input field that triggers the picker -->
     <div
-      class="datetime-input-field"
+      class="relative flex h-7 w-full items-center justify-between gap-2 rounded bg-surface-gray-2 px-2 py-1 transition-colors hover:bg-surface-gray-3 border border-transparent focus:border-outline-gray-4 focus:outline-none focus:ring-2 focus:ring-outline-gray-3 text-base rounded h-7 py-1.5 px-2 border border-gray-100 bg-surface-gray-2 placeholder-ink-gray-4 hover:border-outline-gray-modals hover:bg-surface-gray-3 focus:bg-surface-white focus:border-outline-gray-4 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-ink-gray-8 transition-colors w-full"
       :class="inputClass"
       @click="togglePicker"
       :style="{ cursor: 'pointer' }"
@@ -135,12 +135,36 @@ const emit = defineEmits(['update:modelValue', 'change']);
 
 // Reactive data
 const isOpen = ref(false);
-const now = new Date();
-const currentDate = ref(new Date(now.getFullYear(), now.getMonth(), 1));
-const selectedDate = ref(now);
-const selectedHour = ref(now.getHours() % 12 || 12);
-const selectedMinute = ref(now.getMinutes());
-const selectedPeriod = ref(now.getHours() >= 12 ? 'PM' : 'AM');
+const isDateApplied = ref(false); // Track if date has been applied
+const hasUserSelectedDate = ref(false); // Track if user has explicitly selected a date
+
+// Get current date and time
+const getCurrentDateTime = () => {
+  return new Date();
+};
+
+// Initialize with current date and time
+const initializeCurrentDateTime = () => {
+  const currentNow = getCurrentDateTime();
+  
+  // Set the selected date to current date
+  selectedDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
+  
+  // Set the time components
+  selectedHour.value = currentNow.getHours() % 12 || 12;
+  selectedMinute.value = currentNow.getMinutes();
+  selectedPeriod.value = currentNow.getHours() >= 12 ? 'PM' : 'AM';
+  
+  // Set the calendar view to current month
+  currentDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1);
+};
+
+// Initialize reactive data with current date/time
+const currentDate = ref(new Date(getCurrentDateTime().getFullYear(), getCurrentDateTime().getMonth(), 1));
+const selectedDate = ref(new Date(getCurrentDateTime().getFullYear(), getCurrentDateTime().getMonth(), getCurrentDateTime().getDate()));
+const selectedHour = ref(getCurrentDateTime().getHours() % 12 || 12);
+const selectedMinute = ref(getCurrentDateTime().getMinutes());
+const selectedPeriod = ref(getCurrentDateTime().getHours() >= 12 ? 'PM' : 'AM');
 const pickerPosition = ref({ top: '0px', left: '0px' });
 
 // Constants
@@ -156,14 +180,17 @@ const currentYear = computed(() => {
 });
 
 const displayValue = computed(() => {
-  if (!selectedDate.value) return '';
+  // If no date is applied, show 00:00:00
+  if (!isDateApplied.value || !selectedDate.value) {
+    return '00:00:00';
+  }
   
   const date = new Date(selectedDate.value);
-  const formattedDate = date.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric'
-  });
+  // Format date properly without timezone issues
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const formattedDate = `${month}/${day}/${year}`;
   
   const hour = selectedPeriod.value === 'PM' && selectedHour.value !== 12 
     ? selectedHour.value + 12 
@@ -195,18 +222,27 @@ const calendarDates = computed(() => {
   // Get the day of week for first day (0 = Sunday, 1 = Monday, etc.)
   const firstDayOfWeek = firstDay.getDay();
   
+  // Get today's date for comparison
+  const today = getCurrentDateTime();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDay = today.getDate();
+  
   // Calculate dates to show (including previous month's dates to fill first week)
   const dates = [];
   
   // Add previous month's dates
   for (let i = firstDayOfWeek - 1; i >= 0; i--) {
     const date = new Date(year, month, -i);
+    const dateYear = date.getFullYear();
+    const dateMonth = date.getMonth();
+    const dateDay = date.getDate();
     dates.push({
       date: date,
       day: date.getDate(),
       isCurrentMonth: false,
-      isSelected: selectedDate.value && date.toDateString() === selectedDate.value.toDateString(),
-      isToday: date.toDateString() === new Date().toDateString(),
+      isSelected: selectedDate.value && dateYear === selectedDate.value.getFullYear() && dateMonth === selectedDate.value.getMonth() && dateDay === selectedDate.value.getDate(),
+      isToday: dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay,
       key: `prev-${date.getTime()}`
     });
   }
@@ -214,12 +250,15 @@ const calendarDates = computed(() => {
   // Add current month's dates
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const date = new Date(year, month, day);
+    const dateYear = date.getFullYear();
+    const dateMonth = date.getMonth();
+    const dateDay = date.getDate();
     dates.push({
       date: date,
       day: day,
       isCurrentMonth: true,
-      isSelected: selectedDate.value && date.toDateString() === selectedDate.value.toDateString(),
-      isToday: date.toDateString() === new Date().toDateString(),
+      isSelected: selectedDate.value && dateYear === selectedDate.value.getFullYear() && dateMonth === selectedDate.value.getMonth() && dateDay === selectedDate.value.getDate(),
+      isToday: dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay,
       key: `current-${date.getTime()}`
     });
   }
@@ -228,12 +267,15 @@ const calendarDates = computed(() => {
   const remainingDays = 42 - dates.length; // 6 rows * 7 days = 42
   for (let day = 1; day <= remainingDays; day++) {
     const date = new Date(year, month + 1, day);
+    const dateYear = date.getFullYear();
+    const dateMonth = date.getMonth();
+    const dateDay = date.getDate();
     dates.push({
       date: date,
       day: date.getDate(),
       isCurrentMonth: false,
-      isSelected: selectedDate.value && date.toDateString() === selectedDate.value.toDateString(),
-      isToday: date.toDateString() === new Date().toDateString(),
+      isSelected: selectedDate.value && dateYear === selectedDate.value.getFullYear() && dateMonth === selectedDate.value.getMonth() && dateDay === selectedDate.value.getDate(),
+      isToday: dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay,
       key: `next-${date.getTime()}`
     });
   }
@@ -250,7 +292,7 @@ function calculatePosition() {
     const rect = inputElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const pickerHeight = 450;
+    const pickerHeight = 500; // Updated to match CSS max-height
     const pickerWidth = 320;
     
     let top = rect.bottom + 4;
@@ -288,8 +330,11 @@ function togglePicker() {
     // If already open, close it
     closePicker();
   } else {
-    // If closed, open it and calculate position
+    // If closed, open it and show current date/time (but don't apply it)
     isOpen.value = true;
+    initializeCurrentDateTime(); // Show current date/time in popup
+    // Don't automatically select current date - let user choose
+    hasUserSelectedDate.value = false;
     calculatePosition();
     document.body.classList.add('picker-open');
   }
@@ -309,50 +354,61 @@ function nextMonth() {
 }
 
 function selectDate(date) {
-  selectedDate.value = date;
+  // Ensure we're working with a clean date object (no time component)
+  const selectedDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  selectedDate.value = selectedDateOnly;
+  hasUserSelectedDate.value = true; // Mark that user has selected a date
 }
 
 function clearSelection() {
-  const now = new Date();
-  selectedDate.value = now;
-  selectedHour.value = now.getHours() % 12 || 12;
-  selectedMinute.value = now.getMinutes();
-  selectedPeriod.value = now.getHours() >= 12 ? 'PM' : 'AM';
+  initializeCurrentDateTime(); // Show current date/time but don't apply
+  isDateApplied.value = false; // Reset applied flag
+  hasUserSelectedDate.value = false; // Reset user selected flag
 }
 
 function setToday() {
-  const today = new Date();
-  selectedDate.value = today;
-  selectedHour.value = today.getHours() % 12 || 12;
-  selectedMinute.value = today.getMinutes();
-  selectedPeriod.value = today.getHours() >= 12 ? 'PM' : 'AM';
-  currentDate.value = new Date(today.getFullYear(), today.getMonth(), 1);
+  initializeCurrentDateTime(); // Show current date/time but don't apply
+  isDateApplied.value = false; // Reset applied flag
+  hasUserSelectedDate.value = true; // Mark that user has selected today's date
 }
 
 function applySelection() {
-  if (!selectedDate.value) {
+  // If user hasn't explicitly selected a date, don't apply anything - keep it empty
+  if (!hasUserSelectedDate.value) {
+    isDateApplied.value = false;
     emit('update:modelValue', '');
     emit('change', '');
     closePicker();
     return;
   }
   
-  // Create the final datetime
+  // Create the final datetime using the selected date and time
   const finalDate = new Date(selectedDate.value);
   let hour = selectedHour.value;
   
+  // Convert 12-hour format to 24-hour format
   if (selectedPeriod.value === 'PM' && hour !== 12) {
     hour += 12;
   } else if (selectedPeriod.value === 'AM' && hour === 12) {
     hour = 0;
   }
   
+  // Set the time on the selected date
   finalDate.setHours(hour, selectedMinute.value, 0, 0);
   
-  // Format as ISO datetime string (Frappe standard)
-  const isoString = finalDate.toISOString().slice(0, 19).replace('T', ' ');
+  // Format as ISO datetime string (Frappe standard) - handle timezone properly
+  const year = finalDate.getFullYear();
+  const month = String(finalDate.getMonth() + 1).padStart(2, '0');
+  const day = String(finalDate.getDate()).padStart(2, '0');
+  const hours = String(finalDate.getHours()).padStart(2, '0');
+  const minutes = String(finalDate.getMinutes()).padStart(2, '0');
+  const seconds = String(finalDate.getSeconds()).padStart(2, '0');
   
-  console.log('DateTimePicker output:', isoString)
+  const isoString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  
+  // Mark date as applied
+  isDateApplied.value = true;
+  
   emit('update:modelValue', isoString);
   emit('change', isoString);
   closePicker();
@@ -365,25 +421,19 @@ watch(
     if (val) {
       const date = new Date(val);
       if (!isNaN(date.getTime())) {
-        selectedDate.value = date;
+        selectedDate.value = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         selectedHour.value = date.getHours() % 12 || 12;
         selectedMinute.value = date.getMinutes();
         selectedPeriod.value = date.getHours() >= 12 ? 'PM' : 'AM';
         currentDate.value = new Date(date.getFullYear(), date.getMonth(), 1);
+        isDateApplied.value = true; // Mark as applied when external value is provided
+        hasUserSelectedDate.value = true; // Mark that user has selected a date
       }
     } else {
-      // Set to current date and time when no value is provided
-      const now = new Date();
-      selectedDate.value = now;
-      selectedHour.value = now.getHours() % 12 || 12;
-      selectedMinute.value = now.getMinutes();
-      selectedPeriod.value = now.getHours() >= 12 ? 'PM' : 'AM';
-      currentDate.value = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      // Emit the default value so parent components know about it
-      const isoString = now.toISOString().slice(0, 19).replace('T', ' ');
-      emit('update:modelValue', isoString);
-      console.log('DateTimePicker emitting default value:', isoString);
+      // Reset to not applied when no value is provided
+      isDateApplied.value = false;
+      hasUserSelectedDate.value = false; // Reset user selected flag
+      // Don't emit anything until user applies the date
     }
   },
   { immediate: true }
@@ -398,6 +448,10 @@ function handleResize() {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize);
+  // Initialize with current date and time on mount but don't apply
+  initializeCurrentDateTime();
+  isDateApplied.value = false; // Don't apply date initially
+  hasUserSelectedDate.value = false; // Don't apply date initially
 });
 
 onUnmounted(() => {
@@ -467,8 +521,7 @@ onUnmounted(() => {
   padding: 16px;
   padding-bottom: 20px;
   width: 320px;
-  max-height: 450px;
-  overflow: hidden;
+  overflow: visible;
   z-index: 10000;
 }
 
@@ -679,7 +732,7 @@ onUnmounted(() => {
 
 .apply-btn {
   background: #000000;
-  color: #ffffff;
+  color: #ffffff #important;
   flex: 1;
 }
 
@@ -692,11 +745,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Override any dark theme styles */
-.datetime-picker-popup * {
-  color: inherit !important;
-}
-
+/* Override any dark theme styles - removed color: inherit to allow proper color changes */
 .datetime-picker-popup {
   color: #000000 !important;
 }
@@ -713,8 +762,38 @@ onUnmounted(() => {
   color: #ffffff !important;
 }
 
+.calendar-date.today {
+  color: #000000 !important;
+  background: #e5e7eb !important;
+  font-weight: 600 !important;
+}
+
 .time-select {
   color: #000000 !important;
   background: #ffffff !important;
+}
+
+.action-btn {
+  color: inherit !important;
+}
+
+.clear-btn {
+  color: #6b7280 !important;
+}
+
+.clear-btn:hover {
+  color: #000000 !important;
+}
+
+.today-btn {
+  color: #000000 !important;
+}
+
+.today-btn:hover {
+  color: #ffffff !important;
+}
+
+.apply-btn {
+  color: #ffffff !important;
 }
 </style> 

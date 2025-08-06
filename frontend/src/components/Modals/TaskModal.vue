@@ -206,13 +206,9 @@ async function updateTask() {
     _task.value.assigned_to = getUser().name
   }
   
-  // Ensure due_date is always set to current date/time if not provided
-  if (!_task.value.due_date) {
-    const now = new Date();
-    const isoString = now.toISOString().slice(0, 19).replace('T', ' ');
-    _task.value.due_date = isoString;
-    console.log('Setting default due_date:', isoString);
-  }
+  // Don't automatically set due_date - let it remain empty if not provided
+  // This allows users to create tasks without a due date
+  
   if (_task.value.name) {
     let d = await call('frappe.client.set_value', {
       doctype: 'CRM Task',
