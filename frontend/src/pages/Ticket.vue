@@ -16,6 +16,7 @@
         v-model="assignees.data"
         :data="document.doc"
         doctype="CRM Ticket"
+        @navigateToActivity="navigateToActivity"
       />
       <Dropdown
         v-if="document.doc"
@@ -1123,4 +1124,12 @@ watch(showDepartmentMetrics, (show) => {
     departmentMetrics.reload()
   }
 })
+
+// Navigate to activity tab after successful assignment
+function navigateToActivity() {
+  console.log('Navigating to Activity tab...')
+  changeTabTo('Activity')
+  // Also try to set the URL hash
+  router.push({ ...route, hash: '#activity' })
+}
 </script> 

@@ -8,6 +8,7 @@
     :doctype="doctype"
     :doc="data"
     @assigned="handleRoleAssignment"
+    @close="handleModalClose"
   />
 </template>
 <script setup>
@@ -25,6 +26,8 @@ const { getUser } = usersStore()
 const showRoleAssignmentModal = ref(false)
 const assignees = defineModel()
 
+const emit = defineEmits(['navigateToActivity'])
+
 function handleRoleAssignment(assignmentData) {
   // Update assignees list with the newly assigned user
   const user = getUser(assignmentData.assigned_user)
@@ -36,5 +39,10 @@ function handleRoleAssignment(assignmentData) {
   
   // Update assignees to show the assigned user
   assignees.value = [newAssignee]
+}
+
+function handleModalClose() {
+  // Emit event to navigate to activity tab
+  emit('navigateToActivity')
 }
 </script>

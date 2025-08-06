@@ -347,19 +347,11 @@ async function assignToRole() {
         task_created: result.task_created
       })
 
-      // Show success message
-      successMessage.value = result.message || `Successfully assigned to ${result.assigned_user}`
+      // Close modal immediately
+      show.value = false
       
-      // Refresh current assignments and role status
-      currentAssignments.fetch()
-      if (assignmentType.value === 'role') {
-        roleAssignmentStatus.fetch()
-      }
-      
-      // Close modal after delay
-      setTimeout(() => {
-        emit('close')
-      }, 1500)
+      // Emit close event to trigger navigation
+      emit('close')
     } else {
       error.value = result.error || 'Assignment failed'
     }

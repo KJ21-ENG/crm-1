@@ -1243,21 +1243,9 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
             "reference_docname": ticket_name,
             "description": f"Task created for direct ticket assignment to {user_name} - {ticket_subject}".strip(),
             "priority": ticket_priority,
-            "status": "Backlog"
+            "status": "Todo"
         })
         task_doc.insert(ignore_permissions=True)
-        
-        # Create activity for task creation
-        task_activity_comment = frappe.get_doc({
-            "doctype": "Comment",
-            "comment_type": "Comment",
-            "reference_doctype": "CRM Ticket", 
-            "reference_name": ticket_name,
-            "content": f"📋 Task created: {task_doc.title}",
-            "comment_email": assigned_by,
-            "creation": frappe.utils.now(),
-        })
-        task_activity_comment.insert(ignore_permissions=True)
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
@@ -1361,21 +1349,9 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
             "reference_docname": ticket_name,
             "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
             "priority": ticket_priority,
-            "status": "Backlog"
+            "status": "Todo"
         })
         task_doc.insert(ignore_permissions=True)
-        
-        # Create activity for task creation
-        task_activity_comment = frappe.get_doc({
-            "doctype": "Comment",
-            "comment_type": "Comment",
-            "reference_doctype": "CRM Ticket", 
-            "reference_name": ticket_name,
-            "content": f"📋 Task created: {task_doc.title}",
-            "comment_email": assigned_by,
-            "creation": frappe.utils.now(),
-        })
-        task_activity_comment.insert(ignore_permissions=True)
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
