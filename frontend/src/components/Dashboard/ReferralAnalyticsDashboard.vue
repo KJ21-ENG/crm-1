@@ -118,117 +118,8 @@
       </div>
     </div>
 
-    <!-- Top Referrers and Source Table Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Top Referrers -->
-      <div class="bg-white rounded-lg border border-gray-200">
-        <div class="p-4 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-lg font-semibold text-ink-gray-9">Top Referrers</h3>
-              <p class="text-sm text-ink-gray-6">Customers with the most successful referrals</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="refreshData"
-              :loading="loading"
-            >
-              <RefreshIcon class="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-        <div class="p-4">
-          <div v-if="loading" class="text-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          </div>
-          <div v-else-if="topReferrers.length === 0" class="text-center py-8">
-            <ArrowUpRightIcon class="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p class="text-sm text-ink-gray-6">No referral data available</p>
-          </div>
-          <div v-else>
-            <div class="space-y-3">
-              <div
-                v-for="referrer in paginatedTopReferrers"
-                :key="`${referrer.referrer_name}-${referrer.referral_code}`"
-                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-ink-gray-9">{{ referrer.referrer_name || 'Unknown' }}</p>
-                  <p class="text-xs text-ink-gray-6">{{ referrer.referrer_mobile || 'No mobile' }}</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-sm font-medium text-ink-gray-9">{{ referrer.referral_code }}</p>
-                  <p class="text-xs text-ink-gray-6">{{ referrer.total_referrals }} referrals</p>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Top Referrers Pagination -->
-            <div class="mt-4 flex items-center justify-between">
-              <div class="flex items-center space-x-4">
-                <div class="text-sm text-gray-600">
-                  Showing {{ (topReferrersCurrentPage - 1) * topReferrersItemsPerPage + 1 }} to {{ Math.min(topReferrersCurrentPage * topReferrersItemsPerPage, topReferrers.length) }} of {{ topReferrers.length }} results
-                </div>
-                <div class="flex items-center space-x-2">
-                  <span class="text-sm text-gray-600">Show:</span>
-                  <select 
-                    v-model="topReferrersItemsPerPage" 
-                    class="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    @change="topReferrersCurrentPage = 1"
-                  >
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option :value="topReferrers.length">All</option>
-                  </select>
-                </div>
-              </div>
-              <div v-if="topReferrersTotalPages > 1" class="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  @click="topReferrersCurrentPage--"
-                  :disabled="topReferrersCurrentPage === 1"
-                >
-                  Previous
-                </Button>
-                
-                <!-- Page Numbers -->
-                <div class="flex items-center space-x-1">
-                  <button
-                    v-for="page in topReferrersPageNumbers"
-                    :key="page"
-                    @click="page !== '...' ? topReferrersCurrentPage = page : null"
-                    :class="[
-                      'px-2 py-1 text-sm rounded border transition-colors',
-                      page === topReferrersCurrentPage
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : page === '...'
-                        ? 'text-gray-400 cursor-default'
-                        : 'text-gray-600 border-gray-300 hover:bg-gray-50'
-                    ]"
-                    :disabled="page === '...'"
-                  >
-                    {{ page }}
-                  </button>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  @click="topReferrersCurrentPage++"
-                  :disabled="topReferrersCurrentPage === topReferrersTotalPages"
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Referral Source Table -->
+    <!-- Referral Source Table -->
+    <div class="mb-6">
       <div class="bg-white rounded-lg border border-gray-200">
         <div class="p-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
@@ -515,14 +406,11 @@ import ExportIcon from '@/components/Icons/ExportIcon.vue'
 
 const loading = ref(false)
 const exporting = ref(false)
-const topReferrers = ref([])
 const sourceTable = ref([])
 const conversionFunnel = ref({})
 
-// Pagination state - Separate for each table
-const topReferrersItemsPerPage = ref(5)
+// Pagination state for source table
 const sourceTableItemsPerPage = ref(5)
-const topReferrersCurrentPage = ref(1)
 const sourceTableCurrentPage = ref(1)
 
 // Expandable details state
@@ -538,27 +426,11 @@ const filters = ref({
 })
 
 // Computed properties for pagination
-const topReferrersTotalPages = computed(() => {
-  if (!topReferrers.value || !Array.isArray(topReferrers.value) || topReferrersItemsPerPage.value <= 0) {
-    return 1
-  }
-  return Math.ceil(topReferrers.value.length / topReferrersItemsPerPage.value)
-})
-
 const sourceTableTotalPages = computed(() => {
   if (!sourceTable.value || !Array.isArray(sourceTable.value) || sourceTableItemsPerPage.value <= 0) {
     return 1
   }
   return Math.ceil(sourceTable.value.length / sourceTableItemsPerPage.value)
-})
-
-const paginatedTopReferrers = computed(() => {
-  if (!topReferrers.value || !Array.isArray(topReferrers.value)) {
-    return []
-  }
-  const start = (topReferrersCurrentPage.value - 1) * topReferrersItemsPerPage.value
-  const end = start + topReferrersItemsPerPage.value
-  return topReferrers.value.slice(start, end)
 })
 
 const paginatedSourceTable = computed(() => {
@@ -571,45 +443,6 @@ const paginatedSourceTable = computed(() => {
 })
 
 // Generate page numbers for pagination
-const topReferrersPageNumbers = computed(() => {
-  const pages = []
-  const total = topReferrersTotalPages.value
-  const current = topReferrersCurrentPage.value
-  
-  if (total <= 0) {
-    return [1]
-  }
-  
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i)
-    }
-  } else {
-    if (current <= 4) {
-      for (let i = 1; i <= 5; i++) {
-        pages.push(i)
-      }
-      pages.push('...')
-      pages.push(total)
-    } else if (current >= total - 3) {
-      pages.push(1)
-      pages.push('...')
-      for (let i = total - 4; i <= total; i++) {
-        pages.push(i)
-      }
-    } else {
-      pages.push(1)
-      pages.push('...')
-      for (let i = current - 1; i <= current + 1; i++) {
-        pages.push(i)
-      }
-      pages.push('...')
-      pages.push(total)
-    }
-  }
-  return pages
-})
-
 const sourceTablePageNumbers = computed(() => {
   const pages = []
   const total = sourceTableTotalPages.value
@@ -650,11 +483,6 @@ const sourceTablePageNumbers = computed(() => {
 })
 
 // Create resources for API calls
-const topReferrersResource = createResource({
-  url: 'crm.api.referral_analytics.get_top_referrers',
-  auto: false,
-})
-
 const sourceTableResource = createResource({
   url: 'crm.api.referral_analytics.get_referral_source_table',
   auto: false,
@@ -686,18 +514,15 @@ async function loadData() {
     }
     
     // Load all data with filters
-    const [referrersData, sourceData, funnelData] = await Promise.all([
-      topReferrersResource.submit(params),
+    const [sourceData, funnelData] = await Promise.all([
       sourceTableResource.submit(params),
       conversionFunnelResource.submit(params)
     ])
     
-    topReferrers.value = referrersData || []
     sourceTable.value = sourceData || []
     conversionFunnel.value = funnelData || {}
     
     // Reset pagination when data changes
-    topReferrersCurrentPage.value = 1
     sourceTableCurrentPage.value = 1
     
     // Clear expanded details when data changes
@@ -705,7 +530,6 @@ async function loadData() {
     referralDetails.value = {}
     
     console.log('Referral Analytics Data Loaded:', {
-      referrers: topReferrers.value.length,
       sources: sourceTable.value.length,
       funnel: conversionFunnel.value
     })
