@@ -180,9 +180,8 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
             assigned_by=assigned_by
         )
         
-        # Update the lead (only assigned_role, NOT lead_owner)
-        lead_doc = frappe.get_doc("CRM Lead", lead_name)
-        lead_doc.assigned_role = role_name
+        # Update the lead assigned_role directly in database to avoid timestamp conflicts
+        frappe.db.set_value("CRM Lead", lead_name, "assigned_role", role_name)
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
@@ -211,19 +210,25 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Lead", lead_name)
         
-        lead_doc.save(ignore_permissions=True)
+        # Commit the database changes
+        frappe.db.commit()
         
         task_created = None
         # Only create follow-up task if not explicitly skipped
         if not skip_task_creation:
+            # Get lead details for task creation
+            lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
+            first_name = lead_details.get("first_name") or ""
+            last_name = lead_details.get("last_name") or ""
+            
             # Create follow-up task
             task_doc = frappe.get_doc({
                 "doctype": "CRM Task",
-                "title": f"Follow up on lead: {lead_doc.first_name or lead_name}",
+                "title": f"Follow up on lead: {first_name or lead_name}",
                 "assigned_to": assigned_user,
                 "reference_doctype": "CRM Lead",
                 "reference_docname": lead_name,
-                "description": f"Task created for lead assignment to {role_name} role - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
+                "description": f"Task created for lead assignment to {role_name} role - {first_name} {last_name}".strip(),
                 "priority": "Medium",
                 "status": "Backlog"
             })
@@ -298,9 +303,8 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
         if not frappe.db.get_value("User", user_name, "enabled"):
             frappe.throw(f"User {user_name} is not enabled")
         
-        # Update the lead (set assigned_role to 'Direct Assignment')
-        lead_doc = frappe.get_doc("CRM Lead", lead_name)
-        lead_doc.assigned_role = "Direct Assignment"
+        # Update the lead assigned_role directly in database to avoid timestamp conflicts
+        frappe.db.set_value("CRM Lead", lead_name, "assigned_role", "Direct Assignment")
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
@@ -329,16 +333,22 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Lead", lead_name)
         
-        lead_doc.save(ignore_permissions=True)
+        # Commit the database changes
+        frappe.db.commit()
+        
+        # Get lead details for task creation
+        lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
+        first_name = lead_details.get("first_name") or ""
+        last_name = lead_details.get("last_name") or ""
         
         # Create follow-up task
         task_doc = frappe.get_doc({
             "doctype": "CRM Task",
-            "title": f"Follow up on lead: {lead_doc.first_name or lead_name}",
+            "title": f"Follow up on lead: {first_name or lead_name}",
             "assigned_to": user_name,
             "reference_doctype": "CRM Lead",
             "reference_docname": lead_name,
-            "description": f"Task created for direct lead assignment to {user_name} - {lead_doc.first_name or ''} {lead_doc.last_name or ''}".strip(),
+            "description": f"Task created for direct lead assignment to {user_name} - {first_name} {last_name}".strip(),
             "priority": "Medium",
             "status": "Backlog"
         })

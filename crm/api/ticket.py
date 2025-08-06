@@ -1196,9 +1196,8 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         from frappe.utils import get_fullname
         from crm.api.activities import emit_activity_update
         
-        # Update the ticket (set assigned_role to 'Direct Assignment')
-        ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
-        ticket_doc.assigned_role = "Direct Assignment"
+        # Update the ticket assigned_role directly in database to avoid timestamp conflicts
+        frappe.db.set_value("CRM Ticket", ticket_name, "assigned_role", "Direct Assignment")
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
@@ -1227,17 +1226,23 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
         
-        ticket_doc.save(ignore_permissions=True)
+        # Commit the database changes
+        frappe.db.commit()
+        
+        # Get ticket details for task creation
+        ticket_details = frappe.db.get_value("CRM Ticket", ticket_name, ["ticket_subject", "priority"], as_dict=True)
+        ticket_subject = ticket_details.get("ticket_subject") or ticket_name
+        ticket_priority = ticket_details.get("priority") or "Medium"
         
         # Create follow-up task for ticket
         task_doc = frappe.get_doc({
             "doctype": "CRM Task",
-            "title": f"Handle ticket: {ticket_doc.ticket_subject or ticket_name}",
+            "title": f"Handle ticket: {ticket_subject}",
             "assigned_to": user_name,
             "reference_doctype": "CRM Ticket",
             "reference_docname": ticket_name,
-            "description": f"Task created for direct ticket assignment to {user_name} - {ticket_doc.ticket_subject or ''}".strip(),
-            "priority": ticket_doc.priority or "Medium",
+            "description": f"Task created for direct ticket assignment to {user_name} - {ticket_subject}".strip(),
+            "priority": ticket_priority,
             "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
@@ -1260,8 +1265,10 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         # Send notification to assigned user
         from crm.api.ticket_notifications import create_ticket_assignment_notification
         try:
+            # Get ticket doc for notification
+            notification_ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
             create_ticket_assignment_notification(
-                ticket_doc=ticket_doc,
+                ticket_doc=notification_ticket_doc,
                 assigned_user=user_name,
                 tasks=[task_doc] if task_doc else None,
                 is_reassignment=False
@@ -1307,9 +1314,8 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
             assigned_by=assigned_by
         )
         
-        # Update the ticket (only assigned_role, NOT ticket_owner)
-        ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
-        ticket_doc.assigned_role = role_name
+        # Update the ticket assigned_role directly in database to avoid timestamp conflicts
+        frappe.db.set_value("CRM Ticket", ticket_name, "assigned_role", role_name)
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
@@ -1322,6 +1328,11 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
         # Create activity timeline entry for the assignment
         assigned_user_name = get_fullname(assigned_user)
         assigned_by_name = get_fullname(assigned_by)
+        
+        # Get ticket details for task creation
+        ticket_details = frappe.db.get_value("CRM Ticket", ticket_name, ["ticket_subject", "priority"], as_dict=True)
+        ticket_subject = ticket_details.get("ticket_subject") or ticket_name
+        ticket_priority = ticket_details.get("priority") or "Medium"
         
         # Create assignment activity
         assignment_comment = frappe.get_doc({
@@ -1338,17 +1349,18 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
         
-        ticket_doc.save(ignore_permissions=True)
+        # Commit the database changes
+        frappe.db.commit()
         
         # Create follow-up task for ticket
         task_doc = frappe.get_doc({
             "doctype": "CRM Task",
-            "title": f"Handle ticket: {ticket_doc.ticket_subject or ticket_name}",
+            "title": f"Handle ticket: {ticket_subject}",
             "assigned_to": assigned_user,
             "reference_doctype": "CRM Ticket",
             "reference_docname": ticket_name,
-            "description": f"Task created for ticket assignment to {role_name} role - {ticket_doc.ticket_subject or ''}".strip(),
-            "priority": ticket_doc.priority or "Medium",
+            "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
+            "priority": ticket_priority,
             "status": "Backlog"
         })
         task_doc.insert(ignore_permissions=True)
@@ -1371,8 +1383,10 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
         # Send notification to assigned user (manually since we're not changing ticket_owner)
         from crm.api.ticket_notifications import create_ticket_assignment_notification
         try:
+            # Get ticket doc for notification
+            notification_ticket_doc = frappe.get_doc("CRM Ticket", ticket_name)
             create_ticket_assignment_notification(
-                ticket_doc=ticket_doc,
+                ticket_doc=notification_ticket_doc,
                 assigned_user=assigned_user,
                 tasks=[task_doc] if task_doc else None,
                 is_reassignment=False
