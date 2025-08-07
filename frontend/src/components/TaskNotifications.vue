@@ -168,8 +168,10 @@ onClickOutside(
 )
 
 function markAsRead(notificationName) {
+  console.log('Marking notification as read:', notificationName)
   capture('task_notification_mark_as_read')
-  mark_notification_as_read(notificationName)
+  mark_notification_as_read.params = { notification_name: notificationName }
+  mark_notification_as_read.reload()
 }
 
 function markAllAsRead() {
@@ -183,9 +185,7 @@ function createTestNotification() {
 }
 
 function handleNotificationClick(notification) {
-  if (notification.status !== 'Read') {
-    markAsRead(notification.name)
-  }
+  console.log('Notification clicked:', notification)
   
   // Navigate to task or reference document
   if (notification.task) {
@@ -200,6 +200,8 @@ function handleNotificationClick(notification) {
 }
 
 function openReference(notification) {
+  console.log('Opening reference:', notification.reference_doctype, notification.reference_docname)
+  
   if (notification.reference_doctype === 'CRM Lead') {
     router.push({
       name: 'Lead',
@@ -210,6 +212,13 @@ function openReference(notification) {
     router.push({
       name: 'Deal',
       params: { dealId: notification.reference_docname },
+      hash: '#tasks'
+    })
+  } else if (notification.reference_doctype === 'CRM Ticket') {
+    console.log('Navigating to ticket:', notification.reference_docname)
+    router.push({
+      name: 'Ticket',
+      params: { ticketId: notification.reference_docname },
       hash: '#tasks'
     })
   }
