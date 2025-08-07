@@ -856,7 +856,8 @@ async function createNewTicket() {
           const assignmentResult = await call('crm.api.ticket.assign_ticket_to_role', {
             ticket_name: response.name,
             role_name: ticket.doc.assign_to_role,
-            assigned_by: null // Will use current user
+            assigned_by: null, // Will use current user
+            skip_task_creation: pendingTaskData.value != null // Skip task creation if we have a pending task
           })
           
           if (assignmentResult.success) {

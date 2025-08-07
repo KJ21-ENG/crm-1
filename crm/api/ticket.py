@@ -1283,7 +1283,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         } 
 
 @frappe.whitelist()
-def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
+def assign_ticket_to_role(ticket_name, role_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket to a role using round-robin logic"""
     try:
         if not assigned_by:
@@ -1340,21 +1340,25 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
         # Commit the database changes
         frappe.db.commit()
         
-        # Create follow-up task for ticket
-        task_doc = frappe.get_doc({
-            "doctype": "CRM Task",
-            "title": f"Handle ticket: {ticket_subject}",
-            "assigned_to": assigned_user,
-            "reference_doctype": "CRM Ticket",
-            "reference_docname": ticket_name,
-            "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
-            "priority": ticket_priority,
-            "status": "Todo"
-        })
-        task_doc.insert(ignore_permissions=True)
-        
-        # Emit activity update to refresh frontend
-        emit_activity_update("CRM Ticket", ticket_name)
+        task_created = None
+        # Only create follow-up task if not explicitly skipped
+        if not skip_task_creation:
+            # Create follow-up task for ticket
+            task_doc = frappe.get_doc({
+                "doctype": "CRM Task",
+                "title": f"Handle ticket: {ticket_subject}",
+                "assigned_to": assigned_user,
+                "reference_doctype": "CRM Ticket",
+                "reference_docname": ticket_name,
+                "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
+                "priority": ticket_priority,
+                "status": "Todo"
+            })
+            task_doc.insert(ignore_permissions=True)
+            task_created = task_doc.name
+            
+            # Emit activity update to refresh frontend
+            emit_activity_update("CRM Ticket", ticket_name)
         
         # Send notification to assigned user (manually since we're not changing ticket_owner)
         from crm.api.ticket_notifications import create_ticket_assignment_notification
@@ -1378,7 +1382,7 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
             "assigned_user": assigned_user,
             "role": role_name,
             "message": f"Ticket successfully assigned to {assigned_user} from {role_name} role",
-            "task_created": task_doc.name
+            "task_created": task_created
         }
         
     except Exception as e:

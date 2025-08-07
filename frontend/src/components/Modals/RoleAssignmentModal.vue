@@ -309,7 +309,8 @@ async function assignToRole() {
         result = await call('crm.api.ticket.assign_ticket_to_role', {
           ticket_name: props.doc.name,
           role_name: selectedRole.value,
-          assigned_by: null // Will use current user
+          assigned_by: null, // Will use current user
+          skip_task_creation: false // Allow task creation for manual role assignment
         })
       } else {
         // Default to lead assignment
