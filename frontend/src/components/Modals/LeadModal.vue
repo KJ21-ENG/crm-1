@@ -30,13 +30,16 @@
           <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
           
           <!-- Assign Task Button Section -->
-          <div v-if="lead.doc.assign_to_role" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+          <div class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
             <div class="flex-1">
               <p class="text-sm font-medium text-ink-gray-9">
-                {{ __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) }}
+                {{ lead.doc.assign_to_role ? 
+                  __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) :
+                  __('Task assignment is required')
+                }}
               </p>
               <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
-                {{ __('You can create a task that will be assigned along with the lead') }}
+                {{ __('Task assignment is required to create this lead') }}
               </p>
               <p class="text-xs text-green-600" v-else>
                 {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData.title]) }}
@@ -363,17 +366,14 @@ function handleTaskCreated(taskDoc, isNew = false) {
 
 // Function to open task modal from the assignment section
 function openTaskModalForAssignment() {
-  if (!lead.doc.assign_to_role) {
-    error.value = __('Please select a role to assign before creating a task')
-    return
-  }
-  
   // Pre-fill task data - assigned_to will be set when lead is created
   taskData.value = {
     title: `Follow up on lead: ${lead.doc.first_name || 'New Lead'}`,
-    description: `Task created for lead assignment to ${lead.doc.assign_to_role} role - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim(),
-    assigned_to: '', // Will be set when lead is created with role assignment
-    role_for_assignment: lead.doc.assign_to_role, // Store role for later assignment
+    description: lead.doc.assign_to_role ? 
+      `Task created for lead assignment to ${lead.doc.assign_to_role} role - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim() :
+      `Task created for lead follow-up - ${lead.doc.first_name} ${lead.doc.last_name || ''}`.trim(),
+    assigned_to: '', // Will be set when lead is created
+    role_for_assignment: lead.doc.assign_to_role || '', // Store role for later assignment (empty if no role)
     due_date: '',
     status: 'Todo',
     priority: 'Medium',
@@ -621,6 +621,19 @@ function createNewLead() {
         error.value = __('Status is required')
         return error.value
       }
+      
+      // Validate task assignment is required
+      if (!pendingTaskData.value) {
+        error.value = __('Task assignment is required')
+        return error.value
+      }
+      
+      // Validate task has required fields
+      if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
+        error.value = __('Task title and due date are required')
+        return error.value
+      }
+      
       // Conditional validation for referral through based on lead category
       if (lead.doc.lead_category === 'Direct' && !lead.doc.referral_through) {
         error.value = __('Referral Through (Client ID) is mandatory for Direct leads')
@@ -705,6 +718,9 @@ function createNewLead() {
           if (taskDoc.role_for_assignment && assignedUser) {
             taskDoc.assigned_to = assignedUser
             delete taskDoc.role_for_assignment
+          } else if (!taskDoc.role_for_assignment) {
+            // If no role was selected, assign to current user
+            taskDoc.assigned_to = user
           }
           
           // Remove the name field if it's null (prevents insertion conflicts)

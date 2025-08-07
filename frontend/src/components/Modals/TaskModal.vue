@@ -68,32 +68,7 @@
               </template>
             </Button>
           </Dropdown>
-          <Link
-            v-if="!isRoleAssignment"
-            class="form-control"
-            :value="getUser(_task.assigned_to).full_name"
-            doctype="User"
-            @change="(option) => (_task.assigned_to = option)"
-            :placeholder="__('John Doe')"
-            :filters="{
-              name: ['in', users.data.crmUsers?.map((user) => user.name)],
-            }"
-            :hideMe="true"
-          >
-            <template #prefix>
-              <UserAvatar class="mr-2 !h-4 !w-4" :user="_task.assigned_to" />
-            </template>
-            <template #item-prefix="{ option }">
-              <UserAvatar class="mr-2" :user="option.value" size="sm" />
-            </template>
-            <template #item-label="{ option }">
-              <Tooltip :text="option.value">
-                <div class="cursor-pointer text-ink-gray-9">
-                  {{ getUser(option.value).full_name }}
-                </div>
-              </Tooltip>
-            </template>
-          </Link>
+          <!-- User assignment field is always hidden - assignment is automatic -->
           <CustomDateTimePicker
             class="datepicker"
             v-model="_task.due_date"
@@ -109,12 +84,15 @@
           </Dropdown>
         </div>
         
-        <!-- Role assignment notification -->
-        <div v-if="isRoleAssignment" class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <!-- Assignment notification -->
+        <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div class="flex items-center gap-2">
             <FeatherIcon name="info" class="h-4 w-4 text-blue-600" />
             <p class="text-sm text-blue-800">
-              {{ __('Task will be automatically assigned to a user from "{0}" role using round-robin logic', [props.roleForAssignment]) }}
+              {{ isRoleAssignment ? 
+                __('Task will be automatically assigned to a user from "{0}" role using round-robin logic', [props.roleForAssignment]) :
+                __('Task will be automatically assigned to you')
+              }}
             </p>
           </div>
         </div>
@@ -278,7 +256,7 @@ function render() {
   })
 }
 
-// Handle role-based assignment
+// Handle automatic assignment
 watch(
   () => props.roleForAssignment,
   async (role) => {
@@ -302,6 +280,9 @@ watch(
       }
     } else {
       isRoleAssignment.value = false
+      // If no role selected, assign to current user
+      _task.value.assigned_to = getUser().name
+      console.log(`Pre-selected current user ${getUser().name} for task`)
     }
   },
   { immediate: true }

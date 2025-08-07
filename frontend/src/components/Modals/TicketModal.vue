@@ -38,13 +38,16 @@
           />
           
           <!-- Assign Task Button Section -->
-          <div v-if="ticket.doc.assign_to_role" class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+          <div class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
             <div class="flex-1">
               <p class="text-sm font-medium text-ink-gray-9">
-                {{ __('Ticket will be assigned to a user from "{0}" role', [ticket.doc.assign_to_role]) }}
+                {{ ticket.doc.assign_to_role ? 
+                  __('Ticket will be assigned to a user from "{0}" role', [ticket.doc.assign_to_role]) :
+                  __('Task assignment is required')
+                }}
               </p>
               <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
-                {{ __('You can create a task that will be assigned along with the ticket') }}
+                {{ __('Task assignment is required to create this ticket') }}
               </p>
               <p class="text-xs text-green-600" v-else>
                 {{ __('Task "{0}" will be created when ticket is saved', [pendingTaskData.title]) }}
@@ -595,17 +598,14 @@ async function autoFillCustomerData(mobileNumber) {
 
 // Task Modal Functions
 function openTaskModalForAssignment() {
-  if (!ticket.doc.assign_to_role) {
-    error.value = __('Please select a role to assign before creating a task')
-    return
-  }
-  
   // Pre-fill task data - assigned_to will be set when ticket is created
   taskData.value = {
     title: `Handle ticket: ${ticket.doc.subject || 'New Ticket'}`,
-    description: `Task created for ticket assignment to ${ticket.doc.assign_to_role} role - ${ticket.doc.subject || ''}`.trim(),
-    assigned_to: '', // Will be set when ticket is created with role assignment
-    role_for_assignment: ticket.doc.assign_to_role, // Store role for later assignment
+    description: ticket.doc.assign_to_role ? 
+      `Task created for ticket assignment to ${ticket.doc.assign_to_role} role - ${ticket.doc.subject || ''}`.trim() :
+      `Task created for ticket handling - ${ticket.doc.subject || ''}`.trim(),
+    assigned_to: '', // Will be set when ticket is created
+    role_for_assignment: ticket.doc.assign_to_role || '', // Store role for later assignment (empty if no role)
     due_date: '',
     status: 'Todo',
     priority: ticket.doc.priority || 'Medium',
@@ -889,6 +889,9 @@ async function createNewTicket() {
           if (taskDoc.role_for_assignment && assignedUser) {
             taskDoc.assigned_to = assignedUser
             delete taskDoc.role_for_assignment
+          } else if (!taskDoc.role_for_assignment) {
+            // If no role was selected, assign to current user
+            taskDoc.assigned_to = user
           }
           
           // Remove the name field if it's null (prevents insertion conflicts)
@@ -991,6 +994,22 @@ function validateFields() {
     
     // Update the mobile number to clean format
     ticket.doc.mobile_no = cleanMobile
+  }
+
+  // Validate task assignment is required
+  if (!pendingTaskData.value) {
+    return {
+      isValid: false,
+      error: 'Task assignment is required'
+    }
+  }
+  
+  // Validate task has required fields
+  if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
+    return {
+      isValid: false,
+      error: 'Task title and due date are required'
+    }
   }
 
   return { isValid: true }
