@@ -19,14 +19,22 @@ def execute():
 def initialize_customer_update_history():
     """Initialize update history for existing customers"""
     
+    # Get all customers without filtering by table_update_history field
+    # since the field might not exist yet in some databases
     customers = frappe.get_list(
         "CRM Customer",
         fields=["name", "creation", "owner"],
-        filters={"table_update_history": ["is", "not set"]}
+        # Remove the filter that references the field we're trying to add
+        # filters={"table_update_history": ["is", "not set"]}
     )
     
     for customer in customers:
         try:
+            # Check if the field already has data to avoid duplicates
+            existing_history = frappe.db.get_value("CRM Customer", customer.name, "table_update_history")
+            if existing_history:
+                continue  # Skip if already has history
+                
             # Create initial history entry
             initial_history = [{
                 "timestamp": customer.creation.strftime("%Y-%m-%d %H:%M:%S") if customer.creation else now_datetime().strftime("%Y-%m-%d %H:%M:%S"),

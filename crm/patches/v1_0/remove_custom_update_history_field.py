@@ -26,10 +26,11 @@ def execute():
             print("Found table_update_history field in database, but keeping data for reference")
             print("Frappe framework will handle field removal automatically")
         else:
-            print("table_update_history field not found in database")
+            print("table_update_history field not found in database - patch already applied or field never existed")
             
     except Exception as e:
         frappe.log_error(f"Error checking table_update_history field: {str(e)}", "Field Cleanup Error")
+        print(f"Warning: Could not check table_update_history field: {str(e)}")
     
     frappe.db.commit()
     print("Successfully updated CRM Customer to use Frappe's built-in versioning system") 
