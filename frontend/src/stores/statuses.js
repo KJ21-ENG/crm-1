@@ -132,13 +132,62 @@ export const statusesStore = defineStore('crm-statuses', () => {
         onClick: async () => {
           capture('status_changed', { doctype, status })
           if (document) {
-            await triggerOnChange?.('status', statusesByName[status]?.name)
-            document.save.submit()
+            // Special handling for lead status changes to avoid validation issues
+            if (doctype === 'lead') {
+              await handleLeadStatusChange(document, statusesByName[status]?.name, triggerOnChange)
+            } else {
+              // Use original method for other doctypes
+              await triggerOnChange?.('status', statusesByName[status]?.name)
+              document.save.submit()
+            }
           }
         },
       })
     }
     return options
+  }
+
+  // Helper function to handle lead status changes with Client ID validation
+  async function handleLeadStatusChange(document, newStatus, triggerOnChange) {
+    try {
+      // Check if status requires Client ID
+      const requiresClientId = ['Account Opened', 'Account Active', 'Account Activated'].includes(newStatus)
+      
+      if (requiresClientId && !document.doc.client_id) {
+        // This will trigger the Client ID modal in the Lead.vue component
+        // The modal will handle the status change after Client ID is provided
+        await triggerOnChange?.('status', newStatus)
+        return
+      }
+      
+      // For status changes that don't require Client ID, use custom API to avoid validation issues
+      if (requiresClientId) {
+        const { call } = await import('frappe-ui')
+        const result = await call('crm.api.lead_operations.update_lead_status_with_client_id', {
+          lead_name: document.doc.name,
+          new_status: newStatus,
+          client_id: document.doc.client_id
+        })
+        
+        if (result.success) {
+          // Reload the document to reflect changes
+          await document.reload()
+          // Show success message
+          const { toast } = await import('frappe-ui')
+          toast.success('Lead status updated successfully')
+        } else {
+          throw new Error(result.message)
+        }
+      } else {
+        // Use original method for non-Client ID status changes
+        await triggerOnChange?.('status', newStatus)
+        document.save.submit()
+      }
+    } catch (error) {
+      console.error('Error updating lead status:', error)
+      const { toast } = await import('frappe-ui')
+      toast.error(error.message || 'Failed to update lead status')
+    }
   }
 
   return {

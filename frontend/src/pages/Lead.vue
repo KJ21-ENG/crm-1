@@ -796,25 +796,27 @@ async function handleClientIdSubmit() {
   isUpdating.value = true
   
   try {
-    // The Client ID modal has already saved the client_id
-    // Now reload the document to get the latest timestamp
-    await document.reload()
-    
-    // Now proceed with the pending status change
+    // Now proceed with the pending status change using custom API
     if (pendingStatusChange.value) {
-      await triggerOnChange(
-        pendingStatusChange.value.fieldname, 
-        pendingStatusChange.value.value
-      )
-      await document.save.submit()
-      console.log('✅ Status updated successfully after Client ID submission')
+      const result = await call('crm.api.lead_operations.update_lead_status_with_client_id', {
+        lead_name: props.leadId,
+        new_status: pendingStatusChange.value.value,
+        client_id: null // Client ID already saved by modal
+      })
+      
+      if (result.success) {
+        console.log('✅ Status updated successfully after Client ID submission')
+        // Reload the document to reflect changes
+        await document.reload()
+        await lead.reload()
+        toast.success(__('Lead status updated successfully'))
+      } else {
+        throw new Error(result.message)
+      }
     }
   } catch (error) {
     console.error('Error updating status after Client ID submission:', error)
-    // If there's still a timestamp error, reload the entire page
-    if (error.messages?.[0]?.includes('TimestampMismatchError')) {
-      window.location.reload()
-    }
+    toast.error(error.message || __('Failed to update lead status'))
   } finally {
     isUpdating.value = false
     pendingStatusChange.value = null
@@ -840,9 +842,33 @@ async function handleStatusChange(fieldname, value) {
       showClientIdModal.value = true
       return
     }
+    
+    // For status changes that don't require Client ID, use custom API to avoid validation issues
+    if (shouldRequireClientId(newStatus)) {
+      try {
+        const result = await call('crm.api.lead_operations.update_lead_status_with_client_id', {
+          lead_name: props.leadId,
+          new_status: newStatus,
+          client_id: document.doc.client_id
+        })
+        
+        if (result.success) {
+          await document.reload()
+          await lead.reload()
+          toast.success(__('Lead status updated successfully'))
+        } else {
+          throw new Error(result.message)
+        }
+        return
+      } catch (error) {
+        console.error('Error updating status:', error)
+        toast.error(error.message || __('Failed to update lead status'))
+        return
+      }
+    }
   }
   
-  // Call the original triggerOnChange
+  // Call the original triggerOnChange for non-Client ID status changes
   await triggerOnChange(fieldname, value)
 }
 

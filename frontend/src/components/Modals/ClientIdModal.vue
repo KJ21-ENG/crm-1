@@ -181,21 +181,37 @@ async function handleSubmit() {
       name: props.leadId
     })
     
-    // Find customer by mobile number (customer should exist from lead creation)
-    const customers = await call('frappe.client.get_list', {
-      doctype: 'CRM Customer',
-      filters: {
-        mobile_no: leadDoc.mobile_no
-      },
-      fields: ['name', 'accounts', 'mobile_no', 'customer_name']
-    })
+    // Find customer by customer_id (preferred) or mobile number (fallback)
+    let customers = []
+    
+    if (leadDoc.customer_id) {
+      // Try to find customer by customer_id first
+      customers = await call('frappe.client.get_list', {
+        doctype: 'CRM Customer',
+        filters: {
+          name: leadDoc.customer_id
+        },
+        fields: ['name', 'accounts', 'mobile_no', 'customer_name']
+      })
+    }
+    
+    // If not found by customer_id, try mobile number as fallback
+    if (customers.length === 0 && leadDoc.mobile_no) {
+      customers = await call('frappe.client.get_list', {
+        doctype: 'CRM Customer',
+        filters: {
+          mobile_no: leadDoc.mobile_no
+        },
+        fields: ['name', 'accounts', 'mobile_no', 'customer_name']
+      })
+    }
     
     if (customers.length === 0) {
       error.value = __('System Error: Customer not found. Customer should have been created when the lead was created. Please contact support.')
       return
     }
     
-    // Use the existing customer (should be only one per mobile number)
+    // Use the existing customer
     const customer = customers[0]
     
     // Check for global uniqueness of Client ID across all customer accounts
@@ -239,21 +255,28 @@ async function handleSubmit() {
     
     accounts.push(newAccount)
     
-    // Update customer with new accounts array
-    await call('frappe.client.set_value', {
-      doctype: 'CRM Customer',
-      name: customer.name,
-      fieldname: 'accounts',
-      value: JSON.stringify(accounts)
+         // Update customer with client_id, referral_code, and accounts using custom API
+     const customerUpdateResult = await call('crm.api.lead_operations.update_customer_with_client_id', {
+       customer_name: customer.name,
+       client_id: clientId.value.trim(),
+       accounts_json: JSON.stringify(accounts)
+     })
+     
+     if (!customerUpdateResult.success) {
+       error.value = customerUpdateResult.message
+       return
+     }
+    
+    // Also store client_id in lead for reference using custom API to avoid validation issues
+    const clientIdResult = await call('crm.api.lead_operations.save_client_id_without_validation', {
+      lead_name: props.leadId,
+      client_id: clientId.value.trim()
     })
     
-    // Also store client_id in lead for reference
-    await call('frappe.client.set_value', {
-      doctype: 'CRM Lead',
-      name: props.leadId,
-      fieldname: 'client_id',
-      value: clientId.value.trim()
-    })
+    if (!clientIdResult.success) {
+      error.value = clientIdResult.message
+      return
+    }
     
     // Call the success callback to continue with status change
     if (props.onSuccess) {
