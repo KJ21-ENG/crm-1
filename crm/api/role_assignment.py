@@ -183,6 +183,9 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
         # Update the lead assigned_role directly in database to avoid timestamp conflicts
         frappe.db.set_value("CRM Lead", lead_name, "assigned_role", role_name)
         
+        # Also update the assign_to field with the assigned user's name
+        frappe.db.set_value("CRM Lead", lead_name, "assign_to", assigned_user)
+        
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
             "assign_to": [assigned_user],
@@ -275,6 +278,9 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
         
         # Update the lead assigned_role directly in database to avoid timestamp conflicts
         frappe.db.set_value("CRM Lead", lead_name, "assigned_role", "Direct Assignment")
+        
+        # Also update the assign_to field with the assigned user's name
+        frappe.db.set_value("CRM Lead", lead_name, "assign_to", user_name)
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
@@ -497,5 +503,90 @@ def check_all_role_users_assigned(role_name, doc_name, doctype="CRM Lead"):
         frappe.log_error(f"Error checking role assignment status: {str(e)}", "Role Assignment Error")
         return {
             "all_assigned": False,
+            "error": str(e)
+        } 
+
+@frappe.whitelist()
+def bulk_assign_leads(lead_names, assign_to_users, assigned_by=None):
+    """Bulk assign leads to users and update assign_to field"""
+    try:
+        if not assigned_by:
+            assigned_by = frappe.session.user
+        
+        if isinstance(lead_names, str):
+            lead_names = json.loads(lead_names)
+        
+        if isinstance(assign_to_users, str):
+            assign_to_users = json.loads(assign_to_users)
+        
+        results = []
+        
+        for lead_name in lead_names:
+            try:
+                # Validate lead exists
+                if not frappe.db.exists("CRM Lead", lead_name):
+                    results.append({
+                        "lead_name": lead_name,
+                        "success": False,
+                        "error": "Lead does not exist"
+                    })
+                    continue
+                
+                # Use Frappe's standard assignment system
+                frappe.desk.form.assign_to.add({
+                    "assign_to": assign_to_users,
+                    "doctype": "CRM Lead",
+                    "name": lead_name,
+                    "description": f"Bulk assignment by {assigned_by}"
+                })
+                
+                # Update the assign_to field with the first assigned user (for backward compatibility)
+                if assign_to_users and len(assign_to_users) > 0:
+                    frappe.db.set_value("CRM Lead", lead_name, "assign_to", assign_to_users[0])
+                
+                # Create activity timeline entry for the assignment
+                assigned_user_names = [get_fullname(user) for user in assign_to_users]
+                assigned_by_name = get_fullname(assigned_by)
+                
+                assignment_comment = frappe.get_doc({
+                    "doctype": "Comment", 
+                    "comment_type": "Comment",
+                    "reference_doctype": "CRM Lead",
+                    "reference_name": lead_name,
+                    "content": f"🎯 <strong>{assigned_by_name}</strong> bulk assigned this lead to <strong>{', '.join(assigned_user_names)}</strong>",
+                    "comment_email": assigned_by,
+                    "creation": frappe.utils.now(),
+                })
+                assignment_comment.insert(ignore_permissions=True)
+                
+                results.append({
+                    "lead_name": lead_name,
+                    "success": True,
+                    "assigned_users": assign_to_users
+                })
+                
+            except Exception as e:
+                results.append({
+                    "lead_name": lead_name,
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        # Emit activity updates for all leads
+        for lead_name in lead_names:
+            emit_activity_update("CRM Lead", lead_name)
+        
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "results": results,
+            "message": f"Bulk assignment completed for {len(lead_names)} leads"
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Bulk assignment failed: {str(e)}", "Role Assignment Error")
+        return {
+            "success": False,
             "error": str(e)
         } 

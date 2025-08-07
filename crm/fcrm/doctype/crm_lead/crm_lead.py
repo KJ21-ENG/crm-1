@@ -126,6 +126,9 @@ class CRMLead(Document):
 					# the agent is already set as an assignee
 					return
 
+		# Update the assign_to field with the assigned user's name
+		self.assign_to = agent
+		
 		assign({"assign_to": [agent], "doctype": "CRM Lead", "name": self.name})
 
 	def share_with_agent(self, agent):
