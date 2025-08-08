@@ -135,6 +135,16 @@
    "role": "Sales Manager",
    "share": 1,
    "write": 1
+   },
+   {
+    "read": 1,
+    "report": 1,
+    "role": "Support User"
+   },
+   {
+    "read": 1,
+    "report": 1,
+    "role": "Support Manager"
   }
  ],
  "sort_field": "modified",
