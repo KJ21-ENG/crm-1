@@ -15,9 +15,9 @@
       >
         <template #prefix><FeatherIcon name="calendar" class="h-4" /></template>
       </Button>
-      <Button variant="solid" :label="__('Create')" @click="createTask">
+      <!-- <Button variant="solid" :label="__('Create')" @click="createTask">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-      </Button>
+      </Button> -->
     </template>
   </LayoutHeader>
   <ViewControls
@@ -190,9 +190,9 @@
     >
       <Email2Icon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Tasks')]) }}</span>
-      <Button :label="__('Create')" @click="showTaskModal = true">
+      <!-- <Button :label="__('Create')" @click="showTaskModal = true">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-      </Button>
+      </Button> -->
     </div>
   </div>
   <TaskModal
