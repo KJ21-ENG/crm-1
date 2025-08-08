@@ -60,3 +60,7 @@ project_analysis.md
 .wwebjs
 .wwebjs_auth
 .wwebjs_auth/
+
+# Expo/React Native
+.expo/
+.expo/devices.json

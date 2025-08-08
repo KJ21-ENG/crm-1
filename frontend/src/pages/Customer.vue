@@ -183,7 +183,7 @@
           <div class="bg-surface-white rounded-lg border p-6">
             <h2 class="text-lg font-medium mb-4">Customer Interactions</h2>
             
-            <Tabs v-model="activeTab" :tabs="interactionTabs">
+            <Tabs as="div" v-model="tabIndex" :tabs="interactionTabs">
               <template #tab-panel="{ tab }">
                 <div v-if="tab.name === 'leads'" class="mt-4">
                   <div v-if="interactions.leads?.length" class="space-y-3">
@@ -457,7 +457,8 @@ import {
   Dialog,
   FormControl,
   Button,
-  call
+  call,
+  toast
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -470,7 +471,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const activeTab = ref('leads')
+  const tabIndex = ref(0)
 const interactions = ref({
   leads: [],
   tickets: [],
@@ -669,6 +670,42 @@ async function updateCustomer() {
   try {
     updating.value = true
     
+    // Client-side validations (optional fields allowed)
+    // PAN: uppercase, pattern ABCDE1234F
+    if (editCustomer.value.pan_card_number) {
+      const pan = String(editCustomer.value.pan_card_number).toUpperCase().trim()
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+      if (!panRegex.test(pan)) {
+        updating.value = false
+        toast.error('Invalid PAN. Expected format: ABCDE1234F')
+        return
+      }
+      editCustomer.value.pan_card_number = pan
+    }
+
+    // Aadhaar: 12 digits starting 2-9
+    if (editCustomer.value.aadhaar_card_number) {
+      const aadhaar = String(editCustomer.value.aadhaar_card_number).trim()
+      const aadhaarRegex = /^[2-9][0-9]{11}$/
+      if (!aadhaarRegex.test(aadhaar)) {
+        updating.value = false
+        toast.error('Invalid Aadhaar. It should be a 12-digit number starting 2-9')
+        return
+      }
+      editCustomer.value.aadhaar_card_number = aadhaar
+    }
+
+    // Pincode: 6 digits
+    if (editCustomer.value.pincode) {
+      const pin = String(editCustomer.value.pincode).trim()
+      if (!/^[1-9][0-9]{5}$/.test(pin)) {
+        updating.value = false
+        toast.error('Invalid Pincode. It should be a 6-digit number')
+        return
+      }
+      editCustomer.value.pincode = pin
+    }
+
     // Call the update API
     await call('frappe.client.set_value', {
       doctype: 'CRM Customer',
