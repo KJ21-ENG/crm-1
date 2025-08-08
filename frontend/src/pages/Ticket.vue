@@ -80,13 +80,13 @@
           </Button>
         </template>
       </Dropdown> -->
-      <Button
+      <!-- <Button
         v-if="document.doc?.status !== 'Closed'"
         :label="__('Close Ticket')"
         variant="solid"
         theme="red"
         @click="showCloseTicketModal = true"
-      />
+      /> -->
     </template>
   </LayoutHeader>
   <div v-if="ticket?.data" class="flex h-full overflow-hidden">
@@ -108,7 +108,7 @@
         class="flex h-10.5 cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
         @click="copyToClipboard(ticket.data.name)"
       >
-        {{ customerName }}
+        {{ ticket.data.name }}
       </div>
       
       <!-- Customer Info Section -->

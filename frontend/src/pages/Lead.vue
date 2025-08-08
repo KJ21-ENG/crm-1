@@ -86,7 +86,7 @@
         class="flex h-10.5 cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
         @click="copyToClipboard(lead.data.name)"
       >
-        {{ title }}
+        {{ lead.data.name }}
       </div>
       <FileUploader
         @success="(file) => updateCustomerImage(file.file_url)"
