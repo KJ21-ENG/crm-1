@@ -178,34 +178,60 @@ const createChart = () => {
             size: 12,
             weight: '500'
           },
-          generateLabels: function(chart) {
-            const datasets = chart.data.datasets;
-            return datasets.map((dataset, index) => ({
-              text: dataset.label,
-              fillStyle: dataset.borderColor || dataset.backgroundColor,
-              strokeStyle: dataset.borderColor || dataset.backgroundColor,
-              lineWidth: 2,
-              pointStyle: props.type === 'line' ? 'line' : 'circle',
-              hidden: false,
-              index: index
-            }));
-          }
+              generateLabels: function(chart) {
+                const chartType = chart.config.type
+                // For pie/doughnut, show one legend item per arc/label
+                if (chartType === 'doughnut' || chartType === 'pie') {
+                  const dataset = chart.data.datasets[0] || {}
+                  const labels = chart.data.labels || []
+                  const bg = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : []
+                  const border = Array.isArray(dataset.borderColor) ? dataset.borderColor : []
+                  return labels.map((text, i) => ({
+                    text,
+                    fillStyle: bg[i] || dataset.backgroundColor || '#999',
+                    strokeStyle: border[i] || bg[i] || dataset.borderColor || dataset.backgroundColor || '#999',
+                    lineWidth: 2,
+                    pointStyle: 'circle',
+                    hidden: false,
+                    index: i,
+                  }))
+                }
+                // Default: one item per dataset
+                const datasets = chart.data.datasets
+                return datasets.map((dataset, index) => ({
+                  text: dataset.label,
+                  fillStyle: Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : dataset.backgroundColor,
+                  strokeStyle: Array.isArray(dataset.borderColor) ? dataset.borderColor[0] : (dataset.borderColor || dataset.backgroundColor),
+                  lineWidth: 2,
+                  pointStyle: chartType === 'line' ? 'line' : 'circle',
+                  hidden: false,
+                  index: index,
+                }))
+              }
         }
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
-            let label = context.dataset.label || '';
-            if (label) {
-              label += ': ';
-            }
-            if (context.parsed.y !== undefined) {
-              label += context.parsed.y;
-            } else if (context.parsed !== undefined) {
-              label += context.parsed;
-            }
-            return label;
-          }
+              label: function(context) {
+                const chartType = context.chart.config.type
+                if (chartType === 'doughnut' || chartType === 'pie') {
+                  const lbl = context.label || context.chart.data.labels?.[context.dataIndex] || ''
+                  const val = Number(context.parsed || 0)
+                  const dataArr = Array.isArray(context.dataset?.data) ? context.dataset.data : []
+                  const total = dataArr.reduce((sum, v) => sum + (Number(v) || 0), 0)
+                  const pct = total ? (val / total) * 100 : 0
+                  return `${lbl}: ${val} (${pct.toFixed(1)}%)`
+                }
+                // bar/line
+                let label = context.dataset.label || ''
+                if (label) label += ': '
+                if (context.parsed.y !== undefined) {
+                  label += context.parsed.y
+                } else if (context.parsed !== undefined) {
+                  label += context.parsed
+                }
+                return label
+              }
         }
       }
     }
