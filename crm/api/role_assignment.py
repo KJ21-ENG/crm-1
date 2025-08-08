@@ -1,6 +1,6 @@
 import frappe
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
 from crm.api.activities import emit_activity_update
@@ -217,14 +217,78 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
         frappe.db.commit()
         
         task_created = None
-        # Only create follow-up task if not explicitly skipped
-        if not skip_task_creation:
-            # Get lead details for task creation
+        # Prefer modifying existing open task for this lead; create only if none exists and not skipped
+        existing_tasks = frappe.get_list(
+            "CRM Task",
+            filters={
+                "reference_doctype": "CRM Lead",
+                "reference_docname": lead_name,
+                "status": ["not in", ["Done", "Canceled"]],
+            },
+            fields=["name", "_assign", "due_date"],
+            order_by="creation asc",
+            limit=1,
+        )
+
+        task_doc = None
+        if existing_tasks:
+            # Reassign existing task
+            task_doc = frappe.get_doc("CRM Task", existing_tasks[0].name)
+            # Update assignment history on task
+            assign_list = []
+            try:
+                assign_list = json.loads(task_doc._assign) if task_doc._assign else []
+                if not isinstance(assign_list, list):
+                    assign_list = []
+            except Exception:
+                assign_list = []
+            if assigned_user not in assign_list:
+                assign_list.append(assigned_user)
+            task_doc.assigned_to = assigned_user
+            # Extend due date to give time
+            task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+            task_doc.save(ignore_permissions=True)
+            frappe.db.set_value("CRM Task", task_doc.name, "_assign", json.dumps(assign_list))
+
+            # Ensure parent _assign includes the user
+            parent_assign_json = frappe.db.get_value("CRM Lead", lead_name, "_assign")
+            try:
+                parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
+                if not isinstance(parent_assign, list):
+                    parent_assign = []
+            except Exception:
+                parent_assign = []
+            if assigned_user not in parent_assign:
+                parent_assign.append(assigned_user)
+                frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
+
+            # Comment on parent about manual reassignment
+            from frappe.utils import get_fullname
+            comment_content = (
+                f"🔄 Lead Reassigned\n\nNew Assignee: {get_fullname(assigned_user)}\nReason: Manual assignment"
+            )
+            frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Comment",
+                "reference_doctype": "CRM Lead",
+                "reference_name": lead_name,
+                "content": comment_content,
+                "comment_email": assigned_by,
+            }).insert(ignore_permissions=True)
+
+            # Send enhanced task notification with lead context
+            try:
+                lead_doc = frappe.get_doc("CRM Lead", lead_name)
+                from crm.api.lead_notifications import create_task_with_lead_notification
+                create_task_with_lead_notification(task_doc, lead_doc, is_assignment=True)
+            except Exception:
+                pass
+
+        elif not skip_task_creation:
+            # Create follow-up task if none exists
             lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
             first_name = lead_details.get("first_name") or ""
             last_name = lead_details.get("last_name") or ""
-            
-            # Create follow-up task
             task_doc = frappe.get_doc({
                 "doctype": "CRM Task",
                 "title": f"Follow up on lead: {first_name or lead_name}",
@@ -233,7 +297,7 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
                 "reference_docname": lead_name,
                 "description": f"Task created for lead assignment to {role_name} role - {first_name} {last_name}".strip(),
                 "priority": "Medium",
-                "status": "Todo"
+                "status": "Todo",
             })
             task_doc.insert(ignore_permissions=True)
             task_created = task_doc.name
@@ -312,23 +376,86 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
         # Commit the database changes
         frappe.db.commit()
         
-        # Get lead details for task creation
-        lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
-        first_name = lead_details.get("first_name") or ""
-        last_name = lead_details.get("last_name") or ""
-        
-        # Create follow-up task
-        task_doc = frappe.get_doc({
-            "doctype": "CRM Task",
-            "title": f"Follow up on lead: {first_name or lead_name}",
-            "assigned_to": user_name,
-            "reference_doctype": "CRM Lead",
-            "reference_docname": lead_name,
-                            "description": f"Task created for direct lead assignment to {user_name} - {first_name} {last_name}".strip(),
+        # Prefer modifying existing open task for this lead; create only if none exists
+        existing_tasks = frappe.get_list(
+            "CRM Task",
+            filters={
+                "reference_doctype": "CRM Lead",
+                "reference_docname": lead_name,
+                "status": ["not in", ["Done", "Canceled"]],
+            },
+            fields=["name", "_assign", "due_date"],
+            order_by="creation asc",
+            limit=1,
+        )
+
+        task_doc = None
+        if existing_tasks:
+            task_doc = frappe.get_doc("CRM Task", existing_tasks[0].name)
+            assign_list = []
+            try:
+                assign_list = json.loads(task_doc._assign) if task_doc._assign else []
+                if not isinstance(assign_list, list):
+                    assign_list = []
+            except Exception:
+                assign_list = []
+            if user_name not in assign_list:
+                assign_list.append(user_name)
+            task_doc.assigned_to = user_name
+            task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+            task_doc.save(ignore_permissions=True)
+            frappe.db.set_value("CRM Task", task_doc.name, "_assign", json.dumps(assign_list))
+
+            # Ensure parent _assign includes the user
+            parent_assign_json = frappe.db.get_value("CRM Lead", lead_name, "_assign")
+            try:
+                parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
+                if not isinstance(parent_assign, list):
+                    parent_assign = []
+            except Exception:
+                parent_assign = []
+            if user_name not in parent_assign:
+                parent_assign.append(user_name)
+                frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
+
+            # Comment on parent about manual reassignment
+            from frappe.utils import get_fullname
+            comment_content = (
+                f"🔄 Lead Reassigned\n\nNew Assignee: {get_fullname(user_name)}\nReason: Manual assignment"
+            )
+            frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Comment",
+                "reference_doctype": "CRM Lead",
+                "reference_name": lead_name,
+                "content": comment_content,
+                "comment_email": assigned_by,
+            }).insert(ignore_permissions=True)
+
+            # Send enhanced task notification with lead context
+            try:
+                lead_doc = frappe.get_doc("CRM Lead", lead_name)
+                from crm.api.lead_notifications import create_task_with_lead_notification
+                create_task_with_lead_notification(task_doc, lead_doc, is_assignment=True)
+            except Exception:
+                pass
+
+        else:
+            # Create follow-up task if none exists
+            lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
+            first_name = lead_details.get("first_name") or ""
+            last_name = lead_details.get("last_name") or ""
+            task_doc = frappe.get_doc({
+                "doctype": "CRM Task",
+                "title": f"Follow up on lead: {first_name or lead_name}",
+                "assigned_to": user_name,
+                "reference_doctype": "CRM Lead",
+                "reference_docname": lead_name,
+                "description": f"Task created for direct lead assignment to {user_name} - {first_name} {last_name}".strip(),
                 "priority": "Medium",
-                "status": "Todo"
-        })
-        task_doc.insert(ignore_permissions=True)
+                "status": "Todo",
+            })
+            task_doc.insert(ignore_permissions=True)
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Lead", lead_name)

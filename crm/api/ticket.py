@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils import now, time_diff_in_seconds
 
 from crm.api.doc import get_assigned_users, get_fields_meta
+from datetime import timedelta
 from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
 
 @frappe.whitelist()
@@ -1175,7 +1176,7 @@ def determine_ticket_for_call(call_creation_time, customer_tickets):
     return frappe.get_doc("CRM Ticket", active_ticket.name) if active_ticket else None 
 
 @frappe.whitelist()
-def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
+def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket directly to a specific user (Admin Only)"""
     try:
         # Check if user has admin permissions
@@ -1229,23 +1230,68 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         # Commit the database changes
         frappe.db.commit()
         
-        # Get ticket details for task creation
-        ticket_details = frappe.db.get_value("CRM Ticket", ticket_name, ["ticket_subject", "priority"], as_dict=True)
-        ticket_subject = ticket_details.get("ticket_subject") or ticket_name
-        ticket_priority = ticket_details.get("priority") or "Medium"
-        
-        # Create follow-up task for ticket
-        task_doc = frappe.get_doc({
-            "doctype": "CRM Task",
-            "title": f"Handle ticket: {ticket_subject}",
-            "assigned_to": user_name,
-            "reference_doctype": "CRM Ticket",
-            "reference_docname": ticket_name,
-            "description": f"Task created for direct ticket assignment to {user_name} - {ticket_subject}".strip(),
-            "priority": ticket_priority,
-            "status": "Todo"
-        })
-        task_doc.insert(ignore_permissions=True)
+        # Normalize: modify existing open task if present, else create
+        # Allow caller to skip task creation/modification (e.g., Ticket Modal will create task itself)
+        if isinstance(skip_task_creation, str):
+            skip_task_creation = skip_task_creation.lower() in ("1", "true", "yes")
+
+        task_doc = None
+        if not skip_task_creation:
+            ticket_details = frappe.db.get_value("CRM Ticket", ticket_name, ["ticket_subject", "priority", "_assign"], as_dict=True)
+            ticket_subject = ticket_details.get("ticket_subject") or ticket_name
+            ticket_priority = ticket_details.get("priority") or "Medium"
+
+            # Update parent _assign to include assignee
+            parent_assign_json = ticket_details.get("_assign")
+            try:
+                parent_assign = frappe.parse_json(parent_assign_json) if parent_assign_json else []
+                if not isinstance(parent_assign, list):
+                    parent_assign = []
+            except Exception:
+                parent_assign = []
+            if user_name not in parent_assign:
+                parent_assign.append(user_name)
+                frappe.db.set_value("CRM Ticket", ticket_name, "_assign", frappe.as_json(parent_assign))
+
+            existing_tasks = frappe.get_list(
+                "CRM Task",
+                filters={
+                    "reference_doctype": "CRM Ticket",
+                    "reference_docname": ticket_name,
+                    "status": ["not in", ["Done", "Canceled"]],
+                },
+                fields=["name", "_assign", "due_date"],
+                order_by="creation asc",
+                limit=1,
+            )
+
+            if existing_tasks:
+                task_doc = frappe.get_doc("CRM Task", existing_tasks[0].name)
+                # Update assignment list on task
+                try:
+                    assign_list = frappe.parse_json(task_doc._assign) if task_doc._assign else []
+                    if not isinstance(assign_list, list):
+                        assign_list = []
+                except Exception:
+                    assign_list = []
+                if user_name not in assign_list:
+                    assign_list.append(user_name)
+                task_doc.assigned_to = user_name
+                task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+                task_doc.save(ignore_permissions=True)
+                frappe.db.set_value("CRM Task", task_doc.name, "_assign", frappe.as_json(assign_list))
+            else:
+                task_doc = frappe.get_doc({
+                    "doctype": "CRM Task",
+                    "title": f"Handle ticket: {ticket_subject}",
+                    "assigned_to": user_name,
+                    "reference_doctype": "CRM Ticket",
+                    "reference_docname": ticket_name,
+                    "description": f"Task created for direct ticket assignment to {user_name} - {ticket_subject}".strip(),
+                    "priority": ticket_priority,
+                    "status": "Todo",
+                })
+                task_doc.insert(ignore_permissions=True)
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
@@ -1283,7 +1329,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None):
         } 
 
 @frappe.whitelist()
-def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
+def assign_ticket_to_role(ticket_name, role_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket to a role using round-robin logic"""
     try:
         if not assigned_by:
@@ -1340,18 +1386,63 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None):
         # Commit the database changes
         frappe.db.commit()
         
-        # Create follow-up task for ticket
-        task_doc = frappe.get_doc({
-            "doctype": "CRM Task",
-            "title": f"Handle ticket: {ticket_subject}",
-            "assigned_to": assigned_user,
-            "reference_doctype": "CRM Ticket",
-            "reference_docname": ticket_name,
-            "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
-            "priority": ticket_priority,
-            "status": "Todo"
-        })
-        task_doc.insert(ignore_permissions=True)
+        # Normalize: modify existing open task if present, else create
+        # Allow caller to skip task creation/modification (Ticket Modal creates task itself)
+        if isinstance(skip_task_creation, str):
+            skip_task_creation = skip_task_creation.lower() in ("1", "true", "yes")
+
+        task_doc = None
+        if not skip_task_creation:
+            # Update parent _assign to include assignee
+            parent_assign_json = frappe.db.get_value("CRM Ticket", ticket_name, "_assign")
+            try:
+                parent_assign = frappe.parse_json(parent_assign_json) if parent_assign_json else []
+                if not isinstance(parent_assign, list):
+                    parent_assign = []
+            except Exception:
+                parent_assign = []
+            if assigned_user not in parent_assign:
+                parent_assign.append(assigned_user)
+                frappe.db.set_value("CRM Ticket", ticket_name, "_assign", frappe.as_json(parent_assign))
+
+            existing_tasks = frappe.get_list(
+                "CRM Task",
+                filters={
+                    "reference_doctype": "CRM Ticket",
+                    "reference_docname": ticket_name,
+                    "status": ["not in", ["Done", "Canceled"]],
+                },
+                fields=["name", "_assign", "due_date"],
+                order_by="creation asc",
+                limit=1,
+            )
+
+            if existing_tasks:
+                task_doc = frappe.get_doc("CRM Task", existing_tasks[0].name)
+                try:
+                    assign_list = frappe.parse_json(task_doc._assign) if task_doc._assign else []
+                    if not isinstance(assign_list, list):
+                        assign_list = []
+                except Exception:
+                    assign_list = []
+                if assigned_user not in assign_list:
+                    assign_list.append(assigned_user)
+                task_doc.assigned_to = assigned_user
+                task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+                task_doc.save(ignore_permissions=True)
+                frappe.db.set_value("CRM Task", task_doc.name, "_assign", frappe.as_json(assign_list))
+            else:
+                task_doc = frappe.get_doc({
+                    "doctype": "CRM Task",
+                    "title": f"Handle ticket: {ticket_subject}",
+                    "assigned_to": assigned_user,
+                    "reference_doctype": "CRM Ticket",
+                    "reference_docname": ticket_name,
+                    "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
+                    "priority": ticket_priority,
+                    "status": "Todo",
+                })
+                task_doc.insert(ignore_permissions=True)
         
         # Emit activity update to refresh frontend
         emit_activity_update("CRM Ticket", ticket_name)
