@@ -874,6 +874,19 @@ async function createNewTicket() {
           console.error('Role-based assignment failed:', err)
           // Continue even if assignment fails
         }
+      } else {
+        // If no role selected, set default role for auto-reassignment functionality
+        try {
+          await call('frappe.client.set_value', {
+            doctype: 'CRM Ticket',
+            name: response.name,
+            fieldname: 'assigned_role',
+            value: 'Support User'
+          })
+          console.log('Set default assigned_role to "Support User" for auto-reassignment')
+        } catch (err) {
+          console.error('Failed to set default assigned_role:', err)
+        }
       }
       
       // Create task if pending task exists and doesn't have a real task ID
