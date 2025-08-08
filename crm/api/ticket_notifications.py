@@ -131,16 +131,15 @@ def build_task_with_ticket_notification_text(task_doc, ticket_doc):
     """
     Build notification text for task assignments with ticket context
     """
+    # Mirror lead-style notification: headline shows ticket assignment, subline shows task context
     notification_text = f"""
-    <div class="mb-2 leading-5 text-ink-gray-5">
-        <span class="font-medium text-ink-gray-9">Task Assignment</span>
-        <div class="mt-1">
-            <span class="font-medium text-ink-gray-9">{task_doc.title}</span>
+    <div class="mb-2 leading-5">
+        <div class="font-medium text-ink-gray-9">
+            New Ticket Assigned: {ticket_doc.ticket_subject or 'Ticket'}
         </div>
-        <div class="text-sm text-ink-gray-6">Related to ticket: {ticket_doc.ticket_subject}</div>
-        <div class="text-sm text-ink-gray-6">Customer: {ticket_doc.customer_name or 'N/A'}</div>
-        {f'<div class="text-sm text-ink-gray-6">Due: {frappe.format(task_doc.due_date, "datetime")}</div>' if task_doc.due_date else ''}
-        <div class="text-sm text-ink-gray-6">Priority: {task_doc.priority or 'Medium'}</div>
+        <div class="mt-1 text-sm text-ink-gray-7">
+            Task: {task_doc.title or 'Untitled Task'}
+        </div>
     </div>
     """
     return notification_text

@@ -198,10 +198,10 @@ async function updateTask() {
       emit('after', d)
     }
   } else {
-    // ✅ FIX: Check if we have a proper document reference
-    // If no reference document (props.doc is empty/null) and doctype is CRM Lead,
-    // this is likely being called from LeadModal before lead creation
-    if ((!props.doc || props.doc === '') && props.doctype === 'CRM Lead') {
+    // ✅ FIX: Defer task creation when parent document doesn't exist yet (Lead/Ticket)
+    // If no reference document (props.doc is empty/null) and doctype is CRM Lead or CRM Ticket,
+    // this is being called before the parent is created from the modal. Return task data only.
+    if ((!props.doc || props.doc === '') && (props.doctype === 'CRM Lead' || props.doctype === 'CRM Ticket')) {
       // Don't create the task yet - just return the task data
       // This prevents duplicate creation from LeadModal
       console.log('Task creation deferred - no reference document exists yet')

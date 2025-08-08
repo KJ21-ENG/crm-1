@@ -35,14 +35,14 @@
               <p class="text-sm font-medium text-ink-gray-9">
                 {{ lead.doc.assign_to_role ? 
                   __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) :
-                  __('Task assignment is required')
+                  __('Task assignment is optional')
                 }}
               </p>
-              <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
-                {{ __('Task assignment is required to create this lead') }}
+              <p class="text-xs text-ink-gray-7" v-if="lead.doc.assign_to_role && !pendingTaskData">
+                {{ __('Task assignment is required when assigning by role') }}
               </p>
               <p class="text-xs text-green-600" v-else>
-                {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData.title]) }}
+                {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData?.title || 'Task']) }}
               </p>
             </div>
             
@@ -622,16 +622,18 @@ function createNewLead() {
         return error.value
       }
       
-      // Validate task assignment is required
-      if (!pendingTaskData.value) {
-        error.value = __('Task assignment is required')
+      // Require task assignment only if a role is selected
+      if (lead.doc.assign_to_role && !pendingTaskData.value) {
+        error.value = __('Task assignment is required when assigning by role')
         return error.value
       }
       
       // Validate task has required fields
-      if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
-        error.value = __('Task title and due date are required')
-        return error.value
+      if (pendingTaskData.value) {
+        if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
+          error.value = __('Task title and due date are required')
+          return error.value
+        }
       }
       
       // Conditional validation for referral through based on lead category

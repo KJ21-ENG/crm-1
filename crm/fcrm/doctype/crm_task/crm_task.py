@@ -71,25 +71,31 @@ class CRMTask(Document):
 				})
 
 	def send_lead_aware_notification(self):
-		"""Send enhanced notification that includes lead context if task is for a lead"""
+		"""Send enhanced notification with parent context (Lead/Ticket) when available"""
 		if not self.assigned_to or self.assigned_to == frappe.session.user:
 			return
-			
-		if not self.reference_doctype == "CRM Lead" or not self.reference_docname:
-			# For non-lead tasks, use standard notification
+
+		# If there is no parent linkage, send standard notification
+		if not self.reference_doctype or not self.reference_docname:
 			self.send_standard_task_notification()
 			return
-		
+
 		try:
-			# Get the lead document for context
-			lead_doc = frappe.get_doc("CRM Lead", self.reference_docname)
-			
-			# Use our enhanced lead-aware notification that goes to Task Reminder
-			from crm.api.lead_notifications import create_task_with_lead_notification
-			create_task_with_lead_notification(self, lead_doc)
-			
+			if self.reference_doctype == "CRM Lead":
+				lead_doc = frappe.get_doc("CRM Lead", self.reference_docname)
+				from crm.api.lead_notifications import create_task_with_lead_notification
+				create_task_with_lead_notification(self, lead_doc)
+				return
+			elif self.reference_doctype == "CRM Ticket":
+				ticket_doc = frappe.get_doc("CRM Ticket", self.reference_docname)
+				from crm.api.ticket_notifications import create_task_with_ticket_notification
+				create_task_with_ticket_notification(self, ticket_doc, is_assignment=True)
+				return
+			else:
+				# Unknown parent type → use standard
+				self.send_standard_task_notification()
 		except Exception as e:
-			frappe.logger().error(f"Failed to send lead-aware task notification: {str(e)}")
+			frappe.logger().error(f"Failed to send context-aware task notification: {str(e)}")
 			# Fallback to standard notification
 			self.send_standard_task_notification()
 

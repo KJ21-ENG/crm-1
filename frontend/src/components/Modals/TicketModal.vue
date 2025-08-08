@@ -43,14 +43,14 @@
               <p class="text-sm font-medium text-ink-gray-9">
                 {{ ticket.doc.assign_to_role ? 
                   __('Ticket will be assigned to a user from "{0}" role', [ticket.doc.assign_to_role]) :
-                  __('Task assignment is required')
+                  __('Task assignment is optional')
                 }}
               </p>
-              <p class="text-xs text-ink-gray-7" v-if="!pendingTaskData">
-                {{ __('Task assignment is required to create this ticket') }}
+              <p class="text-xs text-ink-gray-7" v-if="ticket.doc.assign_to_role && !pendingTaskData">
+                {{ __('Task assignment is required when assigning by role') }}
               </p>
               <p class="text-xs text-green-600" v-else>
-                {{ __('Task "{0}" will be created when ticket is saved', [pendingTaskData.title]) }}
+                {{ __('Task "{0}" will be created when ticket is saved', [pendingTaskData?.title || 'Task']) }}
               </p>
             </div>
             
@@ -1009,19 +1009,21 @@ function validateFields() {
     ticket.doc.mobile_no = cleanMobile
   }
 
-  // Validate task assignment is required
-  if (!pendingTaskData.value) {
+  // Require task assignment only if a role is selected
+  if (ticket.doc.assign_to_role && !pendingTaskData.value) {
     return {
       isValid: false,
-      error: 'Task assignment is required'
+      error: 'Task assignment is required when assigning by role'
     }
   }
   
   // Validate task has required fields
-  if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
-    return {
-      isValid: false,
-      error: 'Task title and due date are required'
+  if (pendingTaskData.value) {
+    if (!pendingTaskData.value.title || !pendingTaskData.value.due_date) {
+      return {
+        isValid: false,
+        error: 'Task title and due date are required'
+      }
     }
   }
 
