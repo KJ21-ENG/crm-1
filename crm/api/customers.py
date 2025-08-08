@@ -150,34 +150,125 @@ def process_ticket_creation(ticket_data):
 
 
 @frappe.whitelist()
-def get_customer_interactions(customer_mobile):
-    """Get all interactions (leads, tickets, call logs) for a customer"""
-    if not customer_mobile:
+def get_customer_interactions(customer_mobile: str | None = None, customer_id: str | None = None):
+    """Get all interactions (leads, tickets, call logs) for a customer.
+
+    New logic: If ``customer_id`` (CRM Customer.name) is provided, match:
+      - Leads by lead.client_id == customer_id
+      - Tickets by ticket.client_id == customer_id when column exists,
+        otherwise fallback to ticket.customer_id == customer_id
+
+    Fallback: If only ``customer_mobile`` is provided, match by mobile_no as before.
+    """
+    if not customer_id and not customer_mobile:
         return {}
-    
-    # Get leads for this customer
-    leads = frappe.get_list("CRM Lead",
-                           filters={"mobile_no": customer_mobile},
-                           fields=["name", "lead_name", "status", "creation", "lead_owner"],
-                           order_by="creation desc")
-    
-    # Get tickets for this customer  
-    tickets = frappe.get_list("CRM Ticket",
-                             filters={"mobile_no": customer_mobile},
-                             fields=["name", "ticket_subject", "status", "creation", "assigned_to"],
-                             order_by="creation desc")
-    
-    # Get call logs for this customer
-    call_logs = frappe.get_list("CRM Call Log",
-                               filters={"customer": customer_mobile},
-                               fields=["name", "type", "status", "duration", "start_time", "employee"],
-                               order_by="start_time desc")
-    
-    return {
-        "leads": leads,
-        "tickets": tickets,
-        "call_logs": call_logs
-    }
+
+    leads_filters = {}
+    tickets_filters = {}
+    call_logs_filters = {}
+
+    if customer_id:
+        # Leads: match by client_id OR legacy customer_id link
+        leads_or_filters = [["client_id", "=", customer_id], ["customer_id", "=", customer_id]]
+        # Tickets: match by client_id if present OR customer_id (legacy)
+        tickets_or_filters = [["customer_id", "=", customer_id]]
+        if frappe.db.has_column("CRM Ticket", "client_id"):
+            tickets_or_filters.insert(0, ["client_id", "=", customer_id])
+        # Save for later call
+        leads_filters = None
+        tickets_filters = None
+    else:
+        # Fallback to mobile matching
+        leads_filters = {"mobile_no": customer_mobile}
+        tickets_filters = {"mobile_no": customer_mobile}
+        call_logs_filters = {"customer": customer_mobile}
+
+    # Get leads
+    if customer_id:
+        leads = frappe.get_list(
+            "CRM Lead",
+            or_filters=leads_or_filters,
+            fields=["name", "lead_name", "customer_id", "status", "creation", "lead_owner"],
+            order_by="creation desc",
+        )
+    else:
+        leads = frappe.get_list(
+            "CRM Lead",
+            filters=leads_filters,
+            fields=["name", "lead_name", "customer_id", "status", "creation", "lead_owner"],
+            order_by="creation desc",
+        )
+
+    # Get tickets
+    if customer_id:
+        tickets = frappe.get_list(
+            "CRM Ticket",
+            or_filters=tickets_or_filters,
+            fields=["name", "ticket_subject", "subject", "customer_id", "status", "creation", "assigned_to"],
+            order_by="creation desc",
+        )
+    else:
+        tickets = frappe.get_list(
+            "CRM Ticket",
+            filters=tickets_filters,
+            fields=["name", "ticket_subject", "subject", "customer_id", "status", "creation", "assigned_to"],
+            order_by="creation desc",
+        )
+
+    # Get call logs
+    call_logs = []
+    try:
+        logs_by_mobile = []
+        logs_by_ref = []
+        if customer_mobile:
+            logs_by_mobile = frappe.get_list(
+                "CRM Call Log",
+                filters={"customer": customer_mobile},
+                fields=["name", "type", "status", "duration", "start_time", "employee"],
+                order_by="start_time desc",
+            )
+        if customer_id:
+            logs_by_ref = frappe.get_list(
+                "CRM Call Log",
+                filters={
+                    "reference_doctype": "CRM Customer",
+                    "reference_docname": customer_id,
+                },
+                fields=["name", "type", "status", "duration", "start_time", "employee"],
+                order_by="start_time desc",
+            )
+
+        # Merge and de-duplicate by name, keep latest first
+        merged = {log["name"]: log for log in logs_by_mobile}
+        for log in logs_by_ref:
+            merged.setdefault(log["name"], log)
+        call_logs = sorted(merged.values(), key=lambda x: x.get("start_time") or 0, reverse=True)
+    except Exception:
+        # Non-fatal; interactions can still render
+        call_logs = []
+
+    # Enrich names using CRM Customer if missing
+    try:
+        customer_ids = set()
+        for l in leads:
+            if l.get("customer_id"):
+                customer_ids.add(l["customer_id"])
+        for t in tickets:
+            if t.get("customer_id"):
+                customer_ids.add(t["customer_id"])
+        if customer_ids:
+            rows = frappe.get_all("CRM Customer", filters={"name": ["in", list(customer_ids)]}, fields=["name", "customer_name"])
+            id_to_name = {r["name"]: r["customer_name"] for r in rows}
+            for l in leads:
+                if not l.get("lead_name") and l.get("customer_id"):
+                    l["lead_name"] = id_to_name.get(l["customer_id"]) or l.get("name")
+            for t in tickets:
+                if not (t.get("subject") or t.get("ticket_subject")) and t.get("customer_id"):
+                    t["subject"] = id_to_name.get(t["customer_id"]) or t.get("name")
+    except Exception:
+        pass
+
+    return {"leads": leads, "tickets": tickets, "call_logs": call_logs}
 
 
 @frappe.whitelist()

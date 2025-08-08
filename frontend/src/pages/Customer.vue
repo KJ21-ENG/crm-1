@@ -583,6 +583,7 @@ onMounted(async () => {
 async function loadCustomerInteractions() {
   try {
     const result = await call('crm.api.customers.get_customer_interactions', {
+      customer_id: customer.value.data.name,
       customer_mobile: customer.value.data.mobile_no
     })
     interactions.value = result
