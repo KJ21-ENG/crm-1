@@ -97,16 +97,21 @@ def get_referral_source_table(date_from=None, date_to=None, account_type=None, l
             filters += " AND l.branch = %s"
             params.append(branch)
         
-        # Fixed query: Find the actual referrer by looking for customers with matching referral codes
+        # Aggregate by referrer (customer). Combine all referral codes that belong to the same referrer
+        # and show them together in one row. For unknown referrers, fall back to grouping by the code itself.
         query = f"""
             SELECT 
                 COALESCE(
                     referrer.customer_name,
                     CONCAT('Referrer (', l.referral_through, ')')
                 ) as referrer_name,
+                referrer.name as referrer_customer_id,
                 COALESCE(referrer.mobile_no, 'No mobile') as referrer_mobile,
-                l.referral_through as referral_code,
-                l.account_type,
+                GROUP_CONCAT(DISTINCT l.referral_through ORDER BY l.referral_through SEPARATOR ', ') as referral_code,
+                COALESCE(
+                    NULLIF(GROUP_CONCAT(DISTINCT l.account_type ORDER BY l.account_type SEPARATOR ', '), ''),
+                    'N/A'
+                ) AS account_type,
                 COUNT(l.name) as total_referrals,
                 COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') THEN 1 END) as successful_referrals,
                 COUNT(DISTINCT l.name) as total_leads_referred,
@@ -118,7 +123,7 @@ def get_referral_source_table(date_from=None, date_to=None, account_type=None, l
                 OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
             )
             WHERE {filters} AND l.referral_through IS NOT NULL AND l.referral_through != ''
-            GROUP BY l.referral_through
+            GROUP BY COALESCE(referrer.name, l.referral_through)
             ORDER BY total_referrals DESC, last_referral_date DESC
         """
         
@@ -359,12 +364,29 @@ def export_referral_analytics(date_from=None, date_to=None, account_type=None, l
         return {"error": str(e)} 
 
 @frappe.whitelist()
-def get_referral_details(referral_code, date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
+def get_referral_details(referral_code=None, referral_codes=None, date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
     """Get detailed referral information for a specific referral code"""
     try:
         # Build filters
-        filters = "l.referral_through = %s"
-        params = [referral_code]
+        params = []
+        # Accept a single code or a list of codes (comma-separated string or list)
+        codes = []
+        if referral_codes:
+            if isinstance(referral_codes, str):
+                # Accept comma-separated string
+                codes = [c.strip() for c in referral_codes.split(',') if c and c.strip()]
+            elif isinstance(referral_codes, (list, tuple)):
+                codes = [c for c in referral_codes if c]
+        elif referral_code:
+            codes = [referral_code]
+
+        if codes:
+            placeholders = ','.join(['%s'] * len(codes))
+            filters = f"l.referral_through IN ({placeholders})"
+            params.extend(codes)
+        else:
+            # Fallback: ensure no rows when no code provided
+            filters = "1=0"
         
         if date_from:
             filters += " AND l.modified >= %s"
@@ -405,7 +427,6 @@ def get_referral_details(referral_code, date_from=None, date_to=None, account_ty
                 l.modified,
                 l.referral_through,
                 l.organization,
-                l.job_title,
                 l.territory,
                 l.industry,
                 l.annual_revenue,

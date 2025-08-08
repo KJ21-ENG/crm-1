@@ -231,8 +231,9 @@
                         <h4 class="text-sm font-medium text-gray-900 mb-3">Referral Details for {{ source.referral_code }}</h4>
                         
                         <!-- Referral Details Table -->
-                        <div class="overflow-x-auto">
-                          <table class="min-w-full divide-y divide-gray-200">
+                        <div class="referral-details-scroll">
+                          <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                               <tr>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -273,7 +274,6 @@
                                 <td class="px-3 py-2 whitespace-nowrap">
                                   <div>
                                     <p class="text-sm font-medium text-gray-900">{{ referral.lead_name || 'Unnamed Lead' }}</p>
-                                    <p class="text-xs text-gray-500">{{ referral.job_title || 'No job title' }}</p>
                                   </div>
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap">
@@ -316,6 +316,7 @@
                               </tr>
                             </tbody>
                           </table>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -656,6 +657,15 @@ function getStatusBadgeClass(status) {
   return statusMap[status] || 'bg-gray-100 text-gray-800'
 }
 
+function parseReferralCodes(referralCode) {
+  if (!referralCode) return []
+  // Accept comma-separated aggregated codes and normalize spacing
+  return String(referralCode)
+    .split(',')
+    .map((c) => c && c.trim())
+    .filter(Boolean)
+}
+
 async function toggleReferralDetails(referralCode) {
   if (!referralCode) {
     console.warn('No referral code provided to toggleReferralDetails')
@@ -669,8 +679,10 @@ async function toggleReferralDetails(referralCode) {
     expandedReferrals.value.push(referralCode)
     loadingReferralDetails.value = true
     try {
+      const codes = parseReferralCodes(referralCode)
       const details = await referralDetailsResource.submit({
-        referral_code: referralCode,
+        // Backend now accepts multiple referral codes
+        referral_codes: codes,
         date_from: filters.value.dateFrom || undefined,
         date_to: filters.value.dateTo || undefined,
         account_type: filters.value.accountType || undefined,
@@ -694,5 +706,25 @@ onMounted(() => {
 <style scoped>
 .referral-analytics-dashboard {
   @apply space-y-6;
+}
+
+/* Fixed height scroll area for drill-down details */
+.referral-details-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  /* Improve scrolling UX */
+  scroll-behavior: smooth;
+}
+
+/* Optional: nicer scrollbar for WebKit */
+.referral-details-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.referral-details-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+.referral-details-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>
