@@ -145,18 +145,47 @@ const getCurrentDateTime = () => {
 
 // Initialize with current date and time
 const initializeCurrentDateTime = () => {
-  const currentNow = getCurrentDateTime();
-  
-  // Set the selected date to current date
-  selectedDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
-  
-  // Set the time components
-  selectedHour.value = currentNow.getHours() % 12 || 12;
-  selectedMinute.value = currentNow.getMinutes();
-  selectedPeriod.value = currentNow.getHours() >= 12 ? 'PM' : 'AM';
-  
-  // Set the calendar view to current month
-  currentDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1);
+  try {
+    const currentNow = getCurrentDateTime();
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Use Intl.DateTimeFormat to get localized date/time parts
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: userTimezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    });
+    
+    // Set the selected date to current date
+    selectedDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
+    
+    // Parse the formatted time string to get localized hours and period
+    const timeParts = formatter.format(currentNow).match(/(\d+):(\d+)\s(AM|PM)/i);
+    
+    if (timeParts) {
+      selectedHour.value = parseInt(timeParts[1]);
+      selectedMinute.value = parseInt(timeParts[2]);
+      selectedPeriod.value = timeParts[3].toUpperCase();
+    } else {
+      // Fallback if parsing fails
+      selectedHour.value = currentNow.getHours() % 12 || 12;
+      selectedMinute.value = currentNow.getMinutes();
+      selectedPeriod.value = currentNow.getHours() >= 12 ? 'PM' : 'AM';
+    }
+    
+    // Set the calendar view to current month
+    currentDate.value = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1);
+  } catch (error) {
+    console.error('Error initializing datetime picker:', error);
+    // Set sensible defaults if initialization fails
+    const now = new Date();
+    selectedDate.value = now;
+    selectedHour.value = 12;
+    selectedMinute.value = 0;
+    selectedPeriod.value = 'AM';
+    currentDate.value = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
 };
 
 // Initialize reactive data with current date/time
@@ -382,9 +411,10 @@ function applySelection() {
     return;
   }
   
-  // Create the final datetime using the selected date and time
+  // Create the final datetime using the selected date and time in local timezone
   const finalDate = new Date(selectedDate.value);
   let hour = selectedHour.value;
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   
   // Convert 12-hour format to 24-hour format
   if (selectedPeriod.value === 'PM' && hour !== 12) {
@@ -396,15 +426,25 @@ function applySelection() {
   // Set the time on the selected date
   finalDate.setHours(hour, selectedMinute.value, 0, 0);
   
-  // Format as ISO datetime string (Frappe standard) - handle timezone properly
-  const year = finalDate.getFullYear();
-  const month = String(finalDate.getMonth() + 1).padStart(2, '0');
-  const day = String(finalDate.getDate()).padStart(2, '0');
-  const hours = String(finalDate.getHours()).padStart(2, '0');
-  const minutes = String(finalDate.getMinutes()).padStart(2, '0');
-  const seconds = String(finalDate.getSeconds()).padStart(2, '0');
-  
-  const isoString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  // Format as ISO datetime string (Frappe standard) with proper timezone handling
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: userTimezone
+  });
+
+  const parts = formatter.formatToParts(finalDate);
+  const dateParts = {};
+  parts.forEach(part => {
+    dateParts[part.type] = part.value;
+  });
+
+  const isoString = `${dateParts.year}-${dateParts.month}-${dateParts.day} ${dateParts.hour}:${dateParts.minute}:${dateParts.second}`;
   
   // Mark date as applied
   isDateApplied.value = true;
@@ -447,16 +487,42 @@ function handleResize() {
 }
 
 onMounted(() => {
-  window.addEventListener('resize', handleResize);
-  // Initialize with current date and time on mount but don't apply
-  initializeCurrentDateTime();
-  isDateApplied.value = false; // Don't apply date initially
-  hasUserSelectedDate.value = false; // Don't apply date initially
+  try {
+    window.addEventListener('resize', handleResize);
+    // Initialize with current date and time on mount but don't apply
+    initializeCurrentDateTime();
+    isDateApplied.value = false; // Don't apply date initially
+    hasUserSelectedDate.value = false; // Don't apply date initially
+    
+    // Handle click outside in production mode
+    const handleClickOutside = (event) => {
+      const picker = document.querySelector('.datetime-picker-popup');
+      const input = document.querySelector('.custom-datetime-picker');
+      if (isOpen.value && picker && input && 
+          !picker.contains(event.target) && 
+          !input.contains(event.target)) {
+        closePicker();
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+  } catch (error) {
+    console.error('Error in datetime picker mount:', error);
+  }
 });
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  document.body.classList.remove('picker-open');
+  try {
+    window.removeEventListener('resize', handleResize);
+    document.removeEventListener('click', handleClickOutside);
+    document.body.classList.remove('picker-open');
+    // Clean up any remaining popups
+    const existingPopup = document.querySelector('.datetime-picker-popup');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+  } catch (error) {
+    console.error('Error in datetime picker cleanup:', error);
+  }
 });
 </script>
 
@@ -513,7 +579,8 @@ onUnmounted(() => {
 }
 
 .datetime-picker-popup {
-  position: fixed;
+  position: fixed !important;
+  z-index: 99999 !important; /* Ensure it's above other elements */
   background: #ffffff !important;
   border: 1px solid #d1d5db;
   border-radius: 8px;
