@@ -22,14 +22,7 @@ def execute():
             "description": "Enter referral code if applicable"
         })
         
-        # Add to field_order after customer_source
-        field_order = doc.field_order
-        if "customer_source" in field_order:
-            customer_source_index = field_order.index("customer_source")
-            field_order.insert(customer_source_index + 1, "referral_code")
-        else:
-            # If customer_source not found, add at the end
-            field_order.append("referral_code")
+        # No need to manage field_order as it's handled by Frappe
         
         doc.save()
         print("✅ Added referral_code field to CRM Customer DocType")
