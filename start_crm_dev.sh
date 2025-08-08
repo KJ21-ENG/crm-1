@@ -183,26 +183,6 @@ else
     fi
 fi
 
-# 10. Start WhatsApp Service
-echo -e "${BLUE}📱 Starting WhatsApp Service...${NC}"
-if check_service "node.*whatsapp-service.js"; then
-    print_warning "WhatsApp Service already running"
-else
-    if [ ! -d "$CRM_PATH/whatsapp-service" ]; then
-        print_error "WhatsApp service directory not found: $CRM_PATH/whatsapp-service"
-        exit 1
-    fi
-    
-    # Create a detached screen session for WhatsApp service
-    screen -dmS crm_whatsapp bash -c "cd '$CRM_PATH/whatsapp-service' && npm start"
-    sleep 3
-    if check_service "node.*whatsapp-service.js"; then
-        print_status "WhatsApp Service started in background (screen session: crm_whatsapp)"
-    else
-        print_error "Failed to start WhatsApp Service"
-        exit 1
-    fi
-fi
 
 # 11. Verify all services are running
 echo -e "\n${BLUE}🔍 Verifying services...${NC}"
@@ -214,7 +194,6 @@ services=(
     "frappe.*schedule:Frappe Scheduler"
     "frappe.*worker.*default:Task Notification Worker"
     "yarn.*dev:Frontend Dev Server"
-    "node.*whatsapp-service.js:WhatsApp Service"
 )
 
 all_running=true
@@ -244,7 +223,6 @@ if [ "$all_running" = true ]; then
     echo -e "   ${GREEN}Scheduler Logs:       ${NC}screen -r frappe_scheduler"
     echo -e "   ${GREEN}Notification Worker:  ${NC}screen -r crm_worker"
     echo -e "   ${GREEN}Frontend Logs:        ${NC}screen -r crm_frontend"
-    echo -e "   ${GREEN}WhatsApp Service:     ${NC}screen -r crm_whatsapp"
     echo -e "   ${GREEN}List Sessions:        ${NC}screen -ls"
     echo -e "   ${GREEN}Stop All:             ${NC}./stop_crm_dev.sh"
     

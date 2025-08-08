@@ -49,7 +49,6 @@ services=(
     "frappe.*schedule:Frappe Scheduler:⏰"
     "frappe.*worker.*default:Task Notification Worker:🔔"
     "node.*vite|esbuild:Frontend Dev Server:🎨"
-    "node.*whatsapp-service.js:WhatsApp Service:📱"
 )
 
 echo -e "${BLUE}🔍 Service Status:${NC}"
@@ -82,9 +81,9 @@ fi
 # Show screen sessions
 if command -v screen &> /dev/null; then
     echo -e "${BLUE}📺 Active Screen Sessions:${NC}"
-    screen_sessions=$(screen -list 2>/dev/null | grep -E "(frappe_bench|frappe_scheduler|crm_worker|crm_frontend|crm_whatsapp)" | wc -l)
+    screen_sessions=$(screen -list 2>/dev/null | grep -E "(frappe_bench|frappe_scheduler|crm_worker|crm_frontend)" | wc -l)
     if [ "$screen_sessions" -gt 0 ]; then
-        screen -list 2>/dev/null | grep -E "(frappe_bench|frappe_scheduler|crm_worker|crm_frontend|crm_whatsapp)" | sed 's/^/   /'
+        screen -list 2>/dev/null | grep -E "(frappe_bench|frappe_scheduler|crm_worker|crm_frontend)" | sed 's/^/   /'
     else
         echo -e "   ${YELLOW}No CRM screen sessions found${NC}"
     fi
@@ -96,7 +95,7 @@ if [ "$all_running" = false ]; then
     echo -e "${BLUE}🔍 Process Details:${NC}"
     # Show what's currently running
     echo -e "${YELLOW}Currently running CRM processes:${NC}"
-    ps aux | grep -E "(frappe.*serve|frappe.*schedule|frappe.*worker|vite|esbuild|redis-server.*1[13]001|mariadb|whatsapp-service)" | grep -v grep | head -10 | while read line; do
+    ps aux | grep -E "(frappe.*serve|frappe.*schedule|frappe.*worker|vite|esbuild|redis-server.*1[13]001|mariadb)" | grep -v grep | head -10 | while read line; do
         echo "   $line"
     done
     echo ""

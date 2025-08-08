@@ -142,23 +142,6 @@ else
     print_warning "Task Notification Worker still running"
 fi
 
-# 4. Stop WhatsApp Service (screen session + processes)
-echo -e "${BLUE}📱 Stopping WhatsApp Service...${NC}"
-if screen -list | grep -q "crm_whatsapp"; then
-    screen -S crm_whatsapp -X quit
-    sleep 2
-fi
-
-if check_service "node.*whatsapp-service.js"; then
-    pkill -f "node.*whatsapp-service.js"
-    sleep 1
-fi
-
-if ! check_service "node.*whatsapp-service.js"; then
-    print_status "WhatsApp Service stopped"
-else
-    print_warning "WhatsApp Service still running"
-fi
 
 # 5. Stop Frappe Bench (screen session + processes)
 echo -e "${BLUE}🏗️  Stopping Frappe Bench...${NC}"
@@ -238,7 +221,6 @@ crm_services=(
     "frappe.*serve.*8001|frappe.*socketio|bench.*serve:Frappe Bench"
     "frappe.*schedule:Frappe Scheduler"
     "frappe.*worker.*default:Task Notification Worker"
-    "node.*whatsapp-service.js:WhatsApp Service"
     "redis-server.*11001:Redis Queue"
     "redis-server.*13001:Redis Cache"
 )
