@@ -387,16 +387,19 @@ def get_referral_details(referral_code, date_from=None, date_to=None, account_ty
             params.append(branch)
         
         # Query for detailed referral information
+        # NOTE: We now prioritize Customer data for lead name and contact information.
+        # Join with CRM Customer on either the new linkage (customer_id) or legacy (client_id) field.
         query = f"""
             SELECT 
                 l.name,
-                l.lead_name,
-                l.mobile_no,
-                l.email,
+                COALESCE(c.customer_name, l.lead_name) AS lead_name,
+                COALESCE(c.mobile_no, l.mobile_no)     AS mobile_no,
+                COALESCE(c.email, l.email)             AS email,
                 l.account_type,
                 l.lead_category,
                 l.status,
                 l.client_id,
+                l.customer_id,
                 l.lead_owner,
                 l.creation,
                 l.modified,
@@ -415,6 +418,10 @@ def get_referral_details(referral_code, date_from=None, date_to=None, account_ty
                 l.first_response_time,
                 l.first_responded_on
             FROM `tabCRM Lead` l
+            LEFT JOIN `tabCRM Customer` c ON (
+                (l.customer_id IS NOT NULL AND l.customer_id != '' AND c.name = l.customer_id)
+                OR (l.client_id IS NOT NULL AND l.client_id != '' AND c.name = l.client_id)
+            )
             WHERE {filters}
             ORDER BY l.creation DESC
         """
