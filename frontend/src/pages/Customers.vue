@@ -15,69 +15,41 @@
         </Button>
       </div>
       
-      <!-- Search Bar -->
-      <div class="mt-4 flex gap-2">
-        <div class="flex-1">
-          <FormControl
-            v-model="searchQuery"
-            placeholder="Search customers by name, email, or mobile..."
-          />
-        </div>
-      </div>
     </div>
 
-    <!-- Customer List -->
-    <div class="flex-1 overflow-auto">
-      <div v-if="customers.loading" class="p-8">
-        <div class="flex items-center justify-center">
-          <LoadingIndicator class="h-6 w-6" />
-          <span class="ml-2">Loading customers...</span>
-        </div>
-      </div>
-
-      <div v-else-if="filteredCustomers.length === 0" class="p-8">
-        <div class="text-center">
-          <h3 class="text-lg font-medium text-ink-700">No customers found</h3>
-          <p class="mt-2 text-ink-600">
-            {{ searchQuery ? 'Try adjusting your search criteria.' : 'Create your first customer to get started.' }}
-          </p>
-        </div>
-      </div>
-
-      <div v-else class="divide-y">
-        <div
-          v-for="customer in filteredCustomers"
-          :key="customer.name"
-          class="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
-          @click="navigateToCustomer(customer.name)"
-        >
-          <div class="flex items-center space-x-4">
-            <Avatar
-              :label="customer.first_name + ' ' + customer.last_name"
-              :image="customer.image"
-              size="md"
-            />
-            <div>
-              <h3 class="font-medium text-ink-900">
-                {{ customer.first_name }} {{ customer.last_name }}
-              </h3>
-              <div class="flex items-center space-x-2 text-sm text-ink-600">
-                <span v-if="customer.email">{{ customer.email }}</span>
-                <span v-if="customer.email && customer.mobile_no">•</span>
-                <span v-if="customer.mobile_no">{{ customer.mobile_no }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="flex items-center space-x-2">
-            <Badge
-              v-if="customer.status"
-              :label="customer.status"
-              :theme="customer.status === 'Active' ? 'green' : 'gray'"
-            />
-            <FeatherIcon name="chevron-right" class="h-4 w-4 text-ink-400" />
-          </div>
-        </div>
+    <!-- Customer List (standard paginated list like other pages) -->
+    <ViewControls
+      ref="viewControls"
+      v-model="customersList"
+      v-model:loadMore="loadMore"
+      v-model:resizeColumn="triggerResize"
+      v-model:updatedPageCount="updatedPageCount"
+      doctype="CRM Customer"
+    />
+    <CustomersListView
+      v-if="customersList.data && rows.length"
+      v-model="customersList.data.page_length_count"
+      v-model:list="customersList"
+      :rows="rows"
+      :columns="customersList.data.columns"
+      :options="{
+        showTooltip: false,
+        resizeColumn: true,
+        rowCount: customersList.data.row_count,
+        totalCount: customersList.data.total_count,
+      }"
+      @loadMore="() => loadMore++"
+      @columnWidthUpdated="() => triggerResize++"
+      @updatePageCount="(count) => (updatedPageCount = count)"
+      @applyFilter="(data) => viewControls.applyFilter(data)"
+      @selectionsChanged="(selections) => viewControls.updateSelections(selections)"
+    />
+    <div v-else-if="customersList.data" class="flex h-full items-center justify-center">
+      <div class="flex flex-col items-center gap-3 text-xl font-medium text-ink-gray-4">
+        <span>No Customers Found</span>
+        <Button :label="'New Customer'" @click="showCreateDialog = true">
+          <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
+        </Button>
       </div>
     </div>
 
@@ -117,6 +89,26 @@
             placeholder="Enter mobile number"
           />
 
+          <!-- Address Fields -->
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.address_line_1"
+              label="Address Line 1"
+              placeholder="House No, Street"
+            />
+            <FormControl
+              v-model="newCustomer.address_line_2"
+              label="Address Line 2"
+              placeholder="Area, Landmark (optional)"
+            />
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <FormControl v-model="newCustomer.city" label="City" />
+            <FormControl v-model="newCustomer.state" label="State" />
+            <FormControl v-model="newCustomer.pincode" label="Pincode" />
+          </div>
+          <FormControl v-model="newCustomer.country" label="Country" />
+
           <div class="grid grid-cols-2 gap-4">
             <FormControl
               v-model="newCustomer.pan_card_number"
@@ -127,6 +119,20 @@
               v-model="newCustomer.aadhaar_card_number"
               label="Aadhaar Card Number"
               placeholder="Enter Aadhaar number (optional)"
+            />
+          </div>
+
+          <!-- Referral Fields -->
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.referral_code"
+              label="Referral Code"
+              placeholder="Enter referral code (optional)"
+            />
+            <FormControl
+              v-model="newCustomer.referral_through"
+              label="Referral Through"
+              placeholder="Who referred? (optional)"
             />
           </div>
         </div>
@@ -146,7 +152,6 @@
 
 <script setup>
 import { 
-  createListResource,
   Avatar,
   Button,
   Badge,
@@ -154,15 +159,17 @@ import {
   FormControl,
   LoadingIndicator,
   FeatherIcon,
-  call
+  call,
+  toast
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
+import ViewControls from '@/components/ViewControls.vue'
+import CustomersListView from '@/components/ListViews/CustomersListView.vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 // Data
-const searchQuery = ref('')
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const newCustomer = ref({
@@ -170,41 +177,43 @@ const newCustomer = ref({
   last_name: '',
   email: '',
   mobile_no: '',
+  address_line_1: '',
+  address_line_2: '',
+  city: '',
+  state: '',
+  country: '',
+  pincode: '',
   pan_card_number: '',
   aadhaar_card_number: '',
   referral_code: ''
 })
 
-// Load customers
-const customers = createListResource({
-  doctype: 'CRM Customer',
-  fields: [
-    'name',
-    'first_name', 
-    'last_name',
-    'email',
-    'mobile_no',
-    'status',
-    'image',
-    'creation'
-  ],
-  orderBy: 'creation desc',
-  auto: true
-})
+// Standard list wiring (pagination handled by ViewControls)
+const customersList = ref({})
+const loadMore = ref(1)
+const triggerResize = ref(1)
+const updatedPageCount = ref(20)
+const viewControls = ref(null)
 
 // Computed
-const filteredCustomers = computed(() => {
-  if (!searchQuery.value) return customers.data || []
-  
-  const query = searchQuery.value.toLowerCase()
-  return (customers.data || []).filter(customer => {
-    const fullName = `${customer.first_name} ${customer.last_name}`.toLowerCase()
-    const email = (customer.email || '').toLowerCase()
-    const mobile = (customer.mobile_no || '').toLowerCase()
-    
-    return fullName.includes(query) ||
-           email.includes(query) ||
-           mobile.includes(query)
+const rows = computed(() => {
+  if (!customersList.value?.data?.data || !['list', 'group_by'].includes(customersList.value.data.view_type)) return []
+  return customersList.value?.data.data.map((c) => {
+    let _rows = {}
+    customersList.value?.data.rows.forEach((row) => {
+      _rows[row] = c[row]
+      const col = customersList.value?.data.columns?.find((col) => (col.key || col.value) == row)
+      const fieldType = col?.type
+      if (fieldType && ['Date','Datetime'].includes(fieldType) && !['modified','creation'].includes(row)) {
+        _rows[row] = new Date(c[row]).toLocaleString()
+      }
+      if (row === 'customer_name' || row === 'full_name') {
+        _rows[row] = { label: c.customer_name || `${c.first_name || ''} ${c.last_name || ''}`.trim(), image_label: c.customer_name, image: c.image }
+      } else if (['modified','creation'].includes(row)) {
+        _rows[row] = { label: new Date(c[row]).toLocaleString(), timeAgo: '' }
+      }
+    })
+    return _rows
   })
 })
 
@@ -214,9 +223,32 @@ const navigateToCustomer = (customerId) => {
 }
 
 const createCustomer = async () => {
+  // Basic required checks
   if (!newCustomer.value.first_name || !newCustomer.value.last_name || !newCustomer.value.mobile_no) {
-    // Show error message - all fields required
-    console.error('First name, last name, and mobile number are required')
+    toast.error('First name, last name, and mobile number are required')
+    return
+  }
+  // Optional validations for India specifics
+  const pan = (newCustomer.value.pan_card_number || '').toUpperCase().trim()
+  if (pan) {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+    if (!panRegex.test(pan)) {
+      toast.error('Invalid PAN. Expected format: ABCDE1234F')
+      return
+    }
+    newCustomer.value.pan_card_number = pan
+  }
+  const aadhaar = (newCustomer.value.aadhaar_card_number || '').trim()
+  if (aadhaar) {
+    const aadhaarRegex = /^[2-9][0-9]{11}$/
+    if (!aadhaarRegex.test(aadhaar)) {
+      toast.error('Invalid Aadhaar. It should be a 12-digit number starting 2-9')
+      return
+    }
+  }
+  const pincode = (newCustomer.value.pincode || '').trim()
+  if (pincode && !/^[1-9][0-9]{5}$/.test(pincode)) {
+    toast.error('Invalid Pincode. It should be a 6-digit number')
     return
   }
   
@@ -227,9 +259,16 @@ const createCustomer = async () => {
       first_name: newCustomer.value.first_name,
       last_name: newCustomer.value.last_name,
       email: newCustomer.value.email,
+      address_line_1: newCustomer.value.address_line_1,
+      address_line_2: newCustomer.value.address_line_2,
+      city: newCustomer.value.city,
+      state: newCustomer.value.state,
+      country: newCustomer.value.country,
+      pincode: newCustomer.value.pincode,
       pan_card_number: newCustomer.value.pan_card_number,
       aadhaar_card_number: newCustomer.value.aadhaar_card_number,
       referral_code: newCustomer.value.referral_code,
+      referral_through: newCustomer.value.referral_through,
       customer_source: 'Direct'
     })
     
@@ -239,21 +278,28 @@ const createCustomer = async () => {
       last_name: '',
       email: '',
       mobile_no: '',
+      address_line_1: '',
+      address_line_2: '',
+      city: '',
+      state: '',
+      country: '',
+      pincode: '',
       pan_card_number: '',
       aadhaar_card_number: '',
       referral_code: ''
+      ,referral_through: ''
     }
     
     showCreateDialog.value = false
-    customers.reload()
+    // Refresh list via resource bound to ViewControls
+    customersList.value?.reload && customersList.value.reload()
   } catch (error) {
     console.error('Error creating customer:', error)
+    toast.error(error.messages?.[0] || 'Failed to create customer')
   } finally {
     creating.value = false
   }
 }
 
-onMounted(() => {
-  customers.reload()
-})
+onMounted(() => {})
 </script> 

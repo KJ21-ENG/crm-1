@@ -103,6 +103,10 @@
                   <label class="text-sm text-ink-gray-7">Referral Code</label>
                   <p class="text-ink-gray-12">{{ customer.data.referral_code }}</p>
                 </div>
+                <div v-if="customer.data.referral_through">
+                  <label class="text-sm text-ink-gray-7">Referral Through</label>
+                  <p class="text-ink-gray-12">{{ customer.data.referral_through }}</p>
+                </div>
               </div>
             </div>
 
@@ -139,6 +143,37 @@
                       {{ customer.data.created_from_ticket }}
                     </router-link>
                   </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Address Information -->
+            <div class="bg-surface-white rounded-lg border p-6 lg:col-span-2">
+              <h2 class="text-lg font-medium mb-4">Address</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-if="customer.data.address_line_1">
+                  <label class="text-sm text-ink-gray-7">Address Line 1</label>
+                  <p class="text-ink-gray-12">{{ customer.data.address_line_1 }}</p>
+                </div>
+                <div v-if="customer.data.address_line_2">
+                  <label class="text-sm text-ink-gray-7">Address Line 2</label>
+                  <p class="text-ink-gray-12">{{ customer.data.address_line_2 }}</p>
+                </div>
+                <div v-if="customer.data.city">
+                  <label class="text-sm text-ink-gray-7">City</label>
+                  <p class="text-ink-gray-12">{{ customer.data.city }}</p>
+                </div>
+                <div v-if="customer.data.state">
+                  <label class="text-sm text-ink-gray-7">State</label>
+                  <p class="text-ink-gray-12">{{ customer.data.state }}</p>
+                </div>
+                <div v-if="customer.data.country">
+                  <label class="text-sm text-ink-gray-7">Country</label>
+                  <p class="text-ink-gray-12">{{ customer.data.country }}</p>
+                </div>
+                <div v-if="customer.data.pincode">
+                  <label class="text-sm text-ink-gray-7">Pincode</label>
+                  <p class="text-ink-gray-12">{{ customer.data.pincode }}</p>
                 </div>
               </div>
             </div>
@@ -381,6 +416,23 @@
             placeholder="Enter Aadhaar number (optional)"
           />
         </div>
+        
+        <div class="grid grid-cols-2 gap-4 mt-2">
+          <FormControl v-model="editCustomer.referral_code" label="Referral Code" />
+          <FormControl v-model="editCustomer.referral_through" label="Referral Through" />
+        </div>
+        
+        <!-- Address Fields -->
+        <div class="grid grid-cols-2 gap-4 mt-2">
+          <FormControl v-model="editCustomer.address_line_1" label="Address Line 1" />
+          <FormControl v-model="editCustomer.address_line_2" label="Address Line 2" />
+        </div>
+        <div class="grid grid-cols-3 gap-4 mt-2">
+          <FormControl v-model="editCustomer.city" label="City" />
+          <FormControl v-model="editCustomer.state" label="State" />
+          <FormControl v-model="editCustomer.pincode" label="Pincode" />
+        </div>
+        <FormControl class="mt-2" v-model="editCustomer.country" label="Country" />
       </div>
     </template>
     
@@ -460,7 +512,9 @@ const editCustomer = ref({
   mobile_no: '',
   organization: '',
   pan_card_number: '',
-  aadhaar_card_number: ''
+    aadhaar_card_number: '',
+    referral_code: '',
+    referral_through: ''
 })
 
 // Load customer data
@@ -597,8 +651,16 @@ function openEditDialog() {
     email: customer.value.data.email || '',
     mobile_no: customer.value.data.mobile_no || '',
     organization: customer.value.data.organization || '',
+    address_line_1: customer.value.data.address_line_1 || '',
+    address_line_2: customer.value.data.address_line_2 || '',
+    city: customer.value.data.city || '',
+    state: customer.value.data.state || '',
+    country: customer.value.data.country || '',
+    pincode: customer.value.data.pincode || '',
     pan_card_number: customer.value.data.pan_card_number || '',
-    aadhaar_card_number: customer.value.data.aadhaar_card_number || ''
+    aadhaar_card_number: customer.value.data.aadhaar_card_number || '',
+    referral_code: customer.value.data.referral_code || '',
+    referral_through: customer.value.data.referral_through || ''
   }
   showEditDialog.value = true
 }
