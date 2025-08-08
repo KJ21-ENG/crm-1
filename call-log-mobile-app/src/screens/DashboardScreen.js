@@ -32,10 +32,24 @@ const DashboardScreen = () => {
 
   useEffect(() => {
     initializeApiService();
+    loadUserProfileAndNumber();
     loadCallLogs();
-    // Set hardcoded mobile number
-    AsyncStorage.setItem('userMobileNumber', '1111111111');
   }, []);
+  const loadUserProfileAndNumber = async () => {
+    try {
+      // Fetch profile from backend to get agent mobile no
+      const profile = await apiService.apiCall('/api/method/crm.api.mobile_sync.get_user_profile', {
+        method: 'POST',
+      });
+      const mobile = profile?.message?.data?.mobile_no;
+      if (mobile) {
+        await AsyncStorage.setItem('userMobileNumber', mobile);
+        deviceCallLogService.setUserMobileNumber(mobile);
+      }
+    } catch (e) {
+      // Fallback: keep any previously stored value
+    }
+  };
 
   const initializeApiService = async () => {
     if (serverUrl && sessionId) {
