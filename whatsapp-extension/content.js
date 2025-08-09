@@ -119,20 +119,10 @@ class CRMWhatsAppIntegration {
   }
 
   injectWhatsAppUI() {
-    // Create WhatsApp integration container
+    // Only inject the QR modal — remove floating banner/status from pages
     const container = document.createElement('div');
     container.id = 'crm-whatsapp-integration';
     container.innerHTML = `
-      <div class="whatsapp-status-bar">
-        <div class="status-indicator">
-          <span class="status-dot ${this.status}"></span>
-          <span class="status-text">WhatsApp: ${this.status}</span>
-        </div>
-        <button id="whatsapp-connect-btn" class="btn btn-primary btn-sm">
-          Connect WhatsApp
-        </button>
-      </div>
-      
       <div id="whatsapp-qr-modal" class="modal" style="display: none;">
         <div class="modal-content">
           <div class="modal-header">
@@ -152,120 +142,22 @@ class CRMWhatsAppIntegration {
       </div>
     `;
 
-    // Add styles
     const styles = document.createElement('style');
     styles.textContent = `
-      #crm-whatsapp-integration {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        z-index: 10000;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      .whatsapp-status-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      
-      .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-      
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-      }
-      
-      .status-dot.connected { background: #25D366; }
-      .status-dot.disconnected { background: #ff4444; }
-      .status-dot.connecting { background: #ffaa00; }
-      
-      .btn {
-        padding: 5px 10px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-      }
-      
-      .btn-primary {
-        background: #25D366;
-        color: white;
-      }
-      
-      .btn-primary:hover {
-        background: #128C7E;
-      }
-      
-      .modal {
-        position: fixed;
-        z-index: 10001;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-      }
-      
-      .modal-content {
-        background-color: white;
-        margin: 15% auto;
-        padding: 20px;
-        border-radius: 8px;
-        width: 400px;
-        max-width: 90%;
-      }
-      
-      .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-      }
-      
-      .close {
-        color: #aaa;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      
-      .close:hover {
-        color: #000;
-      }
-      
-      #qr-code-image {
-        text-align: center;
-        margin: 20px 0;
-      }
-      
-      #qr-code-image img {
-        max-width: 200px;
-        height: auto;
-      }
+      .modal{position:fixed;z-index:10001;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5)}
+      .modal-content{background-color:white;margin:15% auto;padding:20px;border-radius:8px;width:400px;max-width:90%}
+      .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+      .close{color:#aaa;font-size:28px;font-weight:bold;cursor:pointer}
+      .close:hover{color:#000}
+      #qr-code-image{text-align:center;margin:20px 0}
+      #qr-code-image img{max-width:200px;height:auto}
     `;
-
     document.head.appendChild(styles);
     document.body.appendChild(container);
   }
 
   setupEventListeners() {
-    // Connect button
-    const connectBtn = document.getElementById('whatsapp-connect-btn');
-    if (connectBtn) {
-      connectBtn.addEventListener('click', () => this.showQRModal());
-    }
+    // No floating connect button anymore — modal is triggered by the app
 
     // Modal close button
     const closeBtn = document.querySelector('.close');
@@ -356,7 +248,7 @@ class CRMWhatsAppIntegration {
       this.hideQRModal();
     }
 
-    // Inform CRM page of current status
+    // Inform CRM page of current status (used by header/status chips)
     const evt = new CustomEvent('crm-whatsapp-status', {
       detail: {
         status: newStatus,

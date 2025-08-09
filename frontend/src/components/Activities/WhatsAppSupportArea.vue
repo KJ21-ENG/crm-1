@@ -531,6 +531,8 @@ onMounted(() => {
       qr_code_available: !connected && !!detail.qrCodeAvailable,
       is_initializing: detail.status === 'connecting',
     }
+    // Propagate status to parent so header reflects extension status immediately
+    emit('statusUpdate', whatsappStatus.value)
   }
 
   const onExtSend = (e) => {
