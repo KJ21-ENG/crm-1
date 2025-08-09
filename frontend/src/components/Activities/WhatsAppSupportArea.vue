@@ -100,6 +100,25 @@
       </div>
     </div>
 
+    <!-- Test Send Section -->
+    <div class="border-t bg-gray-50 p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-700">
+          Test WhatsApp Sender (sends to 6353131826)
+        </div>
+        <Button
+          variant="outline"
+          :loading="sendingTest"
+          @click="sendTestWhatsApp"
+        >
+          <template #prefix>
+            <FeatherIcon name="send" class="h-4 w-4" />
+          </template>
+          Send Test WhatsApp
+        </Button>
+      </div>
+    </div>
+
 
 
     <!-- WhatsApp Setup Modal -->
@@ -251,6 +270,7 @@ const searchQuery = ref('')
 const selectedPages = ref([])
 const showSetupModal = ref(false)
 const sending = ref(false)
+const sendingTest = ref(false)
 const generatingQR = ref(false)
 const qrCode = ref('')
 const loggingOut = ref(false)
@@ -513,6 +533,7 @@ onMounted(() => {
   const onExtSend = (e) => {
     const { success, error } = e.detail || {}
     sending.value = false
+    sendingTest.value = false
     if (success) {
       toast.success('Support pages sent successfully!')
       selectedPages.value = []
@@ -532,6 +553,23 @@ onMounted(() => {
     document.removeEventListener('crm-whatsapp-send', onExtSend)
   })
 })
+
+// Test sender
+const sendTestWhatsApp = () => {
+  const btn = extSendBtn.value
+  if (!btn) {
+    toast.error('Extension is not ready')
+    return
+  }
+  const phoneRaw = '6353131826'
+  // Let extension/service handle country code formatting; pass as-is
+  sendingTest.value = true
+  btn.setAttribute('data-phone', phoneRaw)
+  btn.setAttribute('data-message', 'Test message from CRM')
+  btn.setAttribute('data-doctype', props.doctype)
+  btn.setAttribute('data-docname', props.docname)
+  btn.click()
+}
 
 // Auto-generate QR code when modal opens and not connected
 watch(showSetupModal, (isOpen) => {
