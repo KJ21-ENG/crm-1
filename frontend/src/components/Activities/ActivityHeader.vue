@@ -6,16 +6,13 @@
     <div class="flex h-8 items-center text-xl font-semibold text-ink-gray-8">
       {{ __(title) }}
       <div v-if="title == 'WhatsApp Support'" class="ml-3 flex items-center space-x-2">
-        <div 
-          class="h-2 w-2 rounded-full"
-          :class="whatsappStatus?.connected ? 'bg-green-500' : 'bg-red-500'"
-        ></div>
-        <span class="text-sm font-normal text-gray-600">
-          {{ whatsappStatus?.connected ? 'Connected' : 'Disconnected' }}
-        </span>
-        <span v-if="whatsappStatus?.connected && whatsappStatus?.phoneNumber" class="text-sm font-normal text-gray-500">
-          - {{ whatsappStatus?.phoneNumber }}
-        </span>
+        <div class="flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+             :class="whatsappStatus?.connected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+          <span class="inline-block h-2 w-2 rounded-full mr-1"
+                :class="whatsappStatus?.connected ? 'bg-green-500' : 'bg-red-500'" />
+          <span>{{ whatsappStatus?.connected ? __('Connected') : __('Disconnected') }}</span>
+          <span v-if="whatsappStatus?.connected && whatsappStatus?.phoneNumber" class="ml-1 opacity-80">- {{ whatsappStatus?.phoneNumber }}</span>
+        </div>
       </div>
     </div>
     <Button
