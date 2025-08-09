@@ -73,6 +73,45 @@ def download_extension():
 
 
 @frappe.whitelist()
+def download_local_service():
+    """Download local-whatsapp-service folder as a zip (without auth cache)."""
+    try:
+        bench_root = os.path.abspath(os.path.join(get_site_path(), '..', '..'))
+        service_dir = os.path.join(bench_root, 'apps', 'crm', 'local-whatsapp-service')
+
+        if not os.path.exists(service_dir):
+            frappe.throw(_("Local service directory not found"))
+
+        # Create temp zip
+        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_zip:
+            temp_zip_path = temp_zip.name
+
+        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(service_dir):
+                # Skip .wwebjs_auth session cache
+                if '.wwebjs_auth' in dirs:
+                    dirs.remove('.wwebjs_auth')
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arc_name = os.path.relpath(file_path, service_dir)
+                    zipf.write(file_path, arc_name)
+
+        with open(temp_zip_path, 'rb') as f:
+            zip_content = f.read()
+        os.unlink(temp_zip_path)
+
+        frappe.response.filename = 'local-whatsapp-service.zip'
+        frappe.response.filecontent = zip_content
+        frappe.response.type = 'download'
+
+        return {'success': True, 'message': _('Local service downloaded successfully')}
+
+    except Exception as e:
+        frappe.log_error(f"Local Service Download Error: {str(e)}")
+        frappe.throw(_("Failed to download local service: {0}").format(str(e)))
+
+
+@frappe.whitelist()
 def get_local_whatsapp_status():
     """Get WhatsApp status from local service"""
     try:

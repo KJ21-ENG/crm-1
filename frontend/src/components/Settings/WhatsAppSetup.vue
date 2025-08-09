@@ -129,6 +129,38 @@
         </div>
       </div>
 
+      <!-- Local Service Download -->
+      <div class="bg-surface-gray-1 rounded-lg p-6 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm8 2H4v2h16v-2z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-ink-gray-8">{{ __('Download Local WhatsApp Service') }}</h3>
+            <p class="text-sm text-gray-600">{{ __('Node.js service that runs on your computer to enable WhatsApp messaging') }}</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-ink-gray-6">
+              <p class="mb-1">{{ __('Includes everything needed. Session cache is excluded.') }}</p>
+              <p class="text-xs">{{ __('After download: unzip → open terminal in folder → npm install → npm start') }}</p>
+            </div>
+            <Button
+              :label="__('Download Local Service')"
+              variant="solid"
+              theme="gray"
+              @click="downloadLocalService"
+              :loading="downloadingService"
+            >
+              <template #prefix>
+                <FeatherIcon name="download" class="h-4 w-4" />
+              </template>
+            </Button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -146,6 +178,8 @@ const extensionInfo = ref({
   description: 'Custom Chrome extension for Eshin Broking\'s multi-user WhatsApp integration',
   ready: false
 })
+
+const downloadingService = ref(false)
 
 // Fetch extension info
 const extensionInfoResource = createResource({
@@ -212,6 +246,34 @@ const downloadExtension = async () => {
     toast.error(__('Failed to download extension: ') + error.message)
   } finally {
     downloading.value = false
+  }
+}
+
+const downloadLocalService = async () => {
+  downloadingService.value = true
+  try {
+    const response = await fetch('/api/method/crm.api.whatsapp_setup.download_local_service', {
+      credentials: 'include',
+      headers: { 'Accept': 'application/zip, application/octet-stream, */*' },
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'local-whatsapp-service.zip'
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    toast.success(__('Local service downloaded successfully!'))
+  } catch (e) {
+    console.error('Local service download error:', e)
+    toast.error(__('Failed to download local service: ') + e.message)
+  } finally {
+    downloadingService.value = false
   }
 }
 </script> 
