@@ -137,7 +137,7 @@ async function logoutWhatsApp() {
     phoneNumber = null;
     
     // Notify content script of status change
-    chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*'] }, (tabs) => {
+    chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*', 'https://eshin.in/*', 'https://*.eshin.in/*'] }, (tabs) => {
       tabs.forEach(tab => {
         chrome.tabs.sendMessage(tab.id, {
           action: 'statusUpdate',
@@ -180,7 +180,7 @@ async function checkServiceStatus() {
       
       // Notify content script of status change
       if (previousStatus !== whatsappStatus) {
-        chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*'] }, (tabs) => {
+        chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*', 'https://eshin.in/*', 'https://*.eshin.in/*'] }, (tabs) => {
           tabs.forEach(tab => {
             chrome.tabs.sendMessage(tab.id, {
               action: 'statusUpdate',

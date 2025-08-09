@@ -93,6 +93,7 @@ class CRMWhatsAppIntegration {
     // Check if we're on a CRM page that has WhatsApp functionality
     return window.location.href.includes('localhost:8000') || 
            window.location.href.includes('crm.localhost') ||
+           window.location.href.includes('eshin.in') ||
            document.querySelector('[data-whatsapp-integration]');
   }
 

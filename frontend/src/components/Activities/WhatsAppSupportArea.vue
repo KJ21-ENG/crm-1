@@ -522,6 +522,7 @@ onMounted(() => {
   const onExtStatus = (e) => {
     const detail = e.detail || {}
     const connected = detail.status === 'connected'
+    console.log('[CRM WhatsApp] ui:status', detail)
     whatsappStatus.value = {
       connected,
       phoneNumber: detail.phoneNumber || null,
@@ -532,6 +533,7 @@ onMounted(() => {
 
   const onExtSend = (e) => {
     const { success, error } = e.detail || {}
+    console.log('[CRM WhatsApp] ui:sendResult', e.detail)
     sending.value = false
     sendingTest.value = false
     if (success) {
