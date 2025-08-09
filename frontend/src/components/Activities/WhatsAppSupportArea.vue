@@ -365,21 +365,39 @@ const sendSupportPages = async () => {
   // Prefer Chrome extension flow: trigger hidden button the extension intercepts
   try {
     sending.value = true
-    const btn = extSendBtn.value
-    if (btn) {
-      btn.setAttribute('data-phone', props.customer.mobile_no || '')
-      btn.setAttribute('data-message', message)
-      btn.setAttribute('data-doctype', props.doctype)
-      btn.setAttribute('data-docname', props.docname)
-      // Programmatic click -> extension content script intercepts and sends
-      btn.click()
-      // We will finalize UI state on extension result event
-    } else {
-      throw new Error('Extension trigger not available')
+    const phone = await fetchCustomerMobile()
+    if (!phone) {
+      throw new Error('Customer mobile number not found')
     }
+    const evt = new CustomEvent('crm-whatsapp-send-direct', { detail: { phone, message } })
+    document.dispatchEvent(evt)
   } catch (error) {
     sending.value = false
     toast.error('Failed to initiate WhatsApp send: ' + error.message)
+  }
+}
+
+// Fetch customer mobile via server: ticket -> customer_id -> customer.mobile_no
+async function fetchCustomerMobile() {
+  try {
+    // 1) Load ticket to get customer_id
+    const ticket = await createResource({
+      url: 'frappe.client.get',
+      params: { doctype: 'CRM Ticket', name: props.docname, fields: ['customer_id'] },
+    }).fetch()
+    const customerId = ticket?.customer_id
+    if (!customerId) return null
+
+    // 2) Get customer by name
+    const customer = await createResource({
+      url: 'frappe.client.get',
+      params: { doctype: 'CRM Customer', name: customerId, fields: ['mobile_no'] },
+    }).fetch()
+    const mobile = customer?.mobile_no || ''
+    return mobile
+  } catch (e) {
+    console.error('Failed to fetch customer mobile:', e)
+    return null
   }
 }
 
