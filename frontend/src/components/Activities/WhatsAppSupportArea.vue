@@ -90,6 +90,7 @@
           :disabled="!whatsappStatus.connected || sending"
           :loading="sending"
           @click="sendSupportPages"
+          data-whatsapp-send
         >
           <template #prefix>
             <FeatherIcon name="send" class="h-4 w-4" />
@@ -217,11 +218,13 @@
         </div>
       </template>
     </Dialog>
+    <!-- Hidden trigger button for extension interception -->
+    <button ref="extSendBtn" data-whatsapp-send style="display: none"></button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { createResource, Button, Dialog, toast } from 'frappe-ui'
 import { FeatherIcon } from 'frappe-ui'
 import WhatsAppActivityArea from '@/components/Activities/WhatsAppActivityArea.vue'
@@ -257,6 +260,7 @@ const whatsappStatus = ref({
   qr_code_available: false,
   is_initializing: false
 })
+const extSendBtn = ref(null)
 
 // WhatsApp activities resource
 const whatsappActivities = createResource({
@@ -334,31 +338,27 @@ const sendSupportPages = async () => {
     return
   }
 
-  sending.value = true
-  
-  try {
-    const message = generateMessage()
-    
-    const response = await createResource({
-      url: 'crm.api.whatsapp_setup.send_local_whatsapp_message',
-      params: {
-        to: props.customer.mobile_no,
-        message: message,
-      },
-    }).fetch()
+  const message = generateMessage()
+  if (!message) return
 
-    if (response.success) {
-      toast.success('Support pages sent successfully!')
-      selectedPages.value = []
-      searchQuery.value = ''
-      whatsappActivities.reload()
+  // Prefer Chrome extension flow: trigger hidden button the extension intercepts
+  try {
+    sending.value = true
+    const btn = extSendBtn.value
+    if (btn) {
+      btn.setAttribute('data-phone', props.customer.mobile_no || '')
+      btn.setAttribute('data-message', message)
+      btn.setAttribute('data-doctype', props.doctype)
+      btn.setAttribute('data-docname', props.docname)
+      // Programmatic click -> extension content script intercepts and sends
+      btn.click()
+      // We will finalize UI state on extension result event
     } else {
-      toast.error(response.message || 'Failed to send support pages')
+      throw new Error('Extension trigger not available')
     }
   } catch (error) {
-    toast.error('Error sending support pages: ' + error.message)
-  } finally {
     sending.value = false
+    toast.error('Failed to initiate WhatsApp send: ' + error.message)
   }
 }
 
@@ -497,9 +497,38 @@ onMounted(() => {
   const statusInterval = setInterval(checkWhatsAppStatus, 2000)
   
   // Cleanup interval on unmount
-  return () => {
-    clearInterval(statusInterval)
+  const onExtStatus = (e) => {
+    const detail = e.detail || {}
+    const connected = detail.status === 'connected'
+    whatsappStatus.value = {
+      connected,
+      phoneNumber: detail.phoneNumber || null,
+      qr_code_available: !connected && !!detail.qrCodeAvailable,
+      is_initializing: detail.status === 'connecting',
+    }
   }
+
+  const onExtSend = (e) => {
+    const { success, error } = e.detail || {}
+    sending.value = false
+    if (success) {
+      toast.success('Support pages sent successfully!')
+      selectedPages.value = []
+      searchQuery.value = ''
+      whatsappActivities.reload()
+    } else {
+      toast.error('Failed to send support pages' + (error ? `: ${error}` : ''))
+    }
+  }
+
+  document.addEventListener('crm-whatsapp-status', onExtStatus)
+  document.addEventListener('crm-whatsapp-send', onExtSend)
+
+  onBeforeUnmount(() => {
+    clearInterval(statusInterval)
+    document.removeEventListener('crm-whatsapp-status', onExtStatus)
+    document.removeEventListener('crm-whatsapp-send', onExtSend)
+  })
 })
 
 // Auto-generate QR code when modal opens and not connected

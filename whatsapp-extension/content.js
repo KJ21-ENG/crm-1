@@ -334,12 +334,16 @@ class CRMWhatsAppIntegration {
         message: message
       });
 
-      if (response.success) {
-        alert('Message sent successfully!');
-      } else {
+      // Dispatch a DOM event so the CRM UI can react (success/failure)
+      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: !!response?.success, error: response?.error } });
+      document.dispatchEvent(evt);
+
+      if (!response.success && response.error) {
         alert('Failed to send message: ' + response.error);
       }
     } catch (error) {
+      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: error.message } });
+      document.dispatchEvent(evt);
       alert('Error sending message: ' + error.message);
     }
   }
