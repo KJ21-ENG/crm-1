@@ -84,6 +84,15 @@ class CRMWhatsAppIntegration {
     // Check if we're on a CRM page that needs WhatsApp integration
     if (this.isCRMPage()) {
       await this.initializeExtension();
+      // Proactively sync status once so this.status is correct even if bg updated earlier
+      try {
+        const resp = await this.sendMessageToBackground('getStatus');
+        if (resp && resp.status) {
+          this.updateStatus(resp.status, resp.phoneNumber || null);
+        }
+      } catch (e) {
+        this.debug('init:getStatus:error', e?.message);
+      }
       this.injectWhatsAppUI();
       this.setupEventListeners();
     }

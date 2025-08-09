@@ -549,6 +549,9 @@ onMounted(() => {
   document.addEventListener('crm-whatsapp-status', onExtStatus)
   document.addEventListener('crm-whatsapp-send', onExtSend)
 
+  // Ask extension for current status on mount so header indicator is up to date
+  document.dispatchEvent(new Event('crm-whatsapp-request-status'))
+
   onBeforeUnmount(() => {
     if (statusInterval) clearInterval(statusInterval)
     document.removeEventListener('crm-whatsapp-status', onExtStatus)

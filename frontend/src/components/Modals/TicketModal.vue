@@ -1136,10 +1136,7 @@ const isPageSelected = (page) => {
 }
 
 const sendSupportPages = async () => {
-  if (!whatsappStatus.value.connected) {
-    toast.error('WhatsApp is not connected')
-    return
-  }
+  // If extension is connected we allow sending
 
   if (selectedPages.value.length === 0) {
     toast.error('Please select at least one support page')
