@@ -23,6 +23,37 @@ if (!fs.existsSync(sessionDir)) {
   fs.mkdirSync(sessionDir, { recursive: true });
 }
 
+// Try to detect a Chrome executable path for macOS/Linux/Windows
+function getChromeExecutablePath() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  const candidates = [
+    // macOS (regular)
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    // macOS (Chrome for Testing)
+    '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+    // Linux common paths
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    // Windows
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+  ];
+
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        return p;
+      }
+    } catch (_) {}
+  }
+
+  return undefined;
+}
+
 // Initialize WhatsApp client
 function initializeWhatsAppClient() {
   if (client) {
@@ -36,6 +67,7 @@ function initializeWhatsAppClient() {
     }),
     puppeteer: {
       headless: true,
+      executablePath: getChromeExecutablePath(),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -43,9 +75,9 @@ function initializeWhatsAppClient() {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
         '--disable-gpu'
-      ]
+      ],
+      timeout: 60000
     }
   });
 
