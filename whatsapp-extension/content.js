@@ -21,6 +21,24 @@ class CRMWhatsAppIntegration {
         this.updateStatus(request.status, request.phoneNumber);
       }
     });
+
+    // Listen for CRM page events
+    document.addEventListener('crm-whatsapp-open-qr', () => {
+      this.showQRModal();
+    });
+    document.addEventListener('crm-whatsapp-request-status', async () => {
+      try {
+        const response = await this.sendMessageToBackground('getStatus');
+        const evt = new CustomEvent('crm-whatsapp-status', {
+          detail: {
+            status: response?.status || this.status,
+            phoneNumber: response?.phoneNumber || null,
+            qrCodeAvailable: !!response?.qrCode,
+          },
+        });
+        document.dispatchEvent(evt);
+      } catch (e) {}
+    });
   }
 
   async setupIntegration() {
@@ -287,6 +305,16 @@ class CRMWhatsAppIntegration {
     if (newStatus === 'connected') {
       this.hideQRModal();
     }
+
+    // Inform CRM page of current status
+    const evt = new CustomEvent('crm-whatsapp-status', {
+      detail: {
+        status: newStatus,
+        phoneNumber,
+        qrCodeAvailable: this.qrCode != null,
+      },
+    });
+    document.dispatchEvent(evt);
   }
 
   interceptExistingWhatsAppButtons() {
