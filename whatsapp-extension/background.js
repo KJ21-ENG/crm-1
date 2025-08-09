@@ -66,6 +66,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Send WhatsApp message via local service
 async function sendWhatsAppMessage(phone, message) {
   try {
+    console.log('[CRM WhatsApp][bg] sendWhatsAppMessage', { phone: mask(phone), len: message?.length });
     const response = await fetch('http://localhost:3001/send-message', {
       method: 'POST',
       headers: {
@@ -78,15 +79,23 @@ async function sendWhatsAppMessage(phone, message) {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const text = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status}: ${response.statusText} ${text}`);
     }
     
     const result = await response.json();
+    console.log('[CRM WhatsApp][bg] sendWhatsAppMessage:response', result);
     return result;
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
     return { success: false, error: error.message };
   }
+}
+
+function mask(p) {
+  if (!p) return p;
+  const s = String(p);
+  return s.length > 4 ? s.slice(0, s.length - 4).replace(/\d/g, '*') + s.slice(-4) : s;
 }
 
 // Get QR code from local service

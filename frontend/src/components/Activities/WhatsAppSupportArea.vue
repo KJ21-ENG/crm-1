@@ -556,19 +556,16 @@ onMounted(() => {
 
 // Test sender
 const sendTestWhatsApp = () => {
-  const btn = extSendBtn.value
-  if (!btn) {
-    toast.error('Extension is not ready')
-    return
-  }
   const phoneRaw = '6353131826'
   // Let extension/service handle country code formatting; pass as-is
   sendingTest.value = true
-  btn.setAttribute('data-phone', phoneRaw)
-  btn.setAttribute('data-message', 'Test message from CRM')
-  btn.setAttribute('data-doctype', props.doctype)
-  btn.setAttribute('data-docname', props.docname)
-  btn.click()
+  try {
+    const evt = new CustomEvent('crm-whatsapp-send-direct', { detail: { phone: phoneRaw, message: 'Test message from CRM' } })
+    document.dispatchEvent(evt)
+  } catch (e) {
+    sendingTest.value = false
+    toast.error('Failed to trigger extension: ' + e.message)
+  }
 }
 
 // Auto-generate QR code when modal opens and not connected

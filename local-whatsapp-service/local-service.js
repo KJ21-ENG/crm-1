@@ -159,7 +159,8 @@ app.get('/qr-code', (req, res) => {
 // Send WhatsApp message
 app.post('/send-message', async (req, res) => {
   try {
-    const { phone, message } = req.body;
+    const { phone, message, debugId } = req.body;
+    console.log('[CRM WhatsApp][svc] send-message', { debugId, phone: mask(phone), len: message?.length });
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -182,6 +183,7 @@ app.post('/send-message', async (req, res) => {
 
     // Send message
     const result = await client.sendMessage(formattedPhone, message);
+    console.log('[CRM WhatsApp][svc] sent', { debugId, to: formattedPhone });
     
     res.json({
       success: true,
@@ -352,6 +354,12 @@ app.get('/client-info', (req, res) => {
     });
   }
 });
+
+function mask(p) {
+  if (!p) return p;
+  const s = String(p);
+  return s.length > 4 ? s.slice(0, s.length - 4).replace(/\d/g, '*') + s.slice(-4) : s;
+}
 
 // Error handling middleware
 app.use((error, req, res, next) => {

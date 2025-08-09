@@ -4,10 +4,12 @@ class CRMWhatsAppIntegration {
     this.status = 'disconnected';
     this.qrCode = null;
     this.isInitialized = false;
+    this.debugEnabled = true; // set to true for detailed debugging
     this.init();
   }
 
   async init() {
+    this.debug('init:start', { href: window.location.href });
     // Wait for page to load
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.setupIntegration());
@@ -18,15 +20,18 @@ class CRMWhatsAppIntegration {
     // Listen for messages from background script
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'statusUpdate') {
+        this.debug('bg:statusUpdate', { request });
         this.updateStatus(request.status, request.phoneNumber);
       }
     });
 
     // Listen for CRM page events
     document.addEventListener('crm-whatsapp-open-qr', () => {
+      this.debug('evt:openQR');
       this.showQRModal();
     });
     document.addEventListener('crm-whatsapp-request-status', async () => {
+      this.debug('evt:requestStatus');
       try {
         const response = await this.sendMessageToBackground('getStatus');
         const evt = new CustomEvent('crm-whatsapp-status', {
@@ -36,8 +41,42 @@ class CRMWhatsAppIntegration {
             qrCodeAvailable: !!response?.qrCode,
           },
         });
+        this.debug('evt:dispatchStatus', evt.detail);
         document.dispatchEvent(evt);
       } catch (e) {}
+    });
+
+    // Direct send hook from page
+    document.addEventListener('crm-whatsapp-send-direct', async (e) => {
+      try {
+        const detail = e.detail || {};
+        const phone = detail.phone;
+        const message = detail.message;
+        const debugId = this.generateDebugId();
+        this.debug('evt:sendDirect', { phone, messageLen: message?.length, debugId });
+
+        if (!phone || !message) {
+          const ev = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: 'Phone and message are required' } });
+          document.dispatchEvent(ev);
+          return;
+        }
+
+        if (this.status !== 'connected') {
+          const ev = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: 'WhatsApp not connected' } });
+          document.dispatchEvent(ev);
+          this.showQRModal();
+          return;
+        }
+
+        const response = await this.sendMessageToBackground('sendMessage', { phone, message, debugId });
+        this.debug('bg:sendMessage:response', { response, debugId });
+        const ev = new CustomEvent('crm-whatsapp-send', { detail: { success: !!response?.success, error: response?.error, debugId } });
+        document.dispatchEvent(ev);
+      } catch (error) {
+        this.debug('bg:sendMessage:error', { error: error?.message });
+        const ev = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: error.message } });
+        document.dispatchEvent(ev);
+      }
     });
   }
 
@@ -281,6 +320,7 @@ class CRMWhatsAppIntegration {
 
   updateStatus(newStatus, phoneNumber = null) {
     this.status = newStatus;
+    this.debug('ui:updateStatus', { status: newStatus, phoneNumber });
     
     // Update status indicator
     const statusDot = document.querySelector('.status-dot');
@@ -314,6 +354,7 @@ class CRMWhatsAppIntegration {
         qrCodeAvailable: this.qrCode != null,
       },
     });
+    this.debug('evt:dispatchStatus', evt.detail);
     document.dispatchEvent(evt);
   }
 
@@ -344,6 +385,8 @@ class CRMWhatsAppIntegration {
                  button.closest('form')?.querySelector('[name="phone"]')?.value;
     const message = button.getAttribute('data-message') || 
                    button.closest('form')?.querySelector('[name="message"]')?.value;
+    const debugId = this.generateDebugId();
+    this.debug('btn:handleSend', { phone, messageLen: message?.length, debugId });
 
     if (!phone || !message) {
       alert('Phone number and message are required');
@@ -359,12 +402,14 @@ class CRMWhatsAppIntegration {
     try {
       const response = await this.sendMessageToBackground('sendMessage', {
         phone: phone,
-        message: message
+        message: message,
+        debugId,
       });
 
       // Dispatch a DOM event so the CRM UI can react (success/failure)
-      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: !!response?.success, error: response?.error } });
+      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: !!response?.success, error: response?.error, debugId } });
       document.dispatchEvent(evt);
+      this.debug('bg:sendMessage:response', { response, debugId });
 
       if (!response.success && response.error) {
         alert('Failed to send message: ' + response.error);
@@ -372,20 +417,37 @@ class CRMWhatsAppIntegration {
     } catch (error) {
       const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: error.message } });
       document.dispatchEvent(evt);
+      this.debug('bg:sendMessage:error', { error: error?.message, debugId });
       alert('Error sending message: ' + error.message);
     }
   }
 
   sendMessageToBackground(action, data = {}) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ action, ...data }, (response) => {
+      const payload = { action, ...data };
+      this.debug('bg:message:send', payload);
+      chrome.runtime.sendMessage(payload, (response) => {
         if (chrome.runtime.lastError) {
+          this.debug('bg:message:error', { error: chrome.runtime.lastError.message });
           reject(new Error(chrome.runtime.lastError.message));
         } else {
+          this.debug('bg:message:recv', response);
           resolve(response);
         }
       });
     });
+  }
+
+  // Utilities
+  debug(tag, data) {
+    if (!this.debugEnabled) return;
+    try {
+      console.log('[CRM WhatsApp]', tag, data || '');
+    } catch (e) {}
+  }
+
+  generateDebugId() {
+    return 'dbg-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 }
 
