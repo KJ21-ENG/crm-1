@@ -234,6 +234,52 @@ def get_whatsapp_service_url():
     """Get WhatsApp service URL from site config"""
     return frappe.conf.get('whatsapp_service_url', 'http://localhost:3001')
 
+
+@frappe.whitelist()
+def log_support_activity(doctype, docname, customer_mobile, support_pages=None, message=None, status="success", error=None):
+    """Create an activity entry for WhatsApp Support without sending the message.
+
+    Used when the Chrome extension sends the message directly and we only need to
+    reflect the outcome in the CRM timeline.
+    """
+    try:
+        # support_pages can arrive as JSON string from the client
+        if isinstance(support_pages, str):
+            try:
+                support_pages = json.loads(support_pages)
+            except Exception:
+                support_pages = []
+
+        page_count = len(support_pages or [])
+
+        if (status or "").lower() == "success":
+            content = f"📱 WhatsApp Support: Sent {page_count} support page(s) to {customer_mobile}"
+        else:
+            suffix = f": {error}" if error else ""
+            content = f"📱 WhatsApp Support: Failed to send to {customer_mobile}{suffix}"
+
+        frappe.get_doc({
+            'doctype': 'Comment',
+            'comment_type': 'Info',
+            'reference_doctype': doctype,
+            'reference_name': docname,
+            'content': content,
+            'comment_email': frappe.session.user,
+            'creation': now(),
+        }).insert(ignore_permissions=True)
+
+        # Try to notify clients to refresh timeline
+        try:
+            from crm.crm.api.activities import emit_activity_update
+            emit_activity_update(doctype, docname)
+        except Exception:
+            pass
+
+        return {"success": True}
+    except Exception as e:
+        frappe.log_error(f"WhatsApp Support Log Error: {str(e)}")
+        return {"success": False, "message": str(e)}
+
 @frappe.whitelist()
 def send_support_pages(doctype, docname, customer_mobile, support_pages, message):
     """Send multiple support pages to customer via WhatsApp"""

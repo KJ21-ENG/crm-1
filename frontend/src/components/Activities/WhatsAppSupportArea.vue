@@ -255,6 +255,7 @@ const selectedPages = ref([])
 const showSetupModal = ref(false)
 const sending = ref(false)
 const sendingTest = ref(false)
+const lastSendContext = ref(null)
 const generatingQR = ref(false)
 const qrCode = ref('')
 const loggingOut = ref(false)
@@ -352,6 +353,12 @@ const sendSupportPages = async () => {
     const phone = await fetchCustomerMobile()
     if (!phone) {
       throw new Error('Customer mobile number not found')
+    }
+    // Remember context so we can log an activity when extension responds
+    lastSendContext.value = {
+      phone,
+      message,
+      supportPages: selectedPages.value.map(p => p.name),
     }
     const evt = new CustomEvent('crm-whatsapp-send-direct', { detail: { phone, message } })
     document.dispatchEvent(evt)
@@ -544,9 +551,45 @@ onMounted(() => {
       toast.success('Support pages sent successfully!')
       selectedPages.value = []
       searchQuery.value = ''
-      whatsappActivities.reload()
+      // Log activity on server so it appears in timeline
+      try {
+        const ctx = lastSendContext.value || {}
+        createResource({
+          url: 'crm.api.whatsapp_support.log_support_activity',
+          params: {
+            doctype: props.doctype,
+            docname: props.docname,
+            customer_mobile: ctx.phone,
+            support_pages: ctx.supportPages,
+            message: ctx.message,
+            status: 'success',
+          },
+          auto: true,
+          onSuccess: () => whatsappActivities.reload(),
+        })
+      } catch (_) {
+        whatsappActivities.reload()
+      }
     } else {
       toast.error('Failed to send support pages' + (error ? `: ${error}` : ''))
+      // Log failed attempt as well
+      try {
+        const ctx = lastSendContext.value || {}
+        createResource({
+          url: 'crm.api.whatsapp_support.log_support_activity',
+          params: {
+            doctype: props.doctype,
+            docname: props.docname,
+            customer_mobile: ctx.phone,
+            support_pages: ctx.supportPages,
+            message: ctx.message,
+            status: 'failed',
+            error,
+          },
+          auto: true,
+          onSuccess: () => whatsappActivities.reload(),
+        })
+      } catch (_) {}
     }
   }
 
