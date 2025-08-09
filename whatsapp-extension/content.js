@@ -305,7 +305,7 @@ class CRMWhatsAppIntegration {
   async loadQRCode() {
     try {
       const response = await this.sendMessageToBackground('getQRCode');
-      if (response.qrCode) {
+      if (response && response.qrCode) {
         this.displayQRCode(response.qrCode);
       }
     } catch (error) {

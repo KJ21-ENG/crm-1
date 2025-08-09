@@ -3,6 +3,7 @@ let localServicePort = null;
 let whatsappStatus = 'disconnected';
 let qrCodeData = null;
 let phoneNumber = null;
+let sse;
 
 // Initialize local WhatsApp service
 async function initializeLocalService() {
@@ -132,7 +133,7 @@ async function logoutWhatsApp() {
     const result = await response.json();
     
     // Update local status
-    whatsappStatus = 'disconnected';
+    whatsappStatus = 'connecting';
     qrCodeData = null;
     phoneNumber = null;
     
@@ -199,6 +200,42 @@ async function checkServiceStatus() {
 
 // Check status every 5 seconds
 setInterval(checkServiceStatus, 5000);
+
+// Live updates from service via SSE
+function startEventStream() {
+  try {
+    if (sse) sse.close();
+    sse = new EventSource('http://localhost:3001/events');
+    sse.addEventListener('status', (evt) => {
+      try {
+        const data = JSON.parse(evt.data || '{}');
+        if (data.status) {
+          const prev = whatsappStatus;
+          whatsappStatus = data.status;
+          if (prev !== whatsappStatus) {
+            chrome.tabs.query({ url: ['http://localhost:8000/*', 'https://crm.localhost/*', 'https://eshin.in/*', 'https://*.eshin.in/*'] }, (tabs) => {
+              tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { action: 'statusUpdate', status: whatsappStatus, phoneNumber }));
+            });
+          }
+        }
+      } catch (_) {}
+    });
+    sse.addEventListener('qr', (evt) => {
+      try {
+        const data = JSON.parse(evt.data || '{}');
+        qrCodeData = data.qrCode || null;
+        // no explicit UI push needed; content will request qr when opening modal
+      } catch (_) {}
+    });
+    sse.onerror = () => {
+      try { sse.close(); } catch (_) {}
+      setTimeout(startEventStream, 3000);
+    };
+  } catch (_) {
+    setTimeout(startEventStream, 3000);
+  }
+}
+startEventStream();
 
 // Initialize on extension load
 initializeLocalService(); 

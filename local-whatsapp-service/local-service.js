@@ -16,6 +16,19 @@ app.use(express.json());
 let client = null;
 let qrCodeData = null;
 let clientStatus = 'disconnected';
+let lastQrAt = 0;
+
+// SSE clients for live updates
+const sseClients = new Set();
+
+function sseBroadcast(event, data) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of sseClients) {
+    try {
+      res.write(payload);
+    } catch (_) {}
+  }
+}
 
 // Create session directory
 const sessionDir = path.join(__dirname, '.wwebjs_auth');
@@ -88,6 +101,10 @@ function initializeWhatsAppClient() {
       qrCodeData = await qrcode.toDataURL(qr);
       clientStatus = 'connecting';
       console.log('QR Code generated');
+      lastQrAt = Date.now();
+      // Notify listeners in real-time
+      sseBroadcast('qr', { qrCode: qrCodeData.split(',')[1] });
+      sseBroadcast('status', { status: clientStatus });
     } catch (error) {
       console.error('Error generating QR code:', error);
     }
@@ -97,23 +114,27 @@ function initializeWhatsAppClient() {
     console.log('WhatsApp client is ready!');
     clientStatus = 'connected';
     qrCodeData = null;
+    sseBroadcast('status', { status: clientStatus });
   });
 
   client.on('authenticated', () => {
     console.log('WhatsApp client authenticated');
     clientStatus = 'authenticated';
+    sseBroadcast('status', { status: clientStatus });
   });
 
   client.on('auth_failure', (msg) => {
     console.error('WhatsApp authentication failed:', msg);
     clientStatus = 'auth_failed';
     qrCodeData = null;
+    sseBroadcast('status', { status: clientStatus });
   });
 
   client.on('disconnected', (reason) => {
     console.log('WhatsApp client disconnected:', reason);
     clientStatus = 'disconnected';
     qrCodeData = null;
+    sseBroadcast('status', { status: clientStatus });
   });
 
   client.on('message', (message) => {
@@ -136,6 +157,25 @@ app.get('/status', (req, res) => {
     status: clientStatus,
     timestamp: new Date().toISOString(),
     service: 'CRM Local WhatsApp Service'
+  });
+});
+
+// SSE stream for real-time updates
+app.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  sseClients.add(res);
+
+  // Send initial snapshot
+  res.write(`event: status\ndata: ${JSON.stringify({ status: clientStatus })}\n\n`);
+  if (qrCodeData) {
+    res.write(`event: qr\ndata: ${JSON.stringify({ qrCode: qrCodeData.split(',')[1] })}\n\n`);
+  }
+
+  req.on('close', () => {
+    sseClients.delete(res);
   });
 });
 
@@ -258,8 +298,9 @@ app.post('/logout', async (req, res) => {
       }
     }
     
-    // Don't automatically reinitialize - let user request new QR code
-    console.log('Logout completed. User must request new QR code to reconnect.');
+    // Immediately reinitialize to generate new QR for quick reconnect
+    initializeWhatsAppClient();
+    console.log('Logout completed. Reinitializing for fresh QR...');
     
     res.json({
       success: true,
@@ -403,3 +444,16 @@ process.on('SIGTERM', () => {
   }
   process.exit(0);
 }); 
+
+// Periodically ensure a fresh QR is available when not connected
+setInterval(() => {
+  if (clientStatus !== 'connected') {
+    const staleMs = Date.now() - (lastQrAt || 0);
+    if (!qrCodeData || staleMs > 55_000) {
+      try {
+        console.log('Refreshing QR...');
+        initializeWhatsAppClient();
+      } catch (_) {}
+    }
+  }
+}, 30_000);
