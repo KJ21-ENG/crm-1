@@ -17,6 +17,7 @@ let client = null;
 let qrCodeData = null;
 let clientStatus = 'disconnected';
 let lastQrAt = 0;
+let isInitializing = false;
 
 // SSE clients for live updates
 const sseClients = new Set();
@@ -69,8 +70,12 @@ function getChromeExecutablePath() {
 
 // Initialize WhatsApp client
 function initializeWhatsAppClient() {
+  if (isInitializing) {
+    return;
+  }
+  isInitializing = true;
   if (client) {
-    client.destroy();
+    try { client.destroy(); } catch (_) {}
   }
 
   client = new Client({
@@ -115,12 +120,14 @@ function initializeWhatsAppClient() {
     clientStatus = 'connected';
     qrCodeData = null;
     sseBroadcast('status', { status: clientStatus });
+    isInitializing = false;
   });
 
   client.on('authenticated', () => {
     console.log('WhatsApp client authenticated');
     clientStatus = 'authenticated';
     sseBroadcast('status', { status: clientStatus });
+    // keep initializing until 'ready'
   });
 
   client.on('auth_failure', (msg) => {
@@ -128,6 +135,7 @@ function initializeWhatsAppClient() {
     clientStatus = 'auth_failed';
     qrCodeData = null;
     sseBroadcast('status', { status: clientStatus });
+    isInitializing = false;
   });
 
   client.on('disconnected', (reason) => {
@@ -135,6 +143,7 @@ function initializeWhatsAppClient() {
     clientStatus = 'disconnected';
     qrCodeData = null;
     sseBroadcast('status', { status: clientStatus });
+    isInitializing = false;
   });
 
   client.on('message', (message) => {
@@ -146,6 +155,7 @@ function initializeWhatsAppClient() {
   client.initialize().catch(error => {
     console.error('Failed to initialize WhatsApp client:', error);
     clientStatus = 'error';
+    isInitializing = false;
   });
 }
 
@@ -276,26 +286,15 @@ app.post('/logout', async (req, res) => {
     clientStatus = 'disconnected';
     qrCodeData = null;
     
-    // Clear session data
-    const sessionPath = path.join(sessionDir, 'crm-local-client');
-    if (fs.existsSync(sessionPath)) {
-      try {
-        fs.rmSync(sessionPath, { recursive: true, force: true });
-        console.log('Session data cleared');
-      } catch (error) {
-        console.error('Error clearing session data:', error);
+    // Clear ALL LocalAuth data to prevent auto-login
+    try {
+      if (fs.existsSync(sessionDir)) {
+        fs.rmSync(sessionDir, { recursive: true, force: true });
+        console.log('LocalAuth session root cleared');
       }
-    }
-    
-    // Clear cache data as well
-    const cachePath = path.join(sessionDir, '.wwebjs_cache');
-    if (fs.existsSync(cachePath)) {
-      try {
-        fs.rmSync(cachePath, { recursive: true, force: true });
-        console.log('Cache data cleared');
-      } catch (error) {
-        console.error('Error clearing cache data:', error);
-      }
+      fs.mkdirSync(sessionDir, { recursive: true });
+    } catch (error) {
+      console.error('Error resetting LocalAuth directory:', error);
     }
     
     // Immediately reinitialize to generate new QR for quick reconnect
