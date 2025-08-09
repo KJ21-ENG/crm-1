@@ -90,7 +90,6 @@
           :disabled="!whatsappStatus.connected || sending"
           :loading="sending"
           @click="sendSupportPages"
-          data-whatsapp-send
         >
           <template #prefix>
             <FeatherIcon name="send" class="h-4 w-4" />
@@ -221,8 +220,6 @@
         </div>
       </template>
     </Dialog>
-    <!-- Hidden trigger button for extension interception -->
-    <button ref="extSendBtn" data-whatsapp-send style="display: none"></button>
   </div>
 </template>
 
