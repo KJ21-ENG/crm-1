@@ -17,7 +17,7 @@
     </div>
 
     <!-- Search and Results -->
-    <div class="flex-1 overflow-auto p-4">
+    <div class="flex-1 p-4">
       <div class="space-y-3">
         <!-- Search Box -->
         <div class="space-y-2">
@@ -36,8 +36,8 @@
           </div>
         </div>
 
-        <!-- Search Results -->
-        <div v-if="searchQuery && filteredSupportPages.length > 0" class="space-y-2">
+        <!-- Search Results (independent scroll) -->
+        <div v-if="searchQuery && filteredSupportPages.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-2">
           <div 
             v-for="page in filteredSupportPages"
             :key="page.name"
@@ -101,23 +101,7 @@
     </div>
 
     <!-- Test Send Section -->
-    <div class="border-t bg-gray-50 p-4">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-700">
-          Test WhatsApp Sender (sends to 6353131826)
-        </div>
-        <Button
-          variant="outline"
-          :loading="sendingTest"
-          @click="sendTestWhatsApp"
-        >
-          <template #prefix>
-            <FeatherIcon name="send" class="h-4 w-4" />
-          </template>
-          Send Test WhatsApp
-        </Button>
-      </div>
-    </div>
+    
 
 
 

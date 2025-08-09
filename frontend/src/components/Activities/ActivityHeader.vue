@@ -85,16 +85,7 @@
         <span>{{ __('New Message') }}</span>
       </Button>
     </div>
-    <Button
-      v-else-if="title == 'WhatsApp Support'"
-      variant="solid"
-      @click="openWhatsAppSetup"
-    >
-      <template #prefix>
-        <FeatherIcon name="settings" class="h-4 w-4" />
-      </template>
-      <span>{{ __('Setup WhatsApp') }}</span>
-    </Button>
+    
     <Dropdown v-else :options="defaultActions" @click.stop>
       <template v-slot="{ open }">
         <Button variant="solid" class="flex items-center gap-1">

@@ -399,12 +399,14 @@ class CRMWhatsAppIntegration {
     this.debug('btn:handleSend', { phone, messageLen: message?.length, debugId });
 
     if (!phone || !message) {
-      alert('Phone number and message are required');
+      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: 'Phone number and message are required' } });
+      document.dispatchEvent(evt);
       return;
     }
 
     if (this.status !== 'connected') {
-      alert('Please connect WhatsApp first');
+      const evt = new CustomEvent('crm-whatsapp-send', { detail: { success: false, error: 'WhatsApp not connected' } });
+      document.dispatchEvent(evt);
       this.showQRModal();
       return;
     }

@@ -10,7 +10,6 @@
     :whatsappBox="whatsappBox"
     :modalRef="modalRef"
     :whatsappStatus="whatsappStatus"
-    @openWhatsAppSetup="openWhatsAppSetup"
   />
   <FadedScrollableDiv
     :maskHeight="30"
