@@ -261,6 +261,7 @@ const whatsappStatus = ref({
   is_initializing: false
 })
 const extSendBtn = ref(null)
+const isHosted = typeof window !== 'undefined' && !['localhost', 'crm.localhost'].includes(window.location.hostname)
 
 // WhatsApp activities resource
 const whatsappActivities = createResource({
@@ -491,10 +492,11 @@ defineExpose({
 
 // Lifecycle
 onMounted(() => {
-  checkWhatsAppStatus()
-  
-  // Check status every 2 seconds for real-time updates
-  const statusInterval = setInterval(checkWhatsAppStatus, 2000)
+  if (!isHosted) {
+    checkWhatsAppStatus()
+  }
+  // Check status every 2 seconds for real-time updates (server-side only for local dev)
+  const statusInterval = !isHosted ? setInterval(checkWhatsAppStatus, 2000) : null
   
   // Cleanup interval on unmount
   const onExtStatus = (e) => {
@@ -525,7 +527,7 @@ onMounted(() => {
   document.addEventListener('crm-whatsapp-send', onExtSend)
 
   onBeforeUnmount(() => {
-    clearInterval(statusInterval)
+    if (statusInterval) clearInterval(statusInterval)
     document.removeEventListener('crm-whatsapp-status', onExtStatus)
     document.removeEventListener('crm-whatsapp-send', onExtSend)
   })

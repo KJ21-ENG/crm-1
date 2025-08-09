@@ -31,11 +31,12 @@
             <div class="text-center">
               <div class="font-medium mb-2">{{ __('Scan QR Code') }}</div>
               <div class="text-sm text-gray-600 mb-4">
-                {{ __('Open WhatsApp on your phone and scan the QR code below') }}
+                <span v-if="!isHosted">{{ __('Open WhatsApp on your phone and scan the QR code below') }}</span>
+                <span v-else>{{ __('Use the CRM WhatsApp extension popup to connect') }}</span>
               </div>
               <div class="flex justify-center">
                 <div 
-                  v-if="qrCode"
+                  v-if="qrCode && !isHosted"
                   class="border rounded-lg p-4 bg-white"
                 >
                   <img 
@@ -60,17 +61,20 @@
                 </div>
                 <div v-else class="border rounded-lg p-8 bg-gray-100">
                   <div class="text-center text-gray-500">
-                    <div v-if="whatsappStatus.is_initializing" class="mb-2">
+                    <div v-if="whatsappStatus.is_initializing && !isHosted" class="mb-2">
                       <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
                       {{ __('Initializing WhatsApp...') }}
                     </div>
-                    <div v-else-if="generatingQR" class="mb-2">
+                    <div v-else-if="generatingQR && !isHosted" class="mb-2">
                       <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
                       {{ __('Generating QR Code...') }}
                     </div>
-                    <div v-else class="mb-2">{{ __('Loading QR Code...') }}</div>
+                    <div v-else class="mb-2">
+                      <span v-if="!isHosted">{{ __('Loading QR Code...') }}</span>
+                      <span v-else>{{ __('Open the extension (toolbar) and click Connect WhatsApp') }}</span>
+                    </div>
                     <Button
-                      v-if="!whatsappStatus.is_initializing"
+                      v-if="!whatsappStatus.is_initializing && !isHosted"
                       variant="outline"
                       size="sm"
                       @click="generateQRCode"
@@ -141,12 +145,18 @@ const whatsappStatus = ref({
   qr_code_available: false,
   is_initializing: false
 })
+const isHosted = typeof window !== 'undefined' && !['localhost', 'crm.localhost'].includes(window.location.hostname)
 
 const generateQRCode = async () => {
   if (generatingQR.value) return // Prevent multiple simultaneous calls
   
   generatingQR.value = true
   try {
+    if (isHosted) {
+      // On hosted domains, rely on extension popup for QR instead of server calling localhost
+      toast.info('Use the CRM WhatsApp extension popup to connect')
+      return
+    }
     const response = await createResource({
       url: 'crm.api.whatsapp_setup.get_local_whatsapp_qr',
     }).fetch()
@@ -172,9 +182,16 @@ const generateQRCode = async () => {
 
 const checkWhatsAppStatus = async () => {
   try {
-    const response = await createResource({
-      url: 'crm.api.whatsapp_setup.get_local_whatsapp_status',
-    }).fetch()
+    let response
+    if (isHosted) {
+      // Request status from extension via DOM event; leave server call for local dev only
+      document.dispatchEvent(new Event('crm-whatsapp-request-status'))
+      response = {}
+    } else {
+      response = await createResource({
+        url: 'crm.api.whatsapp_setup.get_local_whatsapp_status',
+      }).fetch()
+    }
 
     const newStatus = {
       connected: response.connected || false,
@@ -265,11 +282,11 @@ watch(show, (isOpen) => {
   if (isOpen) {
     checkWhatsAppStatus()
     // Start real-time polling when modal is open
-    const statusInterval = setInterval(checkWhatsAppStatus, 2000)
+    const statusInterval = isHosted ? null : setInterval(checkWhatsAppStatus, 2000)
     
     // Cleanup interval when modal closes
     return () => {
-      clearInterval(statusInterval)
+      if (statusInterval) clearInterval(statusInterval)
     }
   }
 })
