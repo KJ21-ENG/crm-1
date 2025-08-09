@@ -487,7 +487,7 @@
       :docname="doc.data.name"
       :customer="doc.data"
       ref="whatsappSupportRef"
-      @statusUpdate="whatsappStatus = $event"
+      @statusUpdate="updateWhatsappStatus"
     />
   </div>
   <WhatsappTemplateSelectorModal
@@ -606,6 +606,10 @@ const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
 })
+
+function updateWhatsappStatus(status) {
+  whatsappStatus.value = status
+}
 
 const title = computed(() => props.tabs?.[tabIndex.value]?.name || 'Activity')
 
