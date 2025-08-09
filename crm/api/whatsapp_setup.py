@@ -115,12 +115,9 @@ def get_local_whatsapp_qr():
         if response.status_code == 200:
             data = response.json()
             if data.get('qrCode'):
-                # Convert base64 back to data URL
+                # Convert base64 back to data URL for UI consumption
                 qr_data_url = f"data:image/png;base64,{data['qrCode']}"
-                return {
-                    'success': True,
-                    'qr_code': qr_data_url
-                }
+                return {'success': True, 'qr_code': qr_data_url}
             else:
                 return {
                     'success': False,
@@ -151,9 +148,7 @@ def send_local_whatsapp_message():
             'message': params.get('message')
         }
         
-        response = requests.post('http://localhost:3001/send-message', 
-                               json=message_data, 
-                               timeout=30)
+        response = requests.post('http://localhost:3001/send-message', json=message_data, timeout=30)
         
         if response.status_code == 200:
             data = response.json()

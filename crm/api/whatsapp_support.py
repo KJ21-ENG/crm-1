@@ -122,13 +122,14 @@ def send_whatsapp_message_via_service(phone, message):
     service_url = frappe.conf.get("whatsapp_service_url", "http://localhost:3001")
     
     try:
+        # Use unified endpoint and payload compatible with local-whatsapp-service
         response = requests.post(
-            f"{service_url}/send",
+            f"{service_url}/send-message",
             json={
-                "phoneNumber": phone,
-                "message": message
+                "phone": phone,
+                "message": message,
             },
-            timeout=30
+            timeout=30,
         )
         
         if response.status_code == 200:
@@ -260,10 +261,14 @@ def send_support_pages(doctype, docname, customer_mobile, support_pages, message
         
         # Send message via WhatsApp service
         service_url = get_whatsapp_service_url()
-        response = requests.post(f"{service_url}/send-message", json={
-            'to': customer_mobile,
-            'message': message
-        }, timeout=30)
+        response = requests.post(
+            f"{service_url}/send-message",
+            json={
+                "phone": customer_mobile,
+                "message": message,
+            },
+            timeout=30,
+        )
         
         if response.status_code == 200:
             result = response.json()
@@ -326,10 +331,14 @@ def send_support_pages_without_ticket(customer_mobile, support_pages, message=No
         
         # Send message via WhatsApp service
         service_url = get_whatsapp_service_url()
-        response = requests.post(f"{service_url}/send-message", json={
-            'to': customer_mobile,
-            'message': message
-        }, timeout=30)
+        response = requests.post(
+            f"{service_url}/send-message",
+            json={
+                "phone": customer_mobile,
+                "message": message,
+            },
+            timeout=30,
+        )
         
         if response.status_code == 200:
             result = response.json()
@@ -353,10 +362,10 @@ def get_qr_code():
         
         if response.status_code == 200:
             result = response.json()
-            if result.get('success'):
-                return {"success": True, "qr_code": result.get('qr_code')}
-            else:
-                return {"success": False, "message": result.get('message', 'Failed to generate QR code')}
+            # Local service returns { qrCode: <base64>, status: <string> }
+            if result.get('qrCode'):
+                return {"success": True, "qr_code": f"data:image/png;base64,{result.get('qrCode')}"}
+            return {"success": False, "message": result.get('error', 'QR code not available')}
         else:
             return {"success": False, "message": "WhatsApp service unavailable"}
     
@@ -370,22 +379,41 @@ def get_status():
     try:
         service_url = get_whatsapp_service_url()
         response = requests.get(f"{service_url}/status", timeout=30)
-        
-        if response.status_code == 200:
-            result = response.json()
-            return {
-                "connected": result.get('connected', False),
-                "phone_number": result.get('phone_number', None),
-                "qr_code_available": result.get('qr_code_available', False),
-                "is_initializing": result.get('is_initializing', False)
-            }
-        else:
-            return {
-                "connected": False, 
-                "phone_number": None,
-                "qr_code_available": False,
-                "is_initializing": False
-            }
+
+        if response.status_code != 200:
+            return {"connected": False, "phone_number": None, "qr_code_available": False, "is_initializing": False}
+
+        result = response.json()
+        status = (result.get('status') or '').lower()
+        is_connected = status == 'connected'
+
+        phone_number = None
+        if is_connected:
+            try:
+                info_res = requests.get(f"{service_url}/client-info", timeout=10)
+                if info_res.status_code == 200:
+                    info = info_res.json()
+                    phone_number = (info.get('info') or {}).get('wid')
+            except Exception:
+                pass
+
+        # Determine QR availability best-effort: if not connected, try fetching qr-code
+        qr_available = False
+        if not is_connected:
+            try:
+                qr_res = requests.get(f"{service_url}/qr-code", timeout=10)
+                qr_available = qr_res.status_code == 200 and bool((qr_res.json() or {}).get('qrCode'))
+            except Exception:
+                qr_available = False
+
+        is_initializing = status in ['connecting', 'authenticated', 'initializing']
+
+        return {
+            "connected": is_connected,
+            "phone_number": phone_number,
+            "qr_code_available": qr_available,
+            "is_initializing": is_initializing,
+        }
     
     except Exception as e:
         frappe.log_error(f"WhatsApp Status Error: {str(e)}")

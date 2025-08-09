@@ -15,17 +15,17 @@ The WhatsApp Support feature allows CRM users to send support page links directl
 
 ## 🚀 **Setup Instructions**
 
-### **1. Install WhatsApp Service Dependencies**
+### **1. Install Local WhatsApp Service Dependencies**
 
 ```bash
-cd apps/crm/whatsapp-service
+cd apps/crm/local-whatsapp-service
 npm install
 ```
 
-### **2. Start WhatsApp Service**
+### **2. Start Local WhatsApp Service**
 
 ```bash
-# From the whatsapp-service directory
+# From the local-whatsapp-service directory
 npm start
 
 # OR with auto-restart during development
@@ -124,10 +124,10 @@ apps/crm/
 │   ├── components/Activities/WhatsAppSupportArea.vue
 │   ├── components/Icons/SupportPagesIcon.vue
 │   └── pages/SupportPages.vue
-└── whatsapp-service/
-    ├── whatsapp-service.js
+└── local-whatsapp-service/
+    ├── local-service.js
     ├── package.json
-    └── whatsapp-status.json
+    └── install.sh
 ```
 
 ---
@@ -142,7 +142,7 @@ apps/crm/
 lsof -i :3001
 
 # Kill existing process if needed
-pkill -f whatsapp-service
+pkill -f local-service.js
 
 # Restart the service
 npm start
@@ -263,8 +263,7 @@ npm run dev
 curl http://localhost:3001/status
 
 # Restart service if needed
-cd apps/crm/whatsapp-service
-npm run stop
+cd apps/crm/local-whatsapp-service
 npm start
 
 # Logout from WhatsApp (if needed to reconnect)

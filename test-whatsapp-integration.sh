@@ -55,7 +55,7 @@ test_local_service() {
         return 0
     else
         echo -e "${RED}❌ Local service not running on port 3001${NC}"
-        echo -e "${YELLOW}💡 Start the service: cd apps/crm/local-whatsapp-service && ./start-service.sh${NC}"
+        echo -e "${YELLOW}💡 Start the service: cd apps/crm/local-whatsapp-service && npm start${NC}"
         return 1
     fi
 }
@@ -179,7 +179,7 @@ else
     echo ""
     echo "🔧 Common fixes:"
     echo "1. Install Node.js 16+ if missing"
-    echo "2. Start local service: cd apps/crm/local-whatsapp-service && ./start-service.sh"
+    echo "2. Start local service: cd apps/crm/local-whatsapp-service && npm start"
     echo "3. Check CRM is running"
     echo "4. Verify internet connection"
 fi

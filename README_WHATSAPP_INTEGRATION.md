@@ -43,7 +43,7 @@ apps/crm/
 │   │   └── icon128.png
 │   ├── generate-icons.py        # Icon generation script
 │   └── README.md                # Extension documentation
-├── local-whatsapp-service/       # Local Node.js service
+├── local-whatsapp-service/       # Local Node.js service (primary)
 │   ├── local-service.js         # Main service file
 │   ├── package.json             # Dependencies
 │   ├── install.sh               # Installation script
@@ -237,7 +237,7 @@ tail -f apps/crm/local-whatsapp-service/service-error.log
 ### Updating the Solution
 ```bash
 # Update local service
-cd apps/crm/local-whatsapp-service
+   cd apps/crm/local-whatsapp-service
 git pull origin main
 npm install
 ./start-service.sh

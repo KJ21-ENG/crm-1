@@ -18,7 +18,7 @@ check_service() {
         return 0
     else
         echo -e "${RED}❌ Local WhatsApp service is not running${NC}"
-        echo -e "${YELLOW}💡 Start the service with: cd local-whatsapp-service && npm start${NC}"
+        echo -e "${YELLOW}💡 Start the service with: cd apps/crm/local-whatsapp-service && npm start${NC}"
         return 1
     fi
 }
