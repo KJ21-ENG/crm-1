@@ -269,9 +269,15 @@ def log_support_activity(doctype, docname, customer_mobile, support_pages=None, 
         }).insert(ignore_permissions=True)
 
         # Try to notify clients to refresh timeline
+        # Push a socket event so open UIs refresh immediately
         try:
-            from crm.crm.api.activities import emit_activity_update
-            emit_activity_update(doctype, docname)
+            frappe.publish_realtime(
+                'activity_update',
+                {
+                    'reference_doctype': doctype,
+                    'reference_name': docname,
+                },
+            )
         except Exception:
             pass
 

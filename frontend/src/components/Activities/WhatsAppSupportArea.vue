@@ -269,8 +269,14 @@ const isHosted = typeof window !== 'undefined' && !['localhost', 'crm.localhost'
 const whatsappActivities = createResource({
   url: 'crm.api.activities.get_activities',
   params: { name: props.docname },
-  transform: ([versions, calls, notes, tasks, attachments]) => {
-    return versions.filter(activity => activity.activity_type === 'whatsapp_support')
+  transform: ([versions]) => {
+    return (versions || []).filter((activity) => {
+      if (activity.activity_type === 'whatsapp_support') return true
+      if (activity.activity_type === 'comment' && typeof activity.content === 'string') {
+        return activity.content.includes('WhatsApp Support')
+      }
+      return false
+    })
   },
   auto: true,
 })
@@ -562,7 +568,11 @@ onMounted(() => {
             status: 'success',
           },
           auto: true,
-          onSuccess: () => whatsappActivities.reload(),
+          onSuccess: () => {
+            whatsappActivities.reload()
+            // Trigger Activities parent to refresh via socket-like event fallback
+            document.dispatchEvent(new CustomEvent('crm-activities-reload'))
+          },
         })
       } catch (_) {
         whatsappActivities.reload()
@@ -584,7 +594,10 @@ onMounted(() => {
             error,
           },
           auto: true,
-          onSuccess: () => whatsappActivities.reload(),
+          onSuccess: () => {
+            whatsappActivities.reload()
+            document.dispatchEvent(new CustomEvent('crm-activities-reload'))
+          },
         })
       } catch (_) {}
     }
