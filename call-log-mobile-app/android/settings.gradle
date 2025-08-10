@@ -1,9 +1,4 @@
 pluginManagement {
-  plugins {
-    id("com.android.application") version "8.6.0"
-    id("com.android.library") version "8.6.0"
-  }
-  
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
@@ -36,9 +31,9 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'CRM Call Log Sync'
+rootProject.name = 'call-log-mobile-app'
 
-// expoAutolinking.useExpoVersionCatalog()  // Disabled to fix AGP version
+expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)

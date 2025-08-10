@@ -64,3 +64,28 @@ project_analysis.md
 # Expo/React Native
 .expo/
 .expo/devices.json
+
+# React Native Android Build Artifacts
+call-log-mobile-app/android/app/build/
+call-log-mobile-app/android/build/
+call-log-mobile-app/android/.gradle/
+call-log-mobile-app/android/local.properties
+call-log-mobile-app/android/app/debug.keystore
+call-log-mobile-app/android/*.iml
+call-log-mobile-app/android/.idea/
+
+# Generated Android Assets (keep source, ignore generated)
+call-log-mobile-app/android/app/src/main/res/mipmap-*/ic_launcher*.webp
+call-log-mobile-app/android/app/src/main/res/mipmap-*/ic_launcher*.png
+call-log-mobile-app/android/app/src/main/res/drawable*/splashscreen_logo.png
+
+# Keep the source Android project but ignore build outputs
+!call-log-mobile-app/android/app/src/main/java/
+!call-log-mobile-app/android/app/src/main/AndroidManifest.xml
+!call-log-mobile-app/android/build.gradle
+!call-log-mobile-app/android/app/build.gradle
+!call-log-mobile-app/android/settings.gradle
+!call-log-mobile-app/android/gradle.properties
+!call-log-mobile-app/android/gradlew
+!call-log-mobile-app/android/gradlew.bat
+!call-log-mobile-app/android/proguard-rules.pro
