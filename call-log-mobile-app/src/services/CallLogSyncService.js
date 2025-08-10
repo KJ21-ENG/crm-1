@@ -12,6 +12,7 @@ class CallLogSyncService {
       errors: [],
       pending: 0,
     };
+    this.backgroundTask = null;
   }
 
   /**
@@ -194,6 +195,28 @@ class CallLogSyncService {
       };
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  /**
+   * Start continuous background sync every 60 seconds.
+   * Uses a lightweight in-app scheduler; for true OS-level background,
+   * wire this through a native headless task or Expo BackgroundFetch.
+   */
+  startAutoSync(intervalMs = 60_000) {
+    if (this.backgroundTask) return; // already running
+    this.backgroundTask = setInterval(async () => {
+      try {
+        await this.init();
+        await this.syncCallLogs();
+      } catch (_) {}
+    }, intervalMs);
+  }
+
+  stopAutoSync() {
+    if (this.backgroundTask) {
+      clearInterval(this.backgroundTask);
+      this.backgroundTask = null;
     }
   }
 

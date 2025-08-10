@@ -3,6 +3,9 @@ import { StatusBar, View, Text, ActivityIndicator, StyleSheet } from 'react-nati
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { store } from './src/store/store';
 import { validateSession } from './src/store/slices/authSlice';
+import callLogSyncService from './src/services/CallLogSyncService';
+import { registerBackgroundFetch, unregisterBackgroundFetch } from './src/services/BackgroundHeadless';
+import { startForegroundSync, stopForegroundSync } from './src/services/ForegroundSyncService';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 
@@ -22,11 +25,25 @@ const AppContent = () => {
       dispatch({ type: 'auth/validateSession/rejected', payload: 'Forced timeout' });
     }, 3000);
     
-    return () => clearTimeout(forceTimeout);
+    // Register OS background fetch (best effort)
+    registerBackgroundFetch(60).catch(() => {});
+    return () => {
+      clearTimeout(forceTimeout);
+      unregisterBackgroundFetch().catch(() => {});
+    };
   }, [dispatch]);
 
   useEffect(() => {
     console.log('Auth state changed:', { isAuthenticated, isValidating, loading, error });
+    // When authenticated, ensure background auto sync is running (foreground lifecycle safety)
+    if (isAuthenticated) {
+      callLogSyncService.startAutoSync(60_000);
+      // Start Android Foreground Service for strict background cadence
+      startForegroundSync(60_000).catch(() => {});
+    } else {
+      callLogSyncService.stopAutoSync();
+      stopForegroundSync().catch(() => {});
+    }
   }, [isAuthenticated, isValidating, loading, error]);
 
   // Show loading screen during validation

@@ -375,8 +375,10 @@ def search_contact_by_phone(phone_number):
 
 
 def search_lead_by_phone(phone_number):
-    """Search for lead by phone number"""
+    """Search for lead by phone number. Guard if Lead doctype is not present."""
     try:
+        if not frappe.db.table_exists('Lead'):
+            return None
         clean_phone = clean_phone_number(phone_number)
         
         # Search in multiple phone fields

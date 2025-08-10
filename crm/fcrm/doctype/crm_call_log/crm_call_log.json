@@ -12,6 +12,7 @@
   "telephony_medium",
   "section_break_gyqe",
   "id",
+   "device_call_id",
   "from",
   "status",
   "duration",
@@ -40,6 +41,12 @@
    "label": "ID",
    "unique": 1
   },
+   {
+    "fieldname": "device_call_id",
+    "fieldtype": "Data",
+    "label": "Device Call ID",
+    "unique": 1
+   },
   {
    "fieldname": "from",
    "fieldtype": "Data",

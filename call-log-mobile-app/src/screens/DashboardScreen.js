@@ -16,6 +16,7 @@ import apiService from '../services/ApiService';
 import callLogSyncService from '../services/CallLogSyncService';
 import deviceCallLogService from '../services/DeviceCallLogService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showBubble } from '../services/FloatingBubble';
 
 const DashboardScreen = () => {
   const [callLogs, setCallLogs] = useState([]);
@@ -34,6 +35,9 @@ const DashboardScreen = () => {
     initializeApiService();
     loadUserProfileAndNumber();
     loadCallLogs();
+    // Start foreground auto-sync at 60s cadence
+    callLogSyncService.startAutoSync(60_000);
+    return () => callLogSyncService.stopAutoSync();
   }, []);
   const loadUserProfileAndNumber = async () => {
     try {
@@ -190,6 +194,11 @@ const DashboardScreen = () => {
       );
     }
   };
+
+  useEffect(() => {
+    // Show bubble when user lands on dashboard; OS may ask for overlay permission
+    showBubble();
+  }, []);
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
