@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api_service.dart';
+import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback? onLoggedIn;
@@ -38,7 +39,15 @@ class _LoginPageState extends State<LoginPage> {
         // persist last user for UX
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('last_user', _usernameCtrl.text.trim());
-        widget.onLoggedIn?.call();
+        if (widget.onLoggedIn != null) {
+          widget.onLoggedIn!.call();
+        } else {
+          // Fallback: navigate to Home if no callback provided
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login failed. Check credentials.')),

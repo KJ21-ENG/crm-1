@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <application
-        android:label="flutter_call_log_mobile_app"
+        android:label="Eshin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service
@@ -30,7 +30,7 @@
             </intent-filter>
         </receiver>
         <activity
-            android:name=".MainActivity"
+            android:name="com.eshin.crm.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

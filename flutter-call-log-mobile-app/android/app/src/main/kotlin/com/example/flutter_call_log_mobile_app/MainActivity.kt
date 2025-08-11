@@ -1,4 +1,4 @@
-package com.example.flutter_call_log_mobile_app
+package com.eshin.crm
 
 import android.Manifest
 import android.content.pm.PackageManager

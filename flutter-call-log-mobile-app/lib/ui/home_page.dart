@@ -66,25 +66,41 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refreshStats() async {
     final prefs = await SharedPreferences.getInstance();
-    final ts = prefs.getInt('last_call_log_sync');
-    // Pull today's total success count
-    final now = DateTime.now();
-    final dayKey = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final storedDay = prefs.getString('today_sync_date');
-    final todaysTotal = storedDay == dayKey ? (prefs.getInt('today_sync_success_total') ?? 0) : 0;
-    setState(() {
-      _lastSync = ts != null
-          ? DateTime.fromMillisecondsSinceEpoch(ts).toIso8601String()
-          : 'Never';
-      _lastSyncLabel = _formatRelative(ts);
-      _syncedCount = todaysTotal;
-    });
+    int? localTs = prefs.getInt('last_call_log_sync');
     try {
-      // Optionally get server-side pending stats
+      // Prefer server stats so auto-sync is reflected
       final server = await ApiService.instance.getSyncStats();
-      final pending = (server['pending_count'] ?? server['queue'] ?? 0) as int?;
-      if (pending != null) setState(() => _pendingCount = pending);
-    } catch (_) {}
+      final data = (server['data'] ?? server['message'] ?? {}) as Map?;
+      if (data != null) {
+        final todayLogs = data['today_logs'] as int?;
+        final lastSyncStr = data['last_sync_time']?.toString();
+        DateTime? lastDt;
+        if (lastSyncStr != null && lastSyncStr.isNotEmpty) {
+          lastDt = DateTime.tryParse(lastSyncStr);
+        }
+        setState(() {
+          _syncedCount = todayLogs ?? _syncedCount;
+          if (lastDt != null) {
+            _lastSync = lastDt.toIso8601String();
+            _lastSyncLabel = _formatRelative(lastDt.millisecondsSinceEpoch);
+          } else {
+            // fallback to local preference timestamp
+            _lastSync = localTs != null
+                ? DateTime.fromMillisecondsSinceEpoch(localTs).toIso8601String()
+                : 'Never';
+            _lastSyncLabel = _formatRelative(localTs);
+          }
+        });
+      }
+    } catch (_) {
+      // fallback to local
+      setState(() {
+        _lastSync = localTs != null
+            ? DateTime.fromMillisecondsSinceEpoch(localTs).toIso8601String()
+            : 'Never';
+        _lastSyncLabel = _formatRelative(localTs);
+      });
+    }
   }
 
   Future<void> _ensureCriticalPermissions() async {
@@ -356,11 +372,10 @@ class _HomePageState extends State<HomePage> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _OverviewRow(
-                        lastSync: _lastSyncLabel,
-                        syncedCount: _syncedCount,
-                        pendingCount: _pendingCount,
-                      ),
+                  child: _OverviewRow(
+                    lastSync: _lastSyncLabel,
+                    syncedCount: _syncedCount,
+                  ),
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -433,11 +448,9 @@ class _HomePageState extends State<HomePage> {
 class _OverviewRow extends StatelessWidget {
   final String lastSync;
   final int syncedCount;
-  final int pendingCount;
   const _OverviewRow({
     required this.lastSync,
     required this.syncedCount,
-    required this.pendingCount,
   });
 
   @override
@@ -446,9 +459,7 @@ class _OverviewRow extends StatelessWidget {
       children: [
         Expanded(child: _StatCard(title: 'Last Sync', value: lastSync, icon: Icons.history)),
         const SizedBox(width: 12),
-        Expanded(child: _StatCard(title: 'Synced', value: '$syncedCount', icon: Icons.cloud_done_outlined)),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(title: 'Pending', value: '$pendingCount', icon: Icons.pending_actions_outlined)),
+        Expanded(child: _StatCard(title: 'Synced (Today)', value: '$syncedCount', icon: Icons.cloud_done_outlined)),
       ],
     );
   }

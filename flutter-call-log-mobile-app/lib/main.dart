@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CRM Call Sync',
+      title: 'Eshin',
       theme: AppTheme.light(),
       scrollBehavior: const AppScrollBehavior(),
       home: const SplashPage(),
