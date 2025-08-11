@@ -309,22 +309,17 @@ const downloadLocalService = async () => {
 }
 
 const downloadApk = async () => {
+  // Serve directly from static assets to avoid API method status/CSRF issues
+  const staticUrl = '/assets/crm/downloads/Eshin.apk'
   try {
-    const resp = await fetch('/api/method/crm.api.whatsapp_setup.download_eshen_app_apk', {
-      credentials: 'include',
-      headers: { 'Accept': 'application/vnd.android.package-archive, application/octet-stream, */*' },
-    })
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`)
-    }
-    const blob = await resp.blob()
-    const url = window.URL.createObjectURL(blob)
+    // Optional existence check
+    const head = await fetch(staticUrl, { method: 'HEAD', credentials: 'include' })
+    if (!head.ok) throw new Error(`HTTP ${head.status}: ${head.statusText}`)
     const a = document.createElement('a')
-    a.href = url
+    a.href = staticUrl
     a.download = 'Eshin.apk'
     document.body.appendChild(a)
     a.click()
-    window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
     toast.success(__('APK download started'))
   } catch (e) {
