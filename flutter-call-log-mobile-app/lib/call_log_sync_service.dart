@@ -27,6 +27,20 @@ class CallLogSyncService {
     await prefs.setInt('last_sync_duplicate_count', duplicate);
   }
 
+  Future<void> _incrementTodaySuccess(int success) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final dayKey = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final storedDay = prefs.getString('today_sync_date');
+    int total = 0;
+    if (storedDay == dayKey) {
+      total = prefs.getInt('today_sync_success_total') ?? 0;
+    }
+    total += success;
+    await prefs.setString('today_sync_date', dayKey);
+    await prefs.setInt('today_sync_success_total', total);
+  }
+
   Future<String?> _getUserMobile() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString('user_mobile');
@@ -98,6 +112,9 @@ class CallLogSyncService {
       final fc = (payload['failure_count'] ?? 0) as int;
       final dc = (payload['duplicate_count'] ?? 0) as int;
       await _setLastCounts(success: sc, failure: fc, duplicate: dc);
+      if (sc > 0) {
+        await _incrementTodaySuccess(sc);
+      }
     }
     return payload is Map<String, dynamic> ? payload : { 'success': true };
   }
