@@ -147,8 +147,13 @@ def download_eshen_app_apk():
             if matches:
                 candidate = matches[-1]
 
+        # Fallback to assets-based APK if flutter build output not present on server
         if not candidate or not os.path.exists(candidate):
-            frappe.throw(_("APK not found in {0}. Please run 'flutter build apk' first.").format(apk_dir))
+            assets_apk = frappe.get_app_path('crm', 'crm', 'public', 'downloads', 'Eshin.apk')
+            if os.path.exists(assets_apk):
+                candidate = assets_apk
+            else:
+                frappe.throw(_("APK not found. Either build it (flutter build apk) or place Eshin.apk in apps/crm/crm/public/downloads"))
 
         with open(candidate, 'rb') as f:
             content = f.read()
