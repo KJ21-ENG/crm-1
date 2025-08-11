@@ -20,8 +20,18 @@ dependencies:
   android_intent_plus: ^5.0.2
   intl: ^0.20.2
 
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
   assets:
     - raw_assets/eshin_app_splashscreen.gif
     - raw_assets/eshin_logo.jpeg
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: raw_assets/eshin_logo.jpeg
+  adaptive_icon_background: "#0F2433"
+  min_sdk_android: 23

@@ -121,22 +121,15 @@ const tabs = computed(() => {
       label: __('Integrations', null, 'FCRM'),
       items: [
         {
-          label: __('Telephony'),
-          icon: PhoneIcon,
-          component: markRaw(TelephonySettings),
-          condition: () => isManager() || isAgent(),
-        },
-        {
           label: __('WhatsApp'),
           icon: WhatsAppIcon,
           component: markRaw(WhatsAppSettings),
           condition: () => isWhatsappInstalled.value && isManager(),
         },
         {
-          label: __('WhatsApp Setup'),
+          label: __('Add-ons'),
           icon: WhatsAppIcon,
           component: markRaw(WhatsAppSetup),
-          condition: () => isManager(),
         },
         {
           label: __('ERPNext'),
@@ -145,7 +138,7 @@ const tabs = computed(() => {
           condition: () => isManager(),
         },
       ],
-      condition: () => isManager() || isAgent(),
+      // Visible to all users so Add-ons is accessible
     },
   ]
 

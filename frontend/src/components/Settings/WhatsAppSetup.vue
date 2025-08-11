@@ -3,10 +3,10 @@
     <div class="flex justify-between">
       <div class="flex flex-col gap-1 w-9/12">
         <h2 class="flex gap-2 text-xl font-semibold leading-none h-5 text-ink-gray-8">
-          {{ __('WhatsApp Setup') }}
+          {{ __('Add-ons') }}
         </h2>
         <p class="text-sm text-ink-gray-6">
-          {{ __('Configure WhatsApp integration for multi-user access') }}
+          {{ __('Manage integrations and downloads for the Eshin CRM experience') }}
         </p>
       </div>
     </div>
@@ -161,6 +161,37 @@
         </div>
       </div>
 
+      <!-- Eshin App Download -->
+      <div class="bg-surface-gray-1 rounded-lg p-6 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm8 2H4v2h16v-2z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-ink-gray-8">{{ __('Download Eshin App (Android)') }}</h3>
+            <p class="text-sm text-indigo-600 font-medium">{{ __('APK build from this server') }}</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg p-4 border border-outline-gray-3">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-ink-gray-6">
+              <p class="mb-1">{{ __('Tap to download the latest release APK') }}</p>
+              <p class="text-xs">{{ __('File name: Eshin.apk') }}</p>
+            </div>
+            <Button
+              :label="__('Download Eshin.apk')"
+              variant="solid"
+              theme="indigo"
+              @click="downloadApk"
+            >
+              <template #prefix>
+                <FeatherIcon name="download" class="h-4 w-4" />
+              </template>
+            </Button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -274,6 +305,31 @@ const downloadLocalService = async () => {
     toast.error(__('Failed to download local service: ') + e.message)
   } finally {
     downloadingService.value = false
+  }
+}
+
+const downloadApk = async () => {
+  try {
+    const resp = await fetch('/api/method/crm.api.whatsapp_setup.download_eshen_app_apk', {
+      credentials: 'include',
+      headers: { 'Accept': 'application/vnd.android.package-archive, application/octet-stream, */*' },
+    })
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`)
+    }
+    const blob = await resp.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Eshin.apk'
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    toast.success(__('APK download started'))
+  } catch (e) {
+    console.error('APK download error:', e)
+    toast.error(__('Failed to download APK: ') + e.message)
   }
 }
 </script> 

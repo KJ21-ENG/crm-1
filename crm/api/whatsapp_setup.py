@@ -6,6 +6,7 @@ import requests
 import json
 from frappe import _
 from frappe.utils import get_site_path
+from werkzeug.utils import safe_join
 
 
 @frappe.whitelist()
@@ -109,6 +110,25 @@ def download_local_service():
     except Exception as e:
         frappe.log_error(f"Local Service Download Error: {str(e)}")
         frappe.throw(_("Failed to download local service: {0}").format(str(e)))
+
+
+@frappe.whitelist()
+def download_eshen_app_apk():
+    """Serve built Android APK as Eshin.apk"""
+    try:
+        bench_root = os.path.abspath(os.path.join(get_site_path(), '..', '..'))
+        apk_path = os.path.join(bench_root, 'apps', 'crm', 'flutter-call-log-mobile-app', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+        if not os.path.exists(apk_path):
+            frappe.throw(_("APK not found. Please build the app first."))
+        with open(apk_path, 'rb') as f:
+            content = f.read()
+        frappe.response.filename = 'Eshin.apk'
+        frappe.response.filecontent = content
+        frappe.response.type = 'download'
+        return {'success': True, 'message': _('APK ready')}
+    except Exception as e:
+        frappe.log_error(f"APK Download Error: {str(e)}")
+        frappe.throw(_("Failed to download APK: {0}").format(str(e)))
 
 
 @frappe.whitelist()
