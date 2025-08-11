@@ -49,8 +49,9 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } else {
+        final debug = ApiService.instance.lastLoginDebug ?? 'No debug info';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed. Check credentials.')),
+          SnackBar(content: Text('Login failed. Check credentials.\n$debug')),
         );
       }
     } finally {
