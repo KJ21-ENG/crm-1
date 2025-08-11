@@ -1,12 +1,28 @@
 import 'package:call_log/call_log.dart';
 
+String callTypeHint(CallType? t) {
+  switch (t) {
+    case CallType.outgoing:
+      return 'out';
+    case CallType.missed:
+      return 'missed';
+    case CallType.rejected:
+      return 'rej';
+    case CallType.incoming:
+      return 'in';
+    default:
+      return 'unk';
+  }
+}
+
 String _digits(String? s) => (s ?? '').replaceAll(RegExp(r'[^0-9+]'), '');
 
 Map<String, dynamic> toCrmCallLog(CallLogEntry e, String userMobile) {
   final ts = e.timestamp ?? DateTime.now().millisecondsSinceEpoch;
   final number = (e.number ?? 'Unknown').trim();
   final duration = (e.duration ?? 0);
-  final deviceId = 'device_${ts}_$number';
+  // Make device_call_id stable even when duration is 0 or OEM writes late
+  final deviceId = 'device_${ts}_${number}_${duration}_${callTypeHint(e.callType)}';
 
   String callType = 'Incoming';
   switch (e.callType) {

@@ -1,4 +1,5 @@
 import 'package:call_log/call_log.dart';
+import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
@@ -88,10 +89,13 @@ class CallLogSyncService {
     }
 
     final last = await _getLastSyncMillis();
+    // Safety window so we don't miss calls that OEMs write late or with slightly older timestamps
+    final safetyWindowMs = 2 * 60 * 1000; // 2 minutes
+    final since = last > 0 ? math.max(0, last - safetyWindowMs) : 0;
     final userMobile = (await _getUserMobile()) ?? '+911234567890';
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    final Iterable<CallLogEntry> entries = await CallLog.query(dateFrom: last);
+    final Iterable<CallLogEntry> entries = await CallLog.query(dateFrom: since);
     final logs = entries.toList()
       ..sort((a,b) => (b.timestamp ?? 0).compareTo(a.timestamp ?? 0));
 
@@ -107,7 +111,11 @@ class CallLogSyncService {
     // Accept both {message:{success:..}} and {success:..}
     final payload = res['message'] ?? res;
     if (payload is Map && (payload['success'] == true || payload['success_count'] != null)) {
-      await _setLastSyncMillis(now);
+      // Advance sync cursor to the latest call timestamp we processed to avoid gaps
+      final latestTs = logs.isNotEmpty
+          ? (logs.map((e) => e.timestamp ?? 0).fold<int>(0, (p, n) => n > p ? n : p))
+          : now;
+      await _setLastSyncMillis(latestTs);
       final sc = (payload['success_count'] ?? 0) as int;
       final fc = (payload['failure_count'] ?? 0) as int;
       final dc = (payload['duplicate_count'] ?? 0) as int;
