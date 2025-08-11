@@ -8,9 +8,17 @@
       "permissions": [
         "READ_CALL_LOG",
         "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "POST_NOTIFICATIONS",
         "SYSTEM_ALERT_WINDOW",
         "WAKE_LOCK"
+      ],
+      "plugins": [
+        "./app.plugin.js"
       ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.calllogmobileapp"
     }
   }
 }

@@ -9,6 +9,7 @@ import { startForegroundSync, stopForegroundSync } from './src/services/Foregrou
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import { requestAllStartupPermissions } from './src/services/PermissionsService';
+import DebugLogger from './src/services/DebugLogger';
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -16,35 +17,35 @@ const AppContent = () => {
 
   useEffect(() => {
     console.log('App starting, checking for session...');
+    DebugLogger.log('APP', 'start');
     // Ensure all critical permissions are granted on startup (Android)
     requestAllStartupPermissions().catch(() => {});
     // Check for existing session on app start
     dispatch(validateSession());
-    
-    // Force timeout after 3 seconds to prevent infinite loading
-    const forceTimeout = setTimeout(() => {
-      console.log('Force timeout triggered, clearing validation state');
-      // This will force the app to show login screen
-      dispatch({ type: 'auth/validateSession/rejected', payload: 'Forced timeout' });
-    }, 3000);
-    
+
     // Register OS background fetch (best effort)
-    registerBackgroundFetch(60).catch(() => {});
+    registerBackgroundFetch(60).catch((e) => { try { DebugLogger.error('APP', 'BGF register failed', { message: e?.message }) } catch (_) {} });
+    
+    // Remove the forced timeout to avoid prematurely cancelling validation
     return () => {
-      clearTimeout(forceTimeout);
       unregisterBackgroundFetch().catch(() => {});
     };
   }, [dispatch]);
 
   useEffect(() => {
     console.log('Auth state changed:', { isAuthenticated, isValidating, loading, error });
+    DebugLogger.log('APP', 'auth change', { isAuthenticated, isValidating, loading, error });
     // When authenticated, ensure background auto sync is running (foreground lifecycle safety)
     if (isAuthenticated) {
-      callLogSyncService.startAutoSync(60_000);
+      try {
+        callLogSyncService.startAutoSync(60_000);
+      } catch (_) {}
       // Start Android Foreground Service for strict background cadence
-      startForegroundSync(60_000).catch(() => {});
+      startForegroundSync(60_000).catch((e) => {
+        try { console.error('Foreground service start error:', e?.message || e) } catch (_) {}
+      });
     } else {
-      callLogSyncService.stopAutoSync();
+      try { callLogSyncService.stopAutoSync() } catch (_) {}
       stopForegroundSync().catch(() => {});
     }
   }, [isAuthenticated, isValidating, loading, error]);

@@ -1,4 +1,5 @@
 import { Platform, PermissionsAndroid, Alert, Linking } from 'react-native'
+import DebugLogger from './DebugLogger'
 
 let Bubble = null
 try {
@@ -16,6 +17,7 @@ export async function requestNotificationPermissionIfNeeded() {
     const isApi33Plus = typeof apiLevel === 'number' ? apiLevel >= 33 : parseInt(String(apiLevel), 10) >= 33
     if (!isApi33Plus) return true
     const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
+    try { await DebugLogger.log('PERM', 'POST_NOTIFICATIONS result', { granted }) } catch (_) {}
     return granted === PermissionsAndroid.RESULTS.GRANTED
   } catch (_) {
     return true
@@ -26,8 +28,10 @@ export async function requestCallLogPermission() {
   if (Platform.OS !== 'android') return false
   try {
     const has = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_CALL_LOG)
+    try { await DebugLogger.log('PERM', 'READ_CALL_LOG status', { has }) } catch (_) {}
     if (has) return true
     const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_CALL_LOG)
+    try { await DebugLogger.log('PERM', 'READ_CALL_LOG request', { granted }) } catch (_) {}
     return granted === PermissionsAndroid.RESULTS.GRANTED
   } catch (e) {
     Alert.alert('Permission Error', 'Failed to request call log permission.')
@@ -39,6 +43,7 @@ export async function requestOverlayPermissionIfAvailable() {
   if (!Bubble || Platform.OS !== 'android') return true
   try {
     const granted = await Bubble.requestPermission()
+    try { await DebugLogger.log('PERM', 'OVERLAY result', { granted }) } catch (_) {}
     return !!granted
   } catch (_) {
     return false

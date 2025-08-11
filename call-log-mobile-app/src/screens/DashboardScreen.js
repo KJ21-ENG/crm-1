@@ -14,9 +14,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
 import apiService from '../services/ApiService';
 import callLogSyncService from '../services/CallLogSyncService';
+import { startForegroundSync, isForegroundServiceAvailable, isForegroundServiceRunning, getForegroundDebugInfo, pingForegroundNotification } from '../services/ForegroundSyncService';
 import deviceCallLogService from '../services/DeviceCallLogService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { showBubble } from '../services/FloatingBubble';
+import DebugLogger from '../services/DebugLogger';
+import { sendTestLocalNotification, ensureNotificationChannel, getNotificationPermissionStatus } from '../services/NotificationHelper';
 
 const DashboardScreen = () => {
   const [callLogs, setCallLogs] = useState([]);
@@ -39,6 +42,7 @@ const DashboardScreen = () => {
     callLogSyncService.startAutoSync(60_000);
     // Subscribe to sync events to update tiles + last sync
     const off = callLogSyncService.onSync(({ stats: s, synced, failed, total }) => {
+      DebugLogger.log('UI', 'onSync', { stats: s, synced, failed, total });
       setStats(prev => ({
         ...prev,
         lastSync: s.lastSyncTime ? new Date(s.lastSyncTime).toISOString() : prev.lastSync,
@@ -214,6 +218,35 @@ const DashboardScreen = () => {
     }
   };
 
+  const handleTestNotificationAndAutoSync = async () => {
+    try {
+      await DebugLogger.log('UI', 'test notif+auto-sync button pressed');
+      const notifPerm = await getNotificationPermissionStatus();
+      await ensureNotificationChannel();
+      const localOk = await sendTestLocalNotification('Attempting to start Foreground Service');
+      // Try to start the Android Foreground Service notification
+      await startForegroundSync(60_000);
+      const avail = isForegroundServiceAvailable();
+      const running = isForegroundServiceRunning();
+      const fginfo = getForegroundDebugInfo();
+      await DebugLogger.log('UI', 'fg service status', { avail, running, fginfo });
+      // Try to ping/update the notification text immediately
+      const pingOk = await pingForegroundNotification('Test ping from UI');
+      // Fire one immediate sync cycle to verify
+      await callLogSyncService.init();
+      const result = await callLogSyncService.syncCallLogs();
+      await DebugLogger.log('UI', 'test sync result', result);
+      Alert.alert(
+        'Test',
+        `${running ? 'Service running' : 'Service not running'} • ${result?.message || 'Invoked'}\n` +
+        `LocalNotif:${localOk ? 'ok' : 'fail'} Ping:${pingOk ? 'ok' : 'fail'} Perm:${notifPerm?.status}`
+      );
+    } catch (e) {
+      await DebugLogger.error('UI', 'test notif failed', { message: e?.message });
+      Alert.alert('Test Error', e?.message || 'Failed to start foreground service');
+    }
+  };
+
   useEffect(() => {
     // Show bubble when user lands on dashboard; OS may ask for overlay permission
     showBubble();
@@ -339,6 +372,12 @@ const DashboardScreen = () => {
                 onPress={handleSyncCallLogs}
               >
                 <Text style={styles.syncButtonText}>Start Device Call Log Sync</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.syncButton, styles.testButton, styles.fullWidthButton]}
+                onPress={handleTestNotificationAndAutoSync}
+              >
+                <Text style={styles.syncButtonText}>Test Notification & Auto Sync</Text>
               </TouchableOpacity>
             </View>
           </View>

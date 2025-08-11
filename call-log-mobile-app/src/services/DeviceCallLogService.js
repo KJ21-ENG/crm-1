@@ -1,4 +1,5 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import DebugLogger from './DebugLogger';
 import CallLogs from 'react-native-call-log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -38,6 +39,7 @@ class DeviceCallLogService {
     
     try {
       console.log('Initializing DeviceCallLogService...');
+      await DebugLogger.log('DEV', 'init start')
       
       if (Platform.OS !== 'android') {
         console.log('Call log service is only supported on Android');
@@ -47,9 +49,11 @@ class DeviceCallLogService {
 
       // Load stored data
       await this.loadLastSyncTimestamp();
+      await DebugLogger.log('DEV', 'loaded last sync', { lastSyncTimestamp: this.lastSyncTimestamp })
       
       // Check permissions
       this.hasPermission = await this.checkPermissions();
+      await DebugLogger.log('DEV', 'checkPermissions', { has: this.hasPermission })
       
       this.isInitialized = true;
       console.log('DeviceCallLogService initialized successfully:', {
@@ -57,10 +61,12 @@ class DeviceCallLogService {
         userMobileNumber: this.userMobileNumber,
         lastSyncTimestamp: this.lastSyncTimestamp
       });
+      await DebugLogger.log('DEV', 'init done', { hasPermission: this.hasPermission, userMobileNumber: this.userMobileNumber, lastSyncTimestamp: this.lastSyncTimestamp })
       
       return true;
     } catch (error) {
       console.error('Error initializing DeviceCallLogService:', error);
+      await DebugLogger.error('DEV', 'init failed', { message: error?.message })
       this.isInitialized = false;
       return false;
     }
@@ -81,9 +87,11 @@ class DeviceCallLogService {
       );
       
       console.log('Call log permission status:', granted);
+      await DebugLogger.log('DEV', 'permission status', { granted })
       return granted;
     } catch (error) {
       console.error('Error checking call log permissions:', error);
+       await DebugLogger.error('DEV', 'permission check failed', { message: error?.message })
       return false;
     }
   }
@@ -127,6 +135,7 @@ class DeviceCallLogService {
 
                 const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
                 this.hasPermission = isGranted;
+                await DebugLogger.log('DEV', 'permission request result', { granted, isGranted })
                 
                 // Only show settings dialog if permission is permanently denied
                 if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
@@ -172,6 +181,7 @@ class DeviceCallLogService {
   async getDeviceCallLogs(options = {}) {
     if (!this.hasPermission) {
       console.log('No call log permission');
+      await DebugLogger.log('DEV', 'getDeviceCallLogs: no permission')
       throw new Error('PERMISSION_REQUIRED');
     }
 
@@ -186,8 +196,10 @@ class DeviceCallLogService {
       
       const callLogOptions = { ...defaultOptions, ...options };
       console.log('Call log fetch options:', callLogOptions);
+      await DebugLogger.log('DEV', 'fetch options', callLogOptions)
       
       const callLogs = await CallLogs.load(callLogOptions.limit, callLogOptions.offset);
+      await DebugLogger.log('DEV', 'device logs fetched', { count: callLogs?.length || 0 })
       
       // Filter by timestamp if needed
       let filteredLogs = callLogs;
@@ -198,10 +210,12 @@ class DeviceCallLogService {
       }
       
       console.log(`Fetched ${filteredLogs.length} call logs from device`);
+      await DebugLogger.log('DEV', 'device logs filtered', { count: filteredLogs.length })
       return filteredLogs;
       
     } catch (error) {
       console.error('Error fetching device call logs:', error);
+      await DebugLogger.error('DEV', 'fetch failed', { message: error?.message })
       if (error.message.includes('permission')) {
         throw new Error('PERMISSION_REQUIRED');
       }

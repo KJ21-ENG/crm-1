@@ -16,7 +16,7 @@
     "@reduxjs/toolkit": "^2.2.7",
     "@tanstack/react-query": "^5.45.1",
     "axios": "^1.7.2",
-    "expo": "~53.0.13",
+    "expo": "53.0.20",
     "expo-auth-session": "~6.2.0",
     "expo-background-fetch": "~13.1.5",
     "expo-notifications": "~0.31.3",
@@ -32,8 +32,7 @@
     "react-native-reanimated": "~3.17.4",
     "@react-native-masked-view/masked-view": "0.3.2",
     "expo-dev-client": "~5.2.2",
-    "react-native-background-actions": "^2.10.0",
-    "react-native-floating-bubble": "^1.0.6"
+    "react-native-background-actions": "2.6.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

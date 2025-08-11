@@ -1,5 +1,6 @@
 import apiService from './ApiService';
 import deviceCallLogService from './DeviceCallLogService';
+import DebugLogger from './DebugLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class CallLogSyncService {
@@ -24,9 +25,11 @@ class CallLogSyncService {
 
     try {
       console.log('Initializing CallLogSyncService...');
+      await DebugLogger.log('SYNC', 'init start')
       
       // Initialize device call log service
       await deviceCallLogService.init();
+      await DebugLogger.log('SYNC', 'deviceCallLogService.init ok')
       // Ensure user mobile number is known for direction detection
       try {
         const storedNumber = await AsyncStorage.getItem('userMobileNumber');
@@ -47,13 +50,16 @@ class CallLogSyncService {
       
       // Load sync stats
       await this.loadSyncStats();
+      await DebugLogger.log('SYNC', 'loadSyncStats ok', this.syncStats)
       
       this.isInitialized = true;
       console.log('CallLogSyncService initialized:', this.syncStats);
+      await DebugLogger.log('SYNC', 'init done', this.syncStats)
       
       return true;
     } catch (error) {
       console.error('Failed to initialize CallLogSyncService:', error);
+      await DebugLogger.error('SYNC', 'init failed', { message: error?.message })
       return false;
     }
   }
@@ -64,6 +70,7 @@ class CallLogSyncService {
   async isReadyForSync() {
     const deviceStatus = deviceCallLogService.getStatus();
     const apiReady = await apiService.isAuthenticated();
+    await DebugLogger.log('SYNC', 'isReadyForSync', { deviceStatus, apiReady })
     
     return {
       ready: deviceStatus.isInitialized && deviceStatus.hasPermission && apiReady,
@@ -95,6 +102,7 @@ class CallLogSyncService {
   async syncCallLogs(options = {}) {
     if (this.isSyncing) {
       console.log('Sync already in progress');
+      await DebugLogger.log('SYNC', 'skip: already syncing')
       return { success: false, message: 'Sync already in progress' };
     }
 
@@ -102,19 +110,23 @@ class CallLogSyncService {
     
     try {
       console.log('Starting call log sync...');
+      await DebugLogger.log('SYNC', 'sync start')
       
       // Check if ready
       const readiness = await this.isReadyForSync();
       if (!readiness.ready) {
+        await DebugLogger.log('SYNC', 'not ready', readiness)
         // If permission is not granted, request it
         if (!readiness.hasPermission) {
           const granted = await deviceCallLogService.requestPermissions();
           if (!granted) {
-            return {
+            const resp = {
               success: false,
               message: 'Call log permission is required to sync call logs. Please grant permission in app settings.',
               error: 'PERMISSION_DENIED'
             };
+            await DebugLogger.log('SYNC', 'permission denied')
+            return resp
           }
           // Recheck readiness after permission granted
           const newReadiness = await this.isReadyForSync();
@@ -124,11 +136,13 @@ class CallLogSyncService {
             if (!newReadiness.apiAuthenticated) missingItems.push('Not authenticated with CRM');
             if (!newReadiness.isSupported) missingItems.push('Platform not supported');
             
-            return {
+            const resp = {
               success: false,
               message: `Cannot sync: ${missingItems.join(', ')}`,
               error: 'SYNC_PREREQUISITES_FAILED'
             };
+            await DebugLogger.log('SYNC', 'prereqs failed', { missingItems })
+            return resp
           }
         } else {
           const missingItems = [];
@@ -136,23 +150,28 @@ class CallLogSyncService {
           if (!readiness.apiAuthenticated) missingItems.push('Not authenticated with CRM');
           if (!readiness.isSupported) missingItems.push('Platform not supported');
           
-          return {
+          const resp = {
             success: false,
             message: `Cannot sync: ${missingItems.join(', ')}`,
             error: 'SYNC_PREREQUISITES_FAILED'
           };
+          await DebugLogger.log('SYNC', 'prereqs failed 2', { missingItems })
+          return resp
         }
       }
 
       // Get new call logs from device
       console.log('Fetching new call logs from device...');
+      await DebugLogger.log('SYNC', 'fetch device call logs')
       const deviceCallLogs = await deviceCallLogService.getNewCallLogs();
+      await DebugLogger.log('SYNC', 'device logs', { count: deviceCallLogs.length })
       // Update pending to reflect unsynced items before pushing
       await this.updateSyncStats({ pending: deviceCallLogs.length });
       this.notifySync({ success: true, synced: 0, failed: 0, duplicates: 0, total: deviceCallLogs.length });
       
       if (deviceCallLogs.length === 0) {
         console.log('No new call logs to sync');
+        await DebugLogger.log('SYNC', 'no new logs')
         await this.updateSyncStats({ lastSyncTime: Date.now() });
         this.notifySync({
           success: true,
@@ -172,9 +191,11 @@ class CallLogSyncService {
       // Transform call logs to CRM format
       console.log(`Transforming ${deviceCallLogs.length} call logs...`);
       const transformedLogs = deviceCallLogService.transformCallLogsToCRM(deviceCallLogs);
+      await DebugLogger.log('SYNC', 'transformed logs', { count: transformedLogs.length })
 
       // Send to CRM using the new batch sync endpoint
       const results = await this.syncBatchToCRM(transformedLogs);
+      await DebugLogger.log('SYNC', 'batch result', results)
 
       // Update sync stats
       const successCount = results.success_count || 0;
@@ -201,6 +222,7 @@ class CallLogSyncService {
       }
 
       console.log(`Sync completed: ${successCount} synced, ${errorCount} failed`);
+      await DebugLogger.log('SYNC', 'sync done', { successCount, errorCount, duplicateCount })
       
       return {
         success: errorCount === 0,
@@ -214,6 +236,7 @@ class CallLogSyncService {
 
     } catch (error) {
       console.error('Sync failed:', error);
+      await DebugLogger.error('SYNC', 'sync failed', { message: error?.message })
       
       await this.updateSyncStats({
         errors: [...this.syncStats.errors, error.message],
@@ -231,6 +254,7 @@ class CallLogSyncService {
       };
     } finally {
       this.isSyncing = false;
+      await DebugLogger.log('SYNC', 'sync end')
     }
   }
 
