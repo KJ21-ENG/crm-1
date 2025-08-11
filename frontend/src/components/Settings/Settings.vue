@@ -41,7 +41,7 @@
   </Dialog>
 </template>
 <script setup>
-import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+import AppsIcon from '@/components/Icons/AppsIcon.vue'
 import ERPNextIcon from '@/components/Icons/ERPNextIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import Email2Icon from '@/components/Icons/Email2Icon.vue'
@@ -128,7 +128,7 @@ const tabs = computed(() => {
         },
         {
           label: __('Add-ons'),
-          icon: WhatsAppIcon,
+          icon: AppsIcon,
           component: markRaw(WhatsAppSetup),
         },
         {
