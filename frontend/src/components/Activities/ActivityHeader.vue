@@ -83,7 +83,7 @@
       </Button>
     </div>
     
-    <Dropdown v-else :options="defaultActions" @click.stop>
+    <Dropdown v-else-if="title !== 'WhatsApp Support'" :options="defaultActions" @click.stop>
       <template v-slot="{ open }">
         <Button variant="solid" class="flex items-center gap-1">
           <template #prefix>
