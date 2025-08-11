@@ -96,8 +96,14 @@ class CallLogSyncService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     final Iterable<CallLogEntry> entries = await CallLog.query(dateFrom: since);
-    final logs = entries.toList()
+    final allLogs = entries.toList()
       ..sort((a,b) => (b.timestamp ?? 0).compareTo(a.timestamp ?? 0));
+
+    // Cap initial backfill to last 50 logs for first-time users
+    final bool isFirstSync = last == 0;
+    final List<CallLogEntry> logs = isFirstSync && allLogs.length > 50
+        ? allLogs.take(50).toList()
+        : allLogs;
 
     if (logs.isEmpty) {
       await _setLastSyncMillis(now);
