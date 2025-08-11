@@ -534,10 +534,10 @@ def get_sync_stats():
         # Total call logs
         total_logs = frappe.db.count('CRM Call Log', {'owner': current_user})
         
-        # Mobile app logs (using telephony_medium = 'Manual' as indicator)
+        # Mobile app logs (using medium = 'Mobile App' as indicator to be explicit)
         mobile_logs = frappe.db.count('CRM Call Log', {
             'owner': current_user,
-            'telephony_medium': 'Manual'
+            'medium': 'Mobile App'
         })
         
         # Today's logs
@@ -552,7 +552,7 @@ def get_sync_stats():
             'CRM Call Log',
             {
                 'owner': current_user,
-                'telephony_medium': 'Manual'
+                'medium': 'Mobile App'
             },
             'creation',
             order_by='creation desc'

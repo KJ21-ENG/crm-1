@@ -37,7 +37,20 @@ const DashboardScreen = () => {
     loadCallLogs();
     // Start foreground auto-sync at 60s cadence
     callLogSyncService.startAutoSync(60_000);
-    return () => callLogSyncService.stopAutoSync();
+    // Subscribe to sync events to update tiles + last sync
+    const off = callLogSyncService.onSync(({ stats: s, synced, failed, total }) => {
+      setStats(prev => ({
+        ...prev,
+        lastSync: s.lastSyncTime ? new Date(s.lastSyncTime).toISOString() : prev.lastSync,
+        pendingSync: s.pending || 0,
+      }));
+      // After sync, refresh server logs to update total count
+      loadCallLogs();
+    });
+    return () => {
+      off && off();
+      callLogSyncService.stopAutoSync();
+    };
   }, []);
   const loadUserProfileAndNumber = async () => {
     try {
@@ -91,8 +104,7 @@ const DashboardScreen = () => {
         setCallLogs(sortedLogs);
         setStats(prev => ({
           ...prev,
-          totalCallLogs: logs.length,
-          lastSync: new Date().toISOString(),
+          totalCallLogs: (apiResult?.data?.length) ?? logs.length,
         }));
       } else {
         console.error('Failed to load user call logs:', apiResult.message || apiResult.error);
@@ -184,6 +196,13 @@ const DashboardScreen = () => {
       }
       
       await loadCallLogs();
+      // Update last sync/pending from service stats
+      const s = callLogSyncService.getStoredSyncStats();
+      setStats(prev => ({
+        ...prev,
+        lastSync: s.lastSyncTime ? new Date(s.lastSyncTime).toISOString() : new Date().toISOString(),
+        pendingSync: s.pending || 0,
+      }));
       Alert.alert('Success', result.message || 'Call logs synced successfully!');
     } catch (error) {
       console.error('Sync error:', error);

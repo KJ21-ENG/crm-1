@@ -13,6 +13,7 @@ class CallLogSyncService {
       pending: 0,
     };
     this.backgroundTask = null;
+    this.listeners = new Set();
   }
 
   /**
@@ -26,6 +27,23 @@ class CallLogSyncService {
       
       // Initialize device call log service
       await deviceCallLogService.init();
+      // Ensure user mobile number is known for direction detection
+      try {
+        const storedNumber = await AsyncStorage.getItem('userMobileNumber');
+        if (storedNumber) {
+          deviceCallLogService.setUserMobileNumber(storedNumber);
+        } else {
+          // Best-effort fetch from server
+          const profile = await apiService.getUserProfile();
+          const mobile = profile?.message?.data?.mobile_no || profile?.data?.mobile_no;
+          if (mobile) {
+            await AsyncStorage.setItem('userMobileNumber', mobile);
+            deviceCallLogService.setUserMobileNumber(mobile);
+          }
+        }
+      } catch (e) {
+        // ignore, will fallback inside device service
+      }
       
       // Load sync stats
       await this.loadSyncStats();
@@ -45,7 +63,7 @@ class CallLogSyncService {
    */
   async isReadyForSync() {
     const deviceStatus = deviceCallLogService.getStatus();
-    const apiReady = apiService.isAuthenticated();
+    const apiReady = await apiService.isAuthenticated();
     
     return {
       ready: deviceStatus.isInitialized && deviceStatus.hasPermission && apiReady,
@@ -129,10 +147,20 @@ class CallLogSyncService {
       // Get new call logs from device
       console.log('Fetching new call logs from device...');
       const deviceCallLogs = await deviceCallLogService.getNewCallLogs();
+      // Update pending to reflect unsynced items before pushing
+      await this.updateSyncStats({ pending: deviceCallLogs.length });
+      this.notifySync({ success: true, synced: 0, failed: 0, duplicates: 0, total: deviceCallLogs.length });
       
       if (deviceCallLogs.length === 0) {
         console.log('No new call logs to sync');
         await this.updateSyncStats({ lastSyncTime: Date.now() });
+        this.notifySync({
+          success: true,
+          synced: 0,
+          failed: 0,
+          duplicates: 0,
+          total: 0,
+        });
         return { 
           success: true, 
           message: 'No new call logs to sync',
@@ -159,6 +187,13 @@ class CallLogSyncService {
         errors: results.errors || [],
         pending: errorCount,
       });
+      this.notifySync({
+        success: errorCount === 0,
+        synced: successCount,
+        failed: errorCount,
+        duplicates: duplicateCount,
+        total: transformedLogs.length,
+      });
 
       // Update device service last sync timestamp
       if (successCount > 0) {
@@ -184,6 +219,7 @@ class CallLogSyncService {
         errors: [...this.syncStats.errors, error.message],
         lastSyncTime: Date.now()
       });
+      this.notifySync({ success: false, synced: 0, failed: 0, duplicates: 0, total: 0, error: error.message });
       
       return {
         success: false,
@@ -389,6 +425,30 @@ class CallLogSyncService {
     } catch (error) {
       console.error('Error updating sync stats:', error);
     }
+  }
+
+  /**
+   * Subscribe to sync completion events
+   */
+  onSync(callback) {
+    if (typeof callback !== 'function') return () => {};
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  notifySync(payload) {
+    try {
+      this.listeners.forEach((cb) => {
+        try { cb({ stats: this.syncStats, ...payload }); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  /**
+   * Get last persisted sync stats
+   */
+  getStoredSyncStats() {
+    return { ...this.syncStats };
   }
 
   /**

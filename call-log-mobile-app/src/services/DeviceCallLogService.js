@@ -364,7 +364,7 @@ class DeviceCallLogService {
 
       // Adjust from/to based on call direction
       const userNumber = this.getUserMobileNumber();
-      const cleanUserNumber = userNumber.replace(/[^\d]/g, ''); // Remove non-digits for comparison
+      const cleanUserNumber = (userNumber || '').replace(/[^\d]/g, ''); // Remove non-digits for comparison
       const cleanPhoneNumber = (deviceCallLog.phoneNumber || '').replace(/[^\d]/g, '');
       
       // First set the from/to based on the device call type
@@ -380,13 +380,24 @@ class DeviceCallLogService {
 
       // Double check and correct the type based on the actual numbers
       if (cleanPhoneNumber && cleanUserNumber) {
-        // If the 'to' number matches user's number, it's an incoming call
-        if (crmCallLog.to.replace(/[^\d]/g, '') === cleanUserNumber) {
-          crmCallLog.type = 'Incoming';
+        const toClean = (crmCallLog.to || '').replace(/[^\d]/g, '')
+        const fromClean = (crmCallLog.from || '').replace(/[^\d]/g, '')
+        const normalizeToUser = (n) => {
+          if (!n) return n
+          // Normalize numbers that end with the user number (handles country code prefixes)
+          if (n.endsWith(cleanUserNumber)) return cleanUserNumber
+          return n
         }
-        // If the 'from' number matches user's number, it's an outgoing call
-        else if (crmCallLog.from.replace(/[^\d]/g, '') === cleanUserNumber) {
-          crmCallLog.type = 'Outgoing';
+        const normTo = normalizeToUser(toClean)
+        const normFrom = normalizeToUser(fromClean)
+        if (normTo === cleanUserNumber) {
+          crmCallLog.type = 'Incoming'
+          crmCallLog.from = deviceCallLog.phoneNumber
+          crmCallLog.to = userNumber
+        } else if (normFrom === cleanUserNumber) {
+          crmCallLog.type = 'Outgoing'
+          crmCallLog.from = userNumber
+          crmCallLog.to = deviceCallLog.phoneNumber
         }
       }
 

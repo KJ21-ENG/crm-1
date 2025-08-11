@@ -8,6 +8,7 @@ import { registerBackgroundFetch, unregisterBackgroundFetch } from './src/servic
 import { startForegroundSync, stopForegroundSync } from './src/services/ForegroundSyncService';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import { requestAllStartupPermissions } from './src/services/PermissionsService';
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -15,6 +16,8 @@ const AppContent = () => {
 
   useEffect(() => {
     console.log('App starting, checking for session...');
+    // Ensure all critical permissions are granted on startup (Android)
+    requestAllStartupPermissions().catch(() => {});
     // Check for existing session on app start
     dispatch(validateSession());
     

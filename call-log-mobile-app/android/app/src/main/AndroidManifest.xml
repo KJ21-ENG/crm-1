@@ -6,6 +6,16 @@
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <!-- Required for reading call logs -->
+  <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+  <!-- Required to run Foreground Service for persistent sync -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <!-- Android 14+ foreground service data sync type -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+  <!-- Battery optimization exemption request -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+  <!-- Android 13+ notification permission for foreground service notification -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -14,6 +24,15 @@
     </intent>
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true">
+    <!-- Foreground service declaration for react-native-background-actions (runs in app process) -->
+    <service
+      android:name="com.zoontek.rnbackgroundactions.HeadlessTaskService"
+      android:foregroundServiceType="dataSync"
+      android:exported="false" />
+    
+    <!-- Receive BOOT_COMPLETED to restart background sync if needed -->
+    <receiver android:name="expo.modules.notifications.broadcastreceivers.NotificationResponseReceiver" />
+
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
