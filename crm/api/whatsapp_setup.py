@@ -114,17 +114,52 @@ def download_local_service():
 
 @frappe.whitelist()
 def download_eshen_app_apk():
-    """Serve built Android APK as Eshin.apk"""
+    """Serve built Android APK as Eshin.apk.
+    Looks for common APK output names and serves the first one found.
+    """
     try:
         bench_root = os.path.abspath(os.path.join(get_site_path(), '..', '..'))
-        apk_path = os.path.join(bench_root, 'apps', 'crm', 'flutter-call-log-mobile-app', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
-        if not os.path.exists(apk_path):
-            frappe.throw(_("APK not found. Please build the app first."))
-        with open(apk_path, 'rb') as f:
+        apk_dir = os.path.join(
+            bench_root,
+            'apps', 'crm', 'flutter-call-log-mobile-app',
+            'build', 'app', 'outputs', 'flutter-apk'
+        )
+        if not os.path.isdir(apk_dir):
+            frappe.throw(_("APK directory not found. Please build the app first."))
+
+        # try preferred names first, then any app-*.apk
+        preferred = [
+            'app-universal-release.apk',
+            'app-release.apk',
+            'app-arm64-v8a-release.apk',
+            'app-armeabi-v7a-release.apk',
+        ]
+        candidate = None
+        for name in preferred:
+            path = os.path.join(apk_dir, name)
+            if os.path.exists(path):
+                candidate = path
+                break
+
+        if not candidate:
+            import glob
+            matches = sorted(glob.glob(os.path.join(apk_dir, 'app-*.apk')))
+            if matches:
+                candidate = matches[-1]
+
+        if not candidate or not os.path.exists(candidate):
+            frappe.throw(_("APK not found in {0}. Please run 'flutter build apk' first.").format(apk_dir))
+
+        with open(candidate, 'rb') as f:
             content = f.read()
+
+        # Set proper headers
         frappe.response.filename = 'Eshin.apk'
         frappe.response.filecontent = content
         frappe.response.type = 'download'
+        frappe.response.headers = {
+            'Content-Type': 'application/vnd.android.package-archive'
+        }
         return {'success': True, 'message': _('APK ready')}
     except Exception as e:
         frappe.log_error(f"APK Download Error: {str(e)}")
