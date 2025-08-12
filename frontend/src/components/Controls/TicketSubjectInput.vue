@@ -26,8 +26,19 @@
 
       <template #item-label="{ active, selected, option }">
         <slot name="item-label" v-bind="{ active, selected, option }">
-          <div class="flex-1 truncate text-ink-gray-7">
-            {{ option.label }}
+          <div class="flex items-center justify-between gap-2 w-full">
+            <div class="flex-1 truncate text-ink-gray-7">{{ option.label }}</div>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="!px-1 text-ink-gray-5 hover:text-ink-red-5"
+              @mousedown.prevent.stop
+              @click.prevent.stop="(e) => confirmAndDelete(option, e)"
+            >
+              <template #icon>
+                <FeatherIcon name="trash" class="h-4 w-4" />
+              </template>
+            </Button>
           </div>
         </slot>
       </template>
@@ -271,6 +282,79 @@ async function createSubject() {
   } finally {
     creating.value = false
   }
+}
+
+async function confirmAndDelete(option, evt) {
+  try {
+    if (evt) {
+      evt.preventDefault()
+      evt.stopPropagation()
+    }
+    // CRM-styled confirmation
+    const confirmed = await new Promise((resolve) => {
+      const confirmDialog = document.createElement('div')
+      confirmDialog.innerHTML = `
+        <div class=\"fixed inset-0 bg-black/40 z-[9998]\"></div>
+        <div class=\"fixed inset-0 z-[9999] flex items-center justify-center p-4\">
+          <div class=\"w-full max-w-sm rounded-lg bg-white shadow-xl\">
+            <div class=\"px-4 py-3 border-b text-ink-gray-9 font-medium\">${__('Confirm Delete')}</div>
+            <div class=\"px-4 py-4 text-sm text-ink-gray-7\">${__('Delete "{0}"?', [option.label])}</div>
+            <div class=\"px-4 py-3 flex justify-end gap-2 border-t\">
+              <button id=\"ts-cancel\" class=\"px-3 py-1.5 text-sm rounded border\">${__('Cancel')}</button>
+              <button id=\"ts-ok\" class=\"px-3 py-1.5 text-sm rounded bg-red-600 text-white\">${__('Delete')}</button>
+            </div>
+          </div>
+        </div>`
+      document.body.appendChild(confirmDialog)
+      confirmDialog.querySelector('#ts-cancel').addEventListener('click', () => {
+        document.body.removeChild(confirmDialog)
+        resolve(false)
+      })
+      confirmDialog.querySelector('#ts-ok').addEventListener('click', () => {
+        document.body.removeChild(confirmDialog)
+        resolve(true)
+      })
+    })
+    if (!confirmed) return
+
+    await call('frappe.client.delete', {
+      doctype: 'CRM Ticket Subject',
+      name: option.value,
+    })
+
+    if ((valuePropPassed.value ? attrs.value : props.modelValue) === option.value) {
+      emit(valuePropPassed.value ? 'change' : 'update:modelValue', '')
+    }
+
+    await options.reload()
+    toast.success(__('Deleted'))
+  } catch (error) {
+    console.error('Delete error:', error)
+    toast.error(getFriendlyError(error))
+  }
+}
+
+function stripHtml(input) {
+  try {
+    return (input || '').replace(/<[^>]*>/g, '')
+  } catch {
+    return input || ''
+  }
+}
+
+function getFriendlyError(err) {
+  const raw = err?.messages?.[0] || err?.message || ''
+  const msg = stripHtml(raw)
+  if (/LinkExistsError/i.test(msg) || /Cannot delete|cancel because/i.test(msg)) {
+    const m = msg.match(/Cannot delete.*? because\s+(.*?)\s+is linked with\s+([A-Za-z ]+)\s+([A-Z0-9\-]+)/i)
+    if (m) {
+      return __("Cannot delete: {0} is used in {1} {2}", [m[1], m[2], m[3]])
+    }
+    return __('Cannot delete: record is linked to other documents')
+  }
+  if (/PermissionError|No permission/i.test(msg)) return __('Not permitted')
+  if (/Expectation Failed|417/i.test(msg)) return __('Request failed. Please try again')
+  return msg || __('Something went wrong')
 }
 
 const labelClasses = computed(() => {
