@@ -406,7 +406,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'ticket-created'])
 
 const { user } = sessionStore()
-const { getUser, isManager } = usersStore()
+const { getUser, isManager, isAdmin } = usersStore()
 
 const show = defineModel()
 const router = useRouter()
@@ -745,6 +745,12 @@ const tabs = createResource({
               const currentFieldIndex = column.fields.indexOf(field)
               if (currentFieldIndex !== -1) {
                 column.fields.splice(currentFieldIndex + 1, 0, assignToRoleField)
+              }
+
+              // Make Ticket Owner editable only for admin
+              if (!isAdmin()) {
+                field.read_only = 1
+                field.description = 'Only Administrator can change Ticket Owner'
               }
             }
 

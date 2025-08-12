@@ -252,7 +252,7 @@ const props = defineProps({
 })
 
 const { user } = sessionStore()
-const { getUser, isManager } = usersStore()
+const { getUser, isManager, isAdmin } = usersStore()
 const { getLeadStatus, statusOptions } = statusesStore()
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 
@@ -672,6 +672,14 @@ const tabs = createResource({
               field.description = 'Account type is mandatory'
             }
             
+            // Make Lead Owner editable only for admin
+            if (field.fieldname == 'lead_owner') {
+              if (!isAdmin()) {
+                field.read_only = 1
+                field.description = 'Only Administrator can change Lead Owner'
+              }
+            }
+
             // Configure client_id field
             if (field.fieldname == 'client_id') {
               field.fieldtype = 'Data'

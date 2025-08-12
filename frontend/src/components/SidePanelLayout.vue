@@ -452,7 +452,7 @@ const emit = defineEmits(['afterFieldChange', 'reload'])
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta(props.doctype)
 
-const { users, isManager, getUser } = usersStore()
+const { users, isManager, getUser, isAdmin } = usersStore()
 
 const showSidePanelModal = ref(false)
 
@@ -540,6 +540,14 @@ function parsedField(field) {
       field.mandatory_depends_on,
       document.doc,
     ),
+  }
+
+  // Ensure Lead Owner and Ticket Owner are read-only for non-admins in side panel too
+  if (['lead_owner', 'ticket_owner'].includes(field.fieldname)) {
+    if (!isAdmin()) {
+      _field.read_only = true
+      _field.description = 'Only Administrator can change this field'
+    }
   }
 
   // Special handling for lead_category and referral_through fields
