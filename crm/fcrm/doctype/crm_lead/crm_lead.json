@@ -123,9 +123,9 @@
   },
   {
    "fieldname": "account_type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Account Type",
-   "options": "Individual\nHUF\nCorporate\nNRI\nLLP\nMinor\nPartnership\nOthers",
+   "options": "CRM Account Type",
    "reqd": 1
   },
   {

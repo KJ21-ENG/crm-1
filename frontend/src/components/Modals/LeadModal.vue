@@ -439,6 +439,10 @@ const tabs = createResource({
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field, fieldIndex) => {
+            // Ensure customer info fields are editable in Quick Entry
+            if (['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number', 'phone'].includes(field.fieldname)) {
+              field.read_only = 0
+            }
             if (field.fieldname == 'status') {
               field.fieldtype = 'Select'
               field.options = leadStatuses.value
@@ -451,6 +455,7 @@ const tabs = createResource({
               field.label = 'Mobile No'
               field.maxlength = 10
               field.description = 'Enter 10-digit mobile number only'
+              field.read_only = 0
               // Add change handler to trigger auto-fill and validation
               field.onChange = () => {
                 // Auto-fill will be triggered by the watcher above
@@ -489,13 +494,15 @@ const tabs = createResource({
               field.description = lead.doc.lead_category === 'Direct' ? 
                 'Client ID used during lead creation (required for Direct leads)' : 
                 'Client ID used during lead creation (optional for Indirect leads)'
+              field.read_only = 0
             }
             
             // Configure account_type field
             if (field.fieldname == 'account_type') {
-              field.fieldtype = 'Select'
+              // Switch to Link with creatable dropdown, like Ticket Subject
+              field.fieldtype = 'Link'
               field.label = 'Account Type'
-              field.options = 'Individual\nHUF\nCorporate\nNRI\nLLP\nMinor\nPartnership\nOthers'
+              field.options = 'CRM Account Type'
               field.mandatory = 1
               field.description = 'Account type is mandatory'
             }

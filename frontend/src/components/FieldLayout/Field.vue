@@ -84,6 +84,16 @@
         @change="(v) => fieldChange(v, field)"
         :placeholder="getPlaceholder(field)"
       />
+      <!-- Special handling for account type: allow inline creation like ticket subject -->
+      <AccountTypeInput
+        v-else-if="field.fieldname === 'account_type' && field.options === 'CRM Account Type'"
+        class="form-control flex-1 truncate"
+        :value="data[field.fieldname]"
+        :doctype="field.options"
+        :filters="field.filters"
+        @change="(v) => fieldChange(v, field)"
+        :placeholder="getPlaceholder(field)"
+      />
       <Link
         v-else
         class="form-control flex-1 truncate"
@@ -245,6 +255,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import TableMultiselectInput from '@/components/Controls/TableMultiselectInput.vue'
 import Link from '@/components/Controls/Link.vue'
 import TicketSubjectInput from '@/components/Controls/TicketSubjectInput.vue'
+import AccountTypeInput from '@/components/Controls/AccountTypeInput.vue'
 import Grid from '@/components/Controls/Grid.vue'
 import { createDocument } from '@/composables/document'
 import { getFormat, evaluateDependsOnValue } from '@/utils'
@@ -340,13 +351,8 @@ const field = computed(() => {
 
 function isFieldVisible(field) {
   if (preview.value) return true
-  return (
-    (field.fieldtype == 'Check' ||
-      (field.read_only && data.value[field.fieldname]) ||
-      !field.read_only) &&
-    (!field.depends_on || field.display_via_depends_on) &&
-    !field.hidden
-  )
+  // Always respect depends_on/hidden, but do not hide read-only fields when empty
+  return (!field.depends_on || field.display_via_depends_on) && !field.hidden
 }
 
 const shouldRenderField = (field) => {
