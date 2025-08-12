@@ -811,6 +811,8 @@ const quickFilterList = computed(() => {
 
       // derive fieldtype and options
       let fieldtype = meta?.fieldtype || col.type || 'Data'
+      const excludedTypes = ['Date', 'Datetime', 'Time', 'Duration']
+      if (excludedTypes.includes(String(fieldtype))) return null
       let options = meta?.options
 
       // Normalize Select options to array format expected by FormControl select
