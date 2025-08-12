@@ -276,8 +276,20 @@ const formatDateTime = (date) => {
 
 const formatDateForServer = (date) => {
   if (!date) return null
+  // If already in 'YYYY-MM-DD HH:mm:ss', return as-is (avoid UTC conversion)
+  if (typeof date === 'string' && /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(date)) {
+    return date
+  }
+  // Format using local time
   const d = new Date(date)
-  return d.toISOString().slice(0, 19).replace('T', ' ')
+  const pad = (n) => String(n).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const mm = pad(d.getMonth() + 1)
+  const dd = pad(d.getDate())
+  const HH = pad(d.getHours())
+  const MM = pad(d.getMinutes())
+  const SS = pad(d.getSeconds())
+  return `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}`
 }
 
 // Customer search functionality
