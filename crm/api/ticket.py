@@ -315,99 +315,118 @@ def bulk_set_priority(ticket_names, priority):
     return updated_tickets
 
 @frappe.whitelist()
-def get_customer_history(mobile_no=None, email=None):
-    """Get customer history including existing tickets and leads"""
-    if not mobile_no and not email:
-        return {
-            "tickets": [],
-            "leads": [],
-            "summary": {
-                "total_tickets": 0,
-                "open_tickets": 0,
-                "total_leads": 0,
-                "last_interaction": None
-            }
-        }
-    
-    # Get tickets matching mobile_no or email (exclude closed tickets)
-    tickets = []
-    if mobile_no:
-        mobile_tickets = frappe.get_list(
+def get_customer_history(mobile_no=None, email=None, customer_id=None):
+    """Get customer history including existing tickets and leads.
+    Preferred matching is by customer_id; fallback to mobile/email for creation-time lookups.
+    """
+    # If customer_id provided, use it as primary filter
+    if customer_id:
+        tickets = frappe.get_list(
             "CRM Ticket",
             filters={
-                "mobile_no": mobile_no,
-                "status": ["not in", ["Closed", "Resolved"]]
+                "customer_id": customer_id,
+                "status": ["not in", ["Closed", "Resolved"]],
             },
             fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
             order_by="creation desc",
-            limit=20
+            limit=20,
         )
-        tickets.extend(mobile_tickets)
-    
-    if email:
-        email_tickets = frappe.get_list(
-            "CRM Ticket", 
-            filters={
-                "email": email,
-                "status": ["not in", ["Closed", "Resolved"]]
-            },
-            fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
-            order_by="creation desc",
-            limit=20
-        )
-        tickets.extend(email_tickets)
-    
-    # Remove duplicates (in case a ticket has both matching mobile and email)
-    seen_tickets = set()
-    unique_tickets = []
-    for ticket in tickets:
-        if ticket.name not in seen_tickets:
-            seen_tickets.add(ticket.name)
-            unique_tickets.append(ticket)
-    
-    # Sort by creation date and limit
-    unique_tickets.sort(key=lambda x: x.creation, reverse=True)
-    tickets = unique_tickets[:10]
-    
-    # Get leads matching mobile_no or email (exclude closed/converted leads)
-    leads = []
-    if mobile_no:
-        mobile_leads = frappe.get_list(
+
+        leads = frappe.get_list(
             "CRM Lead",
             filters={
-                "mobile_no": mobile_no,
-                "status": ["not in", ["Converted", "Do Not Contact", "Lost"]]
+                "customer_id": customer_id,
+                "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
             },
             fields=["name", "lead_name", "status", "creation", "modified"],
             order_by="creation desc",
-            limit=20
+            limit=20,
         )
-        leads.extend(mobile_leads)
-    
-    if email:
-        email_leads = frappe.get_list(
-            "CRM Lead",
-            filters={
-                "email": email,
-                "status": ["not in", ["Converted", "Do Not Contact", "Lost"]]
-            }, 
-            fields=["name", "lead_name", "status", "creation", "modified"],
-            order_by="creation desc",
-            limit=20
-        )
-        leads.extend(email_leads)
-    
-    # Remove duplicates
-    seen_leads = set()
-    unique_leads = []
-    for lead in leads:
-        if lead.name not in seen_leads:
-            seen_leads.add(lead.name)
-            unique_leads.append(lead)
-    
-    # Sort by creation date and limit
-    unique_leads.sort(key=lambda x: x.creation, reverse=True)
-    leads = unique_leads[:10]
+    else:
+        if not mobile_no and not email:
+            return {
+                "tickets": [],
+                "leads": [],
+                "summary": {
+                    "total_tickets": 0,
+                    "open_tickets": 0,
+                    "total_leads": 0,
+                    "last_interaction": None,
+                },
+            }
+
+        # Fallback: match by mobile/email (legacy creation flow)
+        tickets = []
+        if mobile_no:
+            tickets.extend(
+                frappe.get_list(
+                    "CRM Ticket",
+                    filters={
+                        "mobile_no": mobile_no,
+                        "status": ["not in", ["Closed", "Resolved"]],
+                    },
+                    fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
+                    order_by="creation desc",
+                    limit=20,
+                )
+            )
+        if email:
+            tickets.extend(
+                frappe.get_list(
+                    "CRM Ticket",
+                    filters={
+                        "email": email,
+                        "status": ["not in", ["Closed", "Resolved"]],
+                    },
+                    fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
+                    order_by="creation desc",
+                    limit=20,
+                )
+            )
+
+        # Remove duplicates (same ticket could match both mobile and email)
+        seen_tickets = set()
+        tickets = [
+            t
+            for t in tickets
+            if not (t.name in seen_tickets or seen_tickets.add(t.name))
+        ][:10]
+
+        leads = []
+        if mobile_no:
+            leads.extend(
+                frappe.get_list(
+                    "CRM Lead",
+                    filters={
+                        "mobile_no": mobile_no,
+                        "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
+                    },
+                    fields=["name", "lead_name", "status", "creation", "modified"],
+                    order_by="creation desc",
+                    limit=20,
+                )
+            )
+        if email:
+            leads.extend(
+                frappe.get_list(
+                    "CRM Lead",
+                    filters={
+                        "email": email,
+                        "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
+                    },
+                    fields=["name", "lead_name", "status", "creation", "modified"],
+                    order_by="creation desc",
+                    limit=20,
+                )
+            )
+
+        # Remove duplicates
+        seen_leads = set()
+        leads = [
+            l
+            for l in leads
+            if not (l.name in seen_leads or seen_leads.add(l.name))
+        ][:10]
     
     # Calculate summary
     open_ticket_statuses = ["New", "Open", "In Progress", "Pending Customer"]
@@ -429,11 +448,7 @@ def get_customer_history(mobile_no=None, email=None):
         "last_interaction": last_interaction
     }
     
-    return {
-        "tickets": tickets,
-        "leads": leads,
-        "summary": summary
-    }
+    return {"tickets": tickets, "leads": leads, "summary": summary}
 
 @frappe.whitelist()
 def get_ticket_activities(ticket):

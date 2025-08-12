@@ -448,15 +448,12 @@ const hasOpenTickets = computed(() => {
 const customerHistory = createResource({
   url: 'crm.api.ticket.get_customer_history',
   makeParams() {
+    const customerId = ticket.doc?.customer_id
+    if (customerId) return { customer_id: customerId }
     const mobile = ticket.doc?.mobile_no
     const email = ticket.doc?.email
-    
     if (!mobile && !email) return null
-    
-    return {
-      mobile_no: mobile,
-      email: email
-    }
+    return { mobile_no: mobile, email: email }
   },
   auto: false,
 })
@@ -567,6 +564,9 @@ async function autoFillCustomerData(mobileNumber) {
       ticket.doc.pan_card_number = customerData.pan_card_number || ticket.doc.pan_card_number
       ticket.doc.aadhaar_card_number = customerData.aadhaar_card_number || ticket.doc.aadhaar_card_number
       ticket.doc.referral_code = customerData.referral_code || ticket.doc.referral_code
+      if (customerData.name) {
+        ticket.doc.customer_id = customerData.name
+      }
       
       console.log('🔍 [AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', ticket.doc.first_name)
@@ -587,6 +587,7 @@ async function autoFillCustomerData(mobileNumber) {
       
       console.log('✅ [AUTO-FILL] Form auto-filled successfully')
       console.log('🔍 [AUTO-FILL] Final ticket.doc:', JSON.stringify(ticket.doc, null, 2))
+      customerHistory.reload()
     } else {
       console.log('ℹ️ [AUTO-FILL] No existing customer found for mobile:', mobileNumber)
     }

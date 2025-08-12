@@ -26,68 +26,180 @@
             </Button>
           </div>
         </div>
-        <div>
-          <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
-          
-          <!-- Assign Task Button Section -->
-          <div class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
-            <div class="flex-1">
-              <p class="text-sm font-medium text-ink-gray-9">
-                {{ lead.doc.assign_to_role ? 
-                  __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) :
-                  __('Task assignment is optional')
-                }}
-              </p>
-              <p class="text-xs text-ink-gray-7" v-if="lead.doc.assign_to_role && !pendingTaskData">
-                {{ __('Task assignment is required when assigning by role') }}
-              </p>
-              <p class="text-xs text-green-600" v-else>
-                {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData?.title || 'Task']) }}
-              </p>
-            </div>
-            
-            <!-- Task Assignment Actions -->
-            <div class="flex items-center gap-2">
-              <!-- Assign Task Button (when no task is pending) -->
-              <Button
-                v-if="!pendingTaskData"
-                variant="outline"
-                :label="__('Assign Task')"
-                @click.stop="openTaskModalForAssignment"
-              >
-                <template #prefix>
-                  <FeatherIcon name="plus" class="h-4 w-4" />
-                </template>
-              </Button>
-              
-              <!-- Task Assigned Status (when task is pending) -->
-              <template v-else>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Lead Form (Left Side) -->
+          <div class="lg:col-span-2">
+            <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
+
+            <!-- Assign Task Button Section -->
+            <div class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
+              <div class="flex-1">
+                <p class="text-sm font-medium text-ink-gray-9">
+                  {{ lead.doc.assign_to_role ? 
+                    __('Lead will be assigned to a user from "{0}" role', [lead.doc.assign_to_role]) :
+                    __('Task assignment is optional')
+                  }}
+                </p>
+                <p class="text-xs text-ink-gray-7" v-if="lead.doc.assign_to_role && !pendingTaskData">
+                  {{ __('Task assignment is required when assigning by role') }}
+                </p>
+                <p class="text-xs text-green-600" v-else>
+                  {{ __('Task "{0}" will be created when lead is saved', [pendingTaskData?.title || 'Task']) }}
+                </p>
+              </div>
+
+              <!-- Task Assignment Actions -->
+              <div class="flex items-center gap-2">
+                <!-- Assign Task Button (when no task is pending) -->
                 <Button
-                  variant="solid"
-                  :label="__('Task Assigned')"
-                  @click.stop="editAssignedTask"
+                  v-if="!pendingTaskData"
+                  variant="outline"
+                  :label="__('Assign Task')"
+                  @click.stop="openTaskModalForAssignment"
                 >
                   <template #prefix>
-                    <FeatherIcon name="check" class="h-4 w-4" />
+                    <FeatherIcon name="plus" class="h-4 w-4" />
                   </template>
                 </Button>
-                
-                <!-- Clear Task Button -->
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  @click.stop="clearAssignedTask"
-                  class="!px-2"
-                >
-                  <template #icon>
-                    <FeatherIcon name="x" class="h-4 w-4" />
-                  </template>
-                </Button>
-              </template>
+
+                <!-- Task Assigned Status (when task is pending) -->
+                <template v-else>
+                  <Button
+                    variant="solid"
+                    :label="__('Task Assigned')"
+                    @click.stop="editAssignedTask"
+                  >
+                    <template #prefix>
+                      <FeatherIcon name="check" class="h-4 w-4" />
+                    </template>
+                  </Button>
+
+                  <!-- Clear Task Button -->
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    @click.stop="clearAssignedTask"
+                    class="!px-2"
+                  >
+                    <template #icon>
+                      <FeatherIcon name="x" class="h-4 w-4" />
+                    </template>
+                  </Button>
+                </template>
+              </div>
+            </div>
+
+            <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
+          </div>
+
+          <!-- Customer History (Right Side) -->
+          <div class="lg:col-span-1">
+            <div class="sticky top-4">
+              <div class="rounded-lg border bg-white p-4">
+                <h4 class="mb-4 text-lg font-semibold text-ink-gray-9">
+                  {{ __('Customer History') }}
+                </h4>
+
+                <!-- Show message when no contact info -->
+                <div v-if="!customerSearchKey" class="text-center py-6">
+                  <div class="text-ink-gray-6 text-sm">
+                    {{ __('Enter mobile number or email to see customer history') }}
+                  </div>
+                </div>
+
+                <!-- Loading state -->
+                <div v-else-if="customerHistory.loading" class="text-center py-6">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                  <div class="text-sm text-ink-gray-6">{{ __('Loading history...') }}</div>
+                </div>
+
+                <!-- Customer History Results -->
+                <div v-else-if="customerHistory.data" class="space-y-4">
+                  <!-- Existing Tickets -->
+                  <div v-if="customerHistory.data.tickets?.length">
+                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
+                      <TicketIcon class="h-4 w-4" />
+                      {{ __('Existing Tickets') }} ({{ customerHistory.data.tickets.length }})
+                    </h5>
+                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                      <div
+                        v-for="existingTicket in customerHistory.data.tickets"
+                        :key="existingTicket.name"
+                        class="p-3 rounded border bg-orange-50 hover:bg-orange-100 transition-colors cursor-pointer"
+                        @click="router.push({ name: 'Ticket', params: { ticketId: existingTicket.name } })"
+                      >
+                        <div class="font-medium text-sm text-ink-gray-9">
+                          {{ existingTicket.subject || existingTicket.ticket_subject }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1">
+                          <Badge 
+                            :label="existingTicket.status" 
+                            :theme="getStatusColor(existingTicket.status)"
+                            variant="subtle"
+                            class="mr-2"
+                          />
+                          {{ formatDate(existingTicket.creation) }}
+                        </div>
+                        <div v-if="existingTicket.status !== 'Closed'" class="text-xs text-orange-600 mt-1">
+                          ⚠️ {{ __('Open ticket exists') }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Existing Leads -->
+                  <div v-if="customerHistory.data.leads?.length">
+                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
+                      <LeadsIcon class="h-4 w-4" />
+                      {{ __('Existing Leads') }} ({{ customerHistory.data.leads.length }})
+                    </h5>
+                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                      <div
+                        v-for="existingLead in customerHistory.data.leads"
+                        :key="existingLead.name"
+                        class="p-3 rounded border bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                        @click="router.push({ name: 'Lead', params: { leadId: existingLead.name } })"
+                      >
+                        <div class="font-medium text-sm text-ink-gray-9">
+                          {{ existingLead.lead_name }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1">
+                          <Badge 
+                            :label="existingLead.status" 
+                            :theme="getStatusColor(existingLead.status)"
+                            variant="subtle"
+                            class="mr-2"
+                          />
+                          {{ formatDate(existingLead.creation) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Warning for open tickets -->
+                  <div v-if="hasOpenTickets" class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <div class="flex items-center gap-2 text-yellow-700">
+                      <FeatherIcon name="alert-triangle" class="h-4 w-4" />
+                      <span class="font-medium text-sm">{{ __('Warning') }}</span>
+                    </div>
+                    <div class="text-xs text-yellow-600 mt-1">
+                      {{ __('Customer has open tickets. Consider updating existing ticket instead of creating new one.') }}
+                    </div>
+                  </div>
+
+                  <!-- No history found -->
+                  <div v-if="!customerHistory.data.tickets?.length && !customerHistory.data.leads?.length" class="text-center py-4">
+                    <div class="text-ink-gray-6 text-sm">
+                      {{ __('No previous tickets or leads found for this customer') }}
+                    </div>
+                    <div class="text-ink-gray-5 text-xs mt-1">
+                      {{ __('This appears to be a new customer') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
         </div>
       </div>
       <div class="px-4 pb-7 pt-4 sm:px-6">
@@ -129,7 +241,11 @@ import { createResource, call } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { useDocument } from '@/data/document'
 import { computed, onMounted, ref, nextTick, watch } from 'vue'
+import { formatDate } from '@/utils'
 import { useRouter } from 'vue-router'
+import TicketIcon from '@/components/Icons/TaskIcon.vue'
+import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
+import { Badge, Button, Dialog, toast, FeatherIcon } from 'frappe-ui'
 
 const props = defineProps({
   defaults: Object,
@@ -208,6 +324,49 @@ onMounted(async () => {
   // Set default account type
   setDefaultAccountType()
 })
+// Customer search key for history lookup
+const customerSearchKey = computed(() => {
+  return lead.doc?.mobile_no || lead.doc?.email
+})
+
+// Check if customer has open tickets
+const hasOpenTickets = computed(() => {
+  return customerHistory.data?.tickets?.some(t => 
+    ['New', 'Open', 'In Progress', 'Pending Customer'].includes(t.status)
+  ) || false
+})
+
+// Customer history resource (reuse API from Ticket)
+const customerHistory = createResource({
+  url: 'crm.api.ticket.get_customer_history',
+  makeParams() {
+    // Prefer matching by customer_id if available
+    const customerId = lead.doc?.customer_id
+    if (customerId) return { customer_id: customerId }
+    const mobile = lead.doc?.mobile_no
+    const email = lead.doc?.email
+    if (!mobile && !email) return null
+    return { mobile_no: mobile, email: email }
+  },
+  auto: false,
+})
+
+// Watch for contact changes
+watch([() => lead.doc?.mobile_no, () => lead.doc?.email], ([mobile, email]) => {
+  if (mobile || email) customerHistory.reload()
+}, { immediate: false })
+
+function getStatusColor(status) {
+  const colors = {
+    New: 'blue',
+    Open: 'orange',
+    'In Progress': 'yellow',
+    'Pending Customer': 'purple',
+    Resolved: 'green',
+    Closed: 'gray',
+  }
+  return colors[status] || 'gray'
+}
 
 // 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
 watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
@@ -297,6 +456,10 @@ async function autoFillCustomerData(mobileNumber) {
       lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
       lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
       lead.doc.referral_through = customerData.referral_code || lead.doc.referral_through
+      // Set customer_id to link history immediately
+      if (customerData.name) {
+        lead.doc.customer_id = customerData.name
+      }
       
       console.log('🔍 [LEAD AUTO-FILL] Field updates:')
       console.log('  first_name:', originalFirstName, '->', lead.doc.first_name)
@@ -309,6 +472,8 @@ async function autoFillCustomerData(mobileNumber) {
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))
+      // Refresh customer history using customer_id for accuracy
+      customerHistory.reload()
     } else {
       console.log('ℹ️ [LEAD AUTO-FILL] No existing customer found for mobile:', mobileNumber)
     }
