@@ -13,11 +13,12 @@ const routes = [
     name: 'Dashboard',
     component: () => import('@/pages/Dashboard.vue'),
   },
-  {
-    path: '/notifications',
-    name: 'Notifications',
-    component: () => import('@/pages/MobileNotification.vue'),
-  },
+  // Notifications route removed from sidebar; keep commented out to disable navigation
+  // {
+  //   path: '/notifications',
+  //   name: 'Notifications',
+  //   component: () => import('@/pages/MobileNotification.vue'),
+  // },
   {
     alias: '/tickets',
     path: '/tickets/view/:viewType?',

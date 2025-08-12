@@ -17,23 +17,7 @@
             <UserDropdown class="p-2" :isCollapsed="!sidebarOpened" />
           </div>
           <div class="flex-1 overflow-y-auto">
-            <div class="mb-3 flex flex-col">
-              <SidebarLink
-                id="notifications-btn"
-                :label="__('Notifications')"
-                :icon="NotificationsIcon"
-                :to="{ name: 'Notifications' }"
-                class="relative mx-2 my-0.5"
-              >
-                <template #right>
-                  <Badge
-                    v-if="unreadNotificationsCount"
-                    :label="unreadNotificationsCount"
-                    variant="subtle"
-                  />
-                </template>
-              </SidebarLink>
-            </div>
+            <div class="mb-3 flex flex-col" />
             <div v-for="view in allViews" :key="view.label">
               <Section
                 :label="view.name"
@@ -105,10 +89,8 @@ import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
-import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { viewsStore } from '@/stores/views'
-import { unreadNotificationsCount } from '@/stores/notifications'
 import { createResource } from 'frappe-ui'
 import { TrialBanner } from 'frappe-ui/frappe'
 import { computed, h, provide } from 'vue'

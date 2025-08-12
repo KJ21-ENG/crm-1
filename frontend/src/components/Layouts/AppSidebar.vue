@@ -9,26 +9,6 @@
     <div class="flex-1 overflow-y-auto">
       <div class="mb-3 flex flex-col">
         <SidebarLink
-          id="notifications-btn"
-          :label="__('Notifications')"
-          :icon="NotificationsIcon"
-          :isCollapsed="isSidebarCollapsed"
-          @click="() => toggleNotificationPanel()"
-          class="relative mx-2 my-0.5"
-        >
-          <template #right>
-            <Badge
-              v-if="!isSidebarCollapsed && unreadNotificationsCount"
-              :label="unreadNotificationsCount"
-              variant="subtle"
-            />
-            <div
-              v-else-if="unreadNotificationsCount"
-              class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-surface-gray-6 ring-1 ring-white"
-            />
-          </template>
-        </SidebarLink>
-        <SidebarLink
           id="task-notifications-btn"
           :label="__('Task Reminders')"
           :icon="TaskIcon"
@@ -140,7 +120,6 @@
         </template>
       </SidebarLink>
     </div>
-      <Notifications />
     <TaskNotifications />
     <Settings />
     <HelpModal
@@ -185,17 +164,11 @@ import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
 import CollapseSidebar from '@/components/Icons/CollapseSidebar.vue'
-import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import HelpIcon from '@/components/Icons/HelpIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
-import Notifications from '@/components/Notifications.vue'
 import TaskNotifications from '@/components/TaskNotifications.vue'
 import Settings from '@/components/Settings/Settings.vue'
 import { viewsStore } from '@/stores/views'
-import {
-  unreadNotificationsCount,
-  notificationsStore,
-} from '@/stores/notifications'
 import {
   unreadTaskNotificationsCount,
   taskNotificationsStore,
@@ -221,7 +194,6 @@ import { useStorage } from '@vueuse/core'
 import { ref, reactive, computed, h, markRaw, onMounted } from 'vue'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
-const { toggle: toggleNotificationPanel } = notificationsStore()
 const { toggle: toggleTaskNotificationPanel } = taskNotificationsStore()
 
 const isSidebarCollapsed = useStorage('isSidebarCollapsed', false)
