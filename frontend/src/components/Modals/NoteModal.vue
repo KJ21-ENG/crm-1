@@ -14,9 +14,12 @@
         <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
           {{ editMode ? __('Edit Note') : __('Create Note') }}
         </h3>
-        <Button v-if="_note?.reference_docname" size="sm" :label="_note.reference_doctype == 'CRM Deal'
-          ? __('Open Deal')
-          : __('Open Lead')
+        <Button v-if="_note?.reference_docname" size="sm" :label="
+          _note.reference_doctype == 'CRM Deal'
+            ? __('Open Deal')
+            : _note.reference_doctype == 'CRM Ticket'
+              ? __('Open Ticket')
+              : __('Open Lead')
           " @click="redirect()">
           <template #suffix>
             <ArrowUpRightIcon class="w-4 h-4" />
@@ -119,12 +122,22 @@ async function updateNote() {
 
 function redirect() {
   if (!props.note?.reference_docname) return
-  let name = props.note.reference_doctype == 'CRM Deal' ? 'Deal' : 'Lead'
+  // Determine route name and params based on reference_doctype
+  let routeName = 'Lead'
   let params = { leadId: props.note.reference_docname }
-  if (name == 'Deal') {
+
+  if (props.note.reference_doctype === 'CRM Deal') {
+    routeName = 'Deal'
     params = { dealId: props.note.reference_docname }
+  } else if (props.note.reference_doctype === 'CRM Ticket') {
+    routeName = 'Ticket'
+    params = { ticketId: props.note.reference_docname }
+  } else if (props.note.reference_doctype === 'CRM Customer') {
+    routeName = 'Customer'
+    params = { customerId: props.note.reference_docname }
   }
-  router.push({ name: name, params: params })
+
+  router.push({ name: routeName, params })
 }
 
 watch(
