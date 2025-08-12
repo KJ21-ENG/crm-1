@@ -263,7 +263,6 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
                 frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
 
             # Comment on parent about manual reassignment
-            from frappe.utils import get_fullname
             comment_content = (
                 f"🔄 Lead Reassigned\n\nNew Assignee: {get_fullname(assigned_user)}\nReason: Manual assignment"
             )
@@ -419,7 +418,6 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
                 frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
 
             # Comment on parent about manual reassignment
-            from frappe.utils import get_fullname
             comment_content = (
                 f"🔄 Lead Reassigned\n\nNew Assignee: {get_fullname(user_name)}\nReason: Manual assignment"
             )
