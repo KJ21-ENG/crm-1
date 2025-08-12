@@ -184,8 +184,13 @@ async function updateTask() {
     _task.value.assigned_to = getUser().name
   }
   
-  // Don't automatically set due_date - let it remain empty if not provided
-  // This allows users to create tasks without a due date
+  // Ensure due_date is sent; default to current datetime if empty
+  if (!_task.value.due_date) {
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const iso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    _task.value.due_date = iso
+  }
   
   if (_task.value.name) {
     let d = await call('frappe.client.set_value', {

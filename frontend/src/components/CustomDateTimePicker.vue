@@ -209,28 +209,23 @@ const currentYear = computed(() => {
 });
 
 const displayValue = computed(() => {
-  // If no date is applied, show 00:00:00
-  if (!isDateApplied.value || !selectedDate.value) {
-    return '00:00:00';
-  }
-  
-  const date = new Date(selectedDate.value);
-  // Format date properly without timezone issues
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const formattedDate = `${month}/${day}/${year}`;
-  
-  const hour = selectedPeriod.value === 'PM' && selectedHour.value !== 12 
-    ? selectedHour.value + 12 
-    : selectedPeriod.value === 'AM' && selectedHour.value === 12 
-    ? 0 
-    : selectedHour.value;
-  
-  const formattedTime = `${hour.toString().padStart(2, '0')}:${selectedMinute.value.toString().padStart(2, '0')}`;
-  
-  return `${formattedDate} ${formattedTime} ${selectedPeriod.value}`;
-});
+  // If not applied, still show a friendly current date/time preview
+  if (!selectedDate.value) return ''
+
+  const date = new Date(selectedDate.value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const formattedDate = `${month}/${day}/${year}`
+
+  // Show 12-hour time along with AM/PM for display
+  const hour12 = selectedHour.value % 12 || 12
+  const formattedTime = `${hour12.toString().padStart(2, '0')}:${selectedMinute.value
+    .toString()
+    .padStart(2, '0')} ${selectedPeriod.value}`
+
+  return `${formattedDate} ${formattedTime}`
+})
 
 const hours = computed(() => {
   return Array.from({ length: 12 }, (_, i) => i + 1);
@@ -491,8 +486,45 @@ onMounted(() => {
     window.addEventListener('resize', handleResize);
     // Initialize with current date and time on mount but don't apply
     initializeCurrentDateTime();
-    isDateApplied.value = false; // Don't apply date initially
-    hasUserSelectedDate.value = false; // Don't apply date initially
+
+    // If no external value provided, default to current datetime and emit it
+    if (!props.modelValue) {
+      const finalDate = new Date(selectedDate.value)
+      let hour = selectedHour.value
+      if (selectedPeriod.value === 'PM' && hour !== 12) {
+        hour += 12
+      } else if (selectedPeriod.value === 'AM' && hour === 12) {
+        hour = 0
+      }
+      finalDate.setHours(hour, selectedMinute.value, 0, 0)
+
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: userTimezone,
+      })
+      const parts = formatter.formatToParts(finalDate)
+      const dateParts = {}
+      parts.forEach((part) => {
+        dateParts[part.type] = part.value
+      })
+      const isoString = `${dateParts.year}-${dateParts.month}-${dateParts.day} ${dateParts.hour}:${dateParts.minute}:${dateParts.second}`
+
+      isDateApplied.value = true
+      hasUserSelectedDate.value = true
+      emit('update:modelValue', isoString)
+      emit('change', isoString)
+    } else {
+      // No change; watcher will hydrate state from external value
+      isDateApplied.value = true
+      hasUserSelectedDate.value = true
+    }
     
     // Handle click outside in production mode
     const handleClickOutside = (event) => {
@@ -799,7 +831,7 @@ onUnmounted(() => {
 
 .apply-btn {
   background: #000000;
-  color: #ffffff #important;
+  color: #ffffff !important;
   flex: 1;
 }
 
