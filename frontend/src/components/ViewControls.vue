@@ -796,27 +796,65 @@ const quickFilterOptions = computed(() => {
   return options
 })
 
+// Build quick filters directly from the visible list columns of the current view
+// so that quick filters match the default view columns of each module
 const quickFilterList = computed(() => {
-  let filters = quickFilters.data || []
+  const columns = list.value?.data?.columns || []
+  const fieldsMeta = list.value?.data?.fields || []
 
+  // Map columns to filter definitions
+  const filters = columns
+    .map((col) => {
+      const key = col.key || col.value
+      if (!key) return null
+      const meta = fieldsMeta.find((f) => f.fieldname === key)
+
+      // derive fieldtype and options
+      let fieldtype = meta?.fieldtype || col.type || 'Data'
+      let options = meta?.options
+
+      // Normalize Select options to array format expected by FormControl select
+      if (fieldtype === 'Select' && options && typeof options === 'string') {
+        const opts = options.split('\n').map((o) => ({ label: o, value: o }))
+        // Ensure empty option exists if none present
+        if (!opts.some((o) => !o.value)) {
+          opts.unshift({ label: '', value: '' })
+        }
+        options = opts
+      }
+
+      return {
+        label: col.label || meta?.label || key,
+        fieldname: key,
+        fieldtype,
+        options,
+      }
+    })
+    .filter(Boolean)
+
+  // Initialize values and hydrate from current applied filters
   filters.forEach((filter) => {
-    filter['value'] = filter.fieldtype == 'Check' ? false : ''
-    if (list.value.params?.filters[filter.fieldname]) {
-      let value = list.value.params.filters[filter.fieldname]
-      if (Array.isArray(value)) {
+    filter.value = filter.fieldtype === 'Check' ? false : ''
+    const active = list.value?.params?.filters?.[filter.fieldname]
+    if (active !== undefined) {
+      if (Array.isArray(active)) {
+        const op = active[0]?.toLowerCase?.()
+        const rhs = active[1]
         if (
-          (['Check', 'Select', 'Link', 'Date', 'Datetime'].includes(
-            filter.fieldtype,
-          ) &&
-            value[0]?.toLowerCase() == 'like') ||
-          value[0]?.toLowerCase() != 'like'
-        )
-          return
-        filter['value'] = value[1]?.replace(/%/g, '')
-      } else if (typeof value == 'boolean') {
-        filter['value'] = value
+          (['check', 'select', 'link', 'date', 'datetime'].includes(
+            filter.fieldtype?.toLowerCase?.() || '',
+          ) && op === 'like') || op !== 'like'
+        ) {
+          // do nothing (handled by non-LIKE semantics)
+        } else if (typeof rhs === 'string') {
+          filter.value = rhs.replace(/%/g, '')
+        }
+      } else if (typeof active === 'boolean') {
+        filter.value = active
+      } else if (typeof active === 'string') {
+        filter.value = active.replace(/%/g, '')
       } else {
-        filter['value'] = value?.replace(/%/g, '')
+        filter.value = active
       }
     }
   })
