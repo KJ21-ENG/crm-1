@@ -383,7 +383,7 @@ import { capture } from '@/telemetry'
 import { formatDate } from '@/utils'
 import { createResource, Badge, Button, Dialog, toast, FeatherIcon, call } from 'frappe-ui'
 import { useDocument } from '@/data/document'
-import { computed, onMounted, ref, nextTick, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import WhatsAppSetupModal from '@/components/Modals/WhatsAppSetupModal.vue'
 import { format } from 'date-fns' // Add this import if not already present
@@ -1089,6 +1089,8 @@ const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
 })
+const isHosted = typeof window !== 'undefined' && !['localhost', 'crm.localhost'].includes(window.location.hostname)
+const lastSendContext = ref(null)
 
 // Support pages resource
 const supportPages = createResource({
@@ -1150,62 +1152,56 @@ const isPageSelected = (page) => {
 }
 
 const sendSupportPages = async () => {
-  // If extension is connected we allow sending
-
   if (selectedPages.value.length === 0) {
     toast.error('Please select at least one support page')
     return
   }
-
   if (!ticket.doc.mobile_no) {
     toast.error('Please enter a mobile number')
     return
   }
 
-  sending.value = true
-  
-  try {
-    const message = generateMessage()
-    
-    // Send WhatsApp message via local service
-    const response = await createResource({
-      url: 'crm.api.whatsapp_setup.send_local_whatsapp_message',
-      params: {
-        to: ticket.doc.mobile_no,
-        message: message,
-      },
-    }).fetch()
+  const message = generateMessage()
+  if (!message) return
 
-    if (response.success) {
-      toast.success('Support pages sent successfully!')
-      selectedPages.value = []
-      searchQuery.value = ''
-    } else {
-      toast.error(response.message || 'Failed to send support pages')
+  try {
+    sending.value = true
+    // Prefer Chrome extension flow
+    lastSendContext.value = { phone: ticket.doc.mobile_no, message }
+    const evt = new CustomEvent('crm-whatsapp-send-direct', { detail: { phone: ticket.doc.mobile_no, message } })
+    document.dispatchEvent(evt)
+  } catch (e) {
+    // Fallback to local service
+    try {
+      const response = await createResource({
+        url: 'crm.api.whatsapp_setup.send_local_whatsapp_message',
+        params: { to: ticket.doc.mobile_no, message },
+      }).fetch()
+      if (response.success) {
+        toast.success('Support pages sent successfully!')
+        selectedPages.value = []
+        searchQuery.value = ''
+      } else {
+        toast.error(response.message || 'Failed to send support pages')
+      }
+    } catch (error) {
+      toast.error('Error sending support pages: ' + error.message)
+    } finally {
+      sending.value = false
     }
-  } catch (error) {
-    toast.error('Error sending support pages: ' + error.message)
-  } finally {
-    sending.value = false
   }
 }
 
 const checkWhatsAppStatus = async () => {
+  if (isHosted) return
   try {
-    const response = await createResource({
-      url: 'crm.api.whatsapp_setup.get_local_whatsapp_status',
-    }).fetch()
-
+    const response = await createResource({ url: 'crm.api.whatsapp_setup.get_local_whatsapp_status' }).fetch()
     whatsappStatus.value = {
       connected: response.connected || false,
       phoneNumber: response.phone_number || null,
     }
   } catch (error) {
-    console.error('Error checking WhatsApp status:', error)
-    whatsappStatus.value = {
-      connected: false,
-      phoneNumber: null,
-    }
+    whatsappStatus.value = { connected: false, phoneNumber: null }
   }
 }
 
@@ -1222,7 +1218,34 @@ const openWhatsAppSetup = () => {
 
 // Check WhatsApp status on mount
 onMounted(() => {
+  try { document.dispatchEvent(new Event('crm-whatsapp-request-status')) } catch (_) {}
   checkWhatsAppStatus()
+
+  const onExtStatus = (e) => {
+    const detail = e.detail || {}
+    const connected = detail.status === 'connected'
+    whatsappStatus.value = {
+      connected,
+      phoneNumber: detail.phoneNumber || null,
+    }
+  }
+  const onExtSend = (e) => {
+    const { success, error } = e.detail || {}
+    sending.value = false
+    if (success) {
+      toast.success('Support pages sent successfully!')
+      selectedPages.value = []
+      searchQuery.value = ''
+    } else if (error) {
+      toast.error('Failed to send support pages: ' + error)
+    }
+  }
+  document.addEventListener('crm-whatsapp-status', onExtStatus)
+  document.addEventListener('crm-whatsapp-send', onExtSend)
+  onBeforeUnmount(() => {
+    document.removeEventListener('crm-whatsapp-status', onExtStatus)
+    document.removeEventListener('crm-whatsapp-send', onExtSend)
+  })
 })
 
 // Watch for modal opening to refresh WhatsApp status
