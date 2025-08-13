@@ -1,10 +1,50 @@
 import frappe
 from frappe import _
 from frappe.utils import now, time_diff_in_seconds
+import json
 
 from crm.api.doc import get_assigned_users, get_fields_meta
 from datetime import timedelta
 from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
+
+def _get_assigned_users_for_document(doctype: str, docname: str):
+    """Return a set of users already assigned to the given document using _assign and ToDo."""
+    try:
+        assigned = set()
+        # From _assign on document
+        try:
+            parent = frappe.get_doc(doctype, docname)
+            if parent and getattr(parent, "_assign", None):
+                try:
+                    arr = json.loads(parent._assign) if isinstance(parent._assign, str) else parent._assign
+                    if isinstance(arr, list):
+                        assigned.update([u for u in arr if isinstance(u, str) and u])
+                except Exception:
+                    if isinstance(parent._assign, str) and parent._assign.strip():
+                        assigned.add(parent._assign.strip())
+        except Exception:
+            pass
+
+        # From ToDo entries
+        try:
+            todos = frappe.get_all(
+                "ToDo",
+                filters={
+                    "reference_type": doctype,
+                    "reference_name": docname,
+                    "status": ["in", ["Open", "Working"]],
+                },
+                fields=["allocated_to"],
+            )
+            for t in todos:
+                user = (t.get("allocated_to") or "").strip()
+                if user:
+                    assigned.add(user)
+        except Exception:
+            pass
+        return assigned
+    except Exception:
+        return set()
 
 @frappe.whitelist()
 def get_ticket(name):
@@ -1211,7 +1251,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_cr
         # Import here to avoid circular imports
         from frappe.utils import get_fullname
         from crm.api.activities import emit_activity_update
-        
+
         # Update the ticket assigned_role directly in database to avoid timestamp conflicts
         frappe.db.set_value("CRM Ticket", ticket_name, "assigned_role", "Direct Assignment")
         
@@ -1355,12 +1395,27 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None, skip_task_cr
         from frappe.utils import get_fullname
         from crm.api.activities import emit_activity_update
         
-        # Get the next user for this role using the dedicated tracker
-        assigned_user = RoleAssignmentTracker.assign_to_next_user(
+        # Build eligible pool for this role and exclude users already assigned to this ticket
+        eligible_users = RoleAssignmentTracker.get_role_users(role_name)
+        already_assigned = _get_assigned_users_for_document("CRM Ticket", ticket_name)
+        available_users = [u for u in eligible_users if u not in already_assigned]
+
+        if not available_users:
+            return {
+                "success": False,
+                "error": f"All eligible users for role '{role_name}' are already assigned to this ticket",
+                "all_assigned": True,
+                "eligible_users": eligible_users,
+                "assigned_users": list(already_assigned),
+            }
+
+        # Get the next user from the filtered list using the tracker
+        assigned_user = RoleAssignmentTracker.assign_to_next_user_from_list(
             role_name=role_name,
+            user_list=available_users,
             document_type="CRM Ticket",
             document_name=ticket_name,
-            assigned_by=assigned_by
+            assigned_by=assigned_by,
         )
         
         # Update the ticket assigned_role directly in database to avoid timestamp conflicts

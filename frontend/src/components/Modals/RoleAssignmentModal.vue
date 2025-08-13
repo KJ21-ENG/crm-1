@@ -109,7 +109,7 @@
               :value="role.role"
               :disabled="!role.enabled"
             >
-              {{ role.role }} ({{ role.user_count }} {{ __('users') }})
+              {{ role.role }}
             </option>
           </select>
 
