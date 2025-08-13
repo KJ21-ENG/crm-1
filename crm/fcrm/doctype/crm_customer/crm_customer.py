@@ -6,6 +6,7 @@ import json
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, now, now_datetime
+import re
 from crm.fcrm.utils.validation import validate_identity_documents
 
 
@@ -80,7 +81,11 @@ class CRMCustomer(Document):
 
     def after_insert(self):
         """Actions after creating a new customer"""
-        pass  # Frappe automatically tracks creation in Version table
+        # Update historical call logs' customer_name using this customer's mobile number
+        try:
+            self.update_call_logs_customer_name()
+        except Exception as e:
+            frappe.log_error(f"Failed updating call logs after customer insert {self.name}: {str(e)}", "Customer Call Log Update Error")
         
     def on_update(self):
         """Track changes and update related records when customer is updated"""
@@ -90,6 +95,12 @@ class CRMCustomer(Document):
                 # Debug: Log what fields changed
                 frappe.logger().info(f"Customer {self.name} field changes detected: {changes}")
                 
+                # If name or phone changed, also propagate to call logs
+                try:
+                    self.update_call_logs_customer_name()
+                except Exception as e:
+                    frappe.log_error(f"Failed updating call logs on customer update {self.name}: {str(e)}", "Customer Call Log Update Error")
+
                 # Update related leads and tickets
                 self.update_related_records(changes)
                 # Frappe automatically tracks changes in Version table
@@ -245,6 +256,65 @@ class CRMCustomer(Document):
         
         return tickets
     
+    # -----------------------------
+    # Call Logs syncing
+    # -----------------------------
+    def _clean_phone(self, number: str) -> str:
+        digits = re.sub(r"\D", "", cstr(number or ""))
+        return digits[-10:] if len(digits) > 10 else digits
+
+    def update_call_logs_customer_name(self):
+        """Update CRM Call Log.customer_name for entries matching this customer's phone.
+        Matches against customer, `from`, or `to` fields using a suffix (last 8-10 digits) match.
+        """
+        if not self.customer_name:
+            return 0
+
+        phones_to_match = set()
+        # Current phone
+        if self.mobile_no:
+            phones_to_match.add(self._clean_phone(self.mobile_no))
+
+        # Also check original mobile_no if changed
+        original_mobile = None
+        if getattr(self, "_original_values", None):
+            original_mobile = self._original_values.get("mobile_no")
+        if original_mobile:
+            phones_to_match.add(self._clean_phone(original_mobile))
+
+        # Remove empties
+        phones_to_match = {p for p in phones_to_match if p}
+        if not phones_to_match:
+            return 0
+
+        updated_total = 0
+        for phone in phones_to_match:
+            # Use last 8-10 digits to be resilient to country codes
+            like_pattern = f"%{phone}"
+            try:
+                frappe.db.sql(
+                    """
+                    UPDATE `tabCRM Call Log`
+                    SET customer_name = %s
+                    WHERE (`customer` LIKE %s OR `from` LIKE %s OR `to` LIKE %s)
+                    """,
+                    (self.customer_name, like_pattern, like_pattern, like_pattern),
+                )
+                updated_total += frappe.db.rowcount or 0
+            except Exception:
+                # Fall back to equals match if LIKE fails for some engines
+                frappe.db.sql(
+                    """
+                    UPDATE `tabCRM Call Log`
+                    SET customer_name = %s
+                    WHERE (`customer` = %s OR `from` = %s OR `to` = %s)
+                    """,
+                    (self.customer_name, phone, phone, phone),
+                )
+                updated_total += frappe.db.rowcount or 0
+
+        return updated_total
+
     def get_related_leads(self):
         """Get all leads related to this customer by mobile number or email"""
         if not self.mobile_no and not self.email:
