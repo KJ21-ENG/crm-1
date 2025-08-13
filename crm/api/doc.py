@@ -919,21 +919,56 @@ def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
 	
 	fields_str = ", ".join(fields)
 	
-	# Build WHERE clause from filters
+	# Build WHERE clause from filters with proper operator handling and SQL parameters
+	def _parse_op(val):
+		if isinstance(val, (list, tuple)) and len(val) >= 2:
+			op = str(val[0]).upper()
+			rhs = val[1]
+			return op, rhs
+		return "=", val
+
 	where_conditions = []
+	values = []
 	for key, value in filters.items():
-		if key == "customer_name":
-			# Handle customer name filter to search in both tables
-			where_conditions.append(f"(c.customer_name LIKE '%{value}%' OR t.customer_name LIKE '%{value}%')")
+		op, rhs = _parse_op(value)
+		if key in ("customer_name", "customer"):
+			# Customer quick filter: support LIKE on display name and equality on ID
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.customer_name, t.customer_name) LIKE %s)")
+				values.append(rhs)
+			else:
+				# Treat as ID equality (customer docname)
+				where_conditions.append("(c.name = %s OR t.customer_id = %s)")
+				values.extend([rhs, rhs])
 		elif key == "email":
-			# Handle email filter to search in both tables
-			where_conditions.append(f"(c.email LIKE '%{value}%' OR t.email LIKE '%{value}%')")
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.email, t.email) LIKE %s)")
+				values.append(rhs)
+			else:
+				where_conditions.append("(COALESCE(c.email, t.email) = %s)")
+				values.append(rhs)
 		elif key == "mobile_no":
-			# Handle mobile filter to search in both tables
-			where_conditions.append(f"(c.mobile_no LIKE '%{value}%' OR t.mobile_no LIKE '%{value}%')")
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.mobile_no, t.mobile_no) LIKE %s)")
+				values.append(rhs)
+			else:
+				where_conditions.append("(COALESCE(c.mobile_no, t.mobile_no) = %s)")
+				values.append(rhs)
+		elif key == "name":
+			if op == "LIKE":
+				where_conditions.append("t.name LIKE %s")
+				values.append(rhs)
+			else:
+				where_conditions.append("t.name = %s")
+				values.append(rhs)
 		else:
-			where_conditions.append(f"t.{key} = '{value}'")
-	
+			if op == "LIKE":
+				where_conditions.append(f"t.{key} LIKE %s")
+				values.append(rhs)
+			else:
+				where_conditions.append(f"t.{key} = %s")
+				values.append(rhs)
+
 	where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 	
 	# Build ORDER BY clause
@@ -949,7 +984,7 @@ def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
 	"""
 	
 	try:
-		result = frappe.db.sql(query, as_dict=True)
+		result = frappe.db.sql(query, values=values, as_dict=True)
 		return result
 	except Exception as e:
 		frappe.logger().error(f"Error in get_ticket_list_with_customer_data: {str(e)}")
@@ -990,21 +1025,55 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
 	
 	fields_str = ", ".join(fields)
 	
-	# Build WHERE clause from filters
+	# Build WHERE clause from filters with proper operator handling and SQL parameters
+	def _parse_op(val):
+		if isinstance(val, (list, tuple)) and len(val) >= 2:
+			op = str(val[0]).upper()
+			rhs = val[1]
+			return op, rhs
+		return "=", val
+
 	where_conditions = []
+	values = []
 	for key, value in filters.items():
-		if key == "lead_name":
-			# Handle lead name filter to search in both tables
-			where_conditions.append(f"(c.customer_name LIKE '%{value}%' OR l.lead_name LIKE '%{value}%')")
+		op, rhs = _parse_op(value)
+		if key in ("lead_name", "customer_name"):
+			# Lead name quick filter should match customer display name or lead_name
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.customer_name, l.lead_name) LIKE %s)")
+				values.append(rhs)
+			else:
+				where_conditions.append("(COALESCE(c.customer_name, l.lead_name) = %s)")
+				values.append(rhs)
 		elif key == "email":
-			# Handle email filter to search in both tables
-			where_conditions.append(f"(c.email LIKE '%{value}%' OR l.email LIKE '%{value}%')")
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.email, l.email) LIKE %s)")
+				values.append(rhs)
+			else:
+				where_conditions.append("(COALESCE(c.email, l.email) = %s)")
+				values.append(rhs)
 		elif key == "mobile_no":
-			# Handle mobile filter to search in both tables
-			where_conditions.append(f"(c.mobile_no LIKE '%{value}%' OR l.mobile_no LIKE '%{value}%')")
+			if op == "LIKE":
+				where_conditions.append("(COALESCE(c.mobile_no, l.mobile_no) LIKE %s)")
+				values.append(rhs)
+			else:
+				where_conditions.append("(COALESCE(c.mobile_no, l.mobile_no) = %s)")
+				values.append(rhs)
+		elif key == "name":
+			if op == "LIKE":
+				where_conditions.append("l.name LIKE %s")
+				values.append(rhs)
+			else:
+				where_conditions.append("l.name = %s")
+				values.append(rhs)
 		else:
-			where_conditions.append(f"l.{key} = '{value}'")
-	
+			if op == "LIKE":
+				where_conditions.append(f"l.{key} LIKE %s")
+				values.append(rhs)
+			else:
+				where_conditions.append(f"l.{key} = %s")
+				values.append(rhs)
+
 	where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 	
 	# Build ORDER BY clause
@@ -1020,7 +1089,7 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
 	"""
 	
 	try:
-		result = frappe.db.sql(query, as_dict=True)
+		result = frappe.db.sql(query, values=values, as_dict=True)
 		return result
 	except Exception as e:
 		frappe.logger().error(f"Error in get_lead_list_with_customer_data: {str(e)}")
