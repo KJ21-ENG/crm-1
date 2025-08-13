@@ -262,9 +262,10 @@ class CRMCallLog(Document):
 				return True
 
 	def link_with_reference_doc(self, reference_doctype, reference_name):
+		# Only create a dynamic link row; do NOT mutate reference_doctype/reference_docname here
+		# to avoid marking lifecycle-suggested calls as explicitly linked
 		if self.has_link(reference_doctype, reference_name):
 			return
-
 		self.append("links", {"link_doctype": reference_doctype, "link_name": reference_name})
 
 

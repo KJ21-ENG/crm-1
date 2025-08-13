@@ -29,12 +29,14 @@
                       label: __('Link to Lead/Ticket'),
                       icon: 'link-2',
                       onClick: () => (showLinkDialog = true),
+                      condition: () => !callLog?.data?.reference_docname,
                     },
                     {
                       label: __('Delink'),
                       icon: 'unlink',
                       onClick: delinkCall,
-                      disabled: !callLog?.data?._lead && !callLog?.data?._ticket && !callLog?.data?.reference_docname,
+                      disabled: !(callLog?.data?.reference_docname && callLog?.data?.reference_doctype),
+                      condition: () => callLog?.data?.reference_docname && callLog?.data?.reference_doctype,
                     },
                   ],
                 },
@@ -154,7 +156,7 @@
         </div>
       </div>
       <div
-        v-if="!callLog?.data?._lead && !callLog?.data?._deal && !callLog?.data?._ticket"
+        v-if="!(callLog?.data?.reference_docname && callLog?.data?.reference_doctype)"
         class="px-4 pb-7 pt-4 sm:px-6"
       >
         <div class="flex gap-2">
@@ -311,15 +313,18 @@ const detailFields = computed(() => {
     {
       icon: LeadsIcon,
       name: 'reference_doc',
-      value: data._ticket ? `Ticket: ${data._ticket}` : data._lead ? `Lead: ${data._lead}` : null,
+      value:
+        data.reference_doctype && data.reference_docname
+          ? `${(data.reference_doctype || '').replace('CRM ', '')}: ${data.reference_docname}`
+          : null,
       link: () => {
-        if (data._ticket) {
-          router.push({ name: 'Ticket', params: { ticketId: data._ticket } })
-        } else if (data._lead) {
-          router.push({ name: 'Lead', params: { leadId: data._lead } })
+        if (data.reference_doctype === 'CRM Ticket') {
+          router.push({ name: 'Ticket', params: { ticketId: data.reference_docname } })
+        } else if (data.reference_doctype === 'CRM Lead') {
+          router.push({ name: 'Lead', params: { leadId: data.reference_docname } })
         }
       },
-      condition: () => data._ticket || data._lead,
+      condition: () => data.reference_doctype && data.reference_docname,
     },
     {
       icon: CalendarIcon,
