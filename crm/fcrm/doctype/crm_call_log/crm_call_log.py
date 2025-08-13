@@ -12,6 +12,11 @@ class CRMCallLog(Document):
 	def before_save(self):
 		"""Auto-populate employee and customer fields based on call type"""
 		self.populate_employee_customer_fields()
+		# Auto-link to all open Leads/Tickets for this customer if not explicitly linked
+		try:
+			self.auto_link_to_open_docs()
+		except Exception as e:
+			frappe.logger().error(f"CallLog auto-link failed for {self.name}: {str(e)}")
 	
 	def populate_employee_customer_fields(self):
 		"""Populate employee and customer fields from caller/receiver data"""
@@ -27,6 +32,114 @@ class CRMCallLog(Document):
 		# Auto-populate customer name if not already set
 		if self.customer and not self.customer_name:
 			self.customer_name = self.get_customer_name_from_phone(self.customer)
+
+	def auto_link_to_open_docs(self):
+		"""Link this call log to all open Leads and Tickets for the same customer.
+
+		Open means:
+		- Ticket: status NOT IN ('Closed', 'Resolved')
+		- Lead: status != 'Account Activated'
+
+		Matching is done via CRM Customer from customer_id if available on Lead/Ticket,
+		otherwise by comparing contact phone/email with call log customer fields.
+		"""
+		# If already explicitly linked, respect it but still add dynamic links to others
+		# Normalize phone (digits only) and extract possible email
+		customer_contact = self.customer or self.get('from') or self.get('to') or ''
+		customer_phone_digits = ''.join(filter(str.isdigit, str(customer_contact)))
+		customer_email = None
+		if isinstance(self.customer, str) and '@' in self.customer:
+			customer_email = self.customer
+		elif isinstance(self.customer_name, str) and '@' in self.customer_name:
+			customer_email = self.customer_name
+
+		# Gather candidate customers from phone/email
+		candidate_customers = set()
+		if customer_phone_digits:
+			cust_by_phone = frappe.db.get_value(
+				"CRM Customer",
+				{"mobile_no": ("like", f"%{customer_phone_digits}")},
+				"name",
+			)
+			if cust_by_phone:
+				candidate_customers.add(cust_by_phone)
+		if customer_email:
+			cust_by_email = frappe.db.get_value(
+				"CRM Customer",
+				{"email": customer_email},
+				"name",
+			)
+			if cust_by_email:
+				candidate_customers.add(cust_by_email)
+
+		# Tickets: link all open with matching customer
+		open_tickets = []
+		if candidate_customers:
+			open_tickets = frappe.get_all(
+				"CRM Ticket",
+				filters={
+					"customer_id": ("in", list(candidate_customers)),
+					"status": ("not in", ["Closed", "Resolved"]),
+				},
+				pluck="name",
+			)
+		else:
+			# Fallbacks: match by phone or email if no customer_id found
+			if customer_phone_digits:
+				open_tickets = frappe.get_all(
+					"CRM Ticket",
+					filters={
+						"mobile_no": ("like", f"%{customer_phone_digits}"),
+						"status": ("not in", ["Closed", "Resolved"]),
+					},
+					pluck="name",
+				)
+			elif customer_email:
+				open_tickets = frappe.get_all(
+					"CRM Ticket",
+					filters={
+						"email": customer_email,
+						"status": ("not in", ["Closed", "Resolved"]),
+					},
+					pluck="name",
+				)
+
+		for t in open_tickets:
+			self.link_with_reference_doc("CRM Ticket", t)
+
+		# Leads: link all open with matching customer
+		open_leads = []
+		if candidate_customers:
+			open_leads = frappe.get_all(
+				"CRM Lead",
+				filters={
+					"customer_id": ("in", list(candidate_customers)),
+					"status": ("!=", "Account Activated"),
+				},
+				pluck="name",
+			)
+		else:
+			if customer_phone_digits:
+				open_leads = frappe.get_all(
+					"CRM Lead",
+					filters={
+						"mobile_no": ("like", f"%{customer_phone_digits}"),
+						"status": ("!=", "Account Activated"),
+					},
+					pluck="name",
+				)
+			elif customer_email:
+				open_leads = frappe.get_all(
+					"CRM Lead",
+					filters={
+						"email": customer_email,
+						"status": ("!=", "Account Activated"),
+					},
+					pluck="name",
+				)
+
+		for l in open_leads:
+			self.link_with_reference_doc("CRM Lead", l)
 	
 	def get_customer_name_from_phone(self, phone_number):
 		"""Get customer name from phone number by searching contacts and leads"""

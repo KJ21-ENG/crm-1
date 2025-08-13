@@ -307,9 +307,45 @@ def get_lead_activities(name, limit=20, offset=0):
 		}
 		activities.append(activity)
 
-	calls = get_linked_calls(name).get("calls", [])
-	notes = get_linked_notes(name) + get_linked_calls(name).get("notes", [])
-	tasks = get_linked_tasks(name) + get_linked_calls(name).get("tasks", [])
+	# Combine lifecycle calls (by CRM Customer from customer_id) with direct links
+	lifecycle_calls = []
+	try:
+		lead_doc = frappe.get_doc("CRM Lead", name)
+		customer_phone = None
+		customer_email = None
+		if getattr(lead_doc, "customer_id", None):
+			cust = frappe.db.get_value(
+				"CRM Customer",
+				lead_doc.customer_id,
+				["mobile_no", "email"],
+				as_dict=True,
+			)
+			if cust:
+				customer_phone = cust.get("mobile_no")
+				customer_email = cust.get("email")
+		# Fallback to legacy fields if present
+		customer_phone = customer_phone or getattr(lead_doc, "mobile_no", None)
+		customer_email = customer_email or getattr(lead_doc, "email", None)
+
+		lifecycle_calls = get_lead_lifecycle_calls(
+			name,
+			lead_doc.creation,
+			lead_doc.get("customer_id"),
+			customer_phone,
+			customer_email,
+		)
+	except Exception as e:
+		frappe.logger().warning(f"Lead lifecycle calls error for {name}: {e}")
+
+	_linked = get_linked_calls(name)
+	direct_calls = _linked.get("calls", [])
+	# Combine and deduplicate
+	all_call_data = (lifecycle_calls or []) + (direct_calls or [])
+	unique_call_data = list({call["name"]: call for call in all_call_data}.values())
+	calls = [parse_call_log(call) for call in unique_call_data]
+
+	notes = get_linked_notes(name) + _linked.get("notes", [])
+	tasks = get_linked_tasks(name) + _linked.get("tasks", [])
 	attachments = get_attachments("CRM Lead", name)
 
 	activities.sort(key=lambda x: x["creation"], reverse=True)
@@ -491,12 +527,25 @@ def get_ticket_activities(name, limit=20, offset=0):
 
 	# Get linked items with proper lifecycle logic
 	# Get calls using the lifecycle logic to avoid duplicates
-	ticket_doc = frappe.get_doc("CRM Ticket", name)
+	# Prefer CRM Customer contact info via customer_id; fallback to legacy fields
+	customer_phone = ticket_doc.get("mobile_no")
+	customer_email = ticket_doc.get("email")
+	if ticket_doc.get("customer_id"):
+		cust = frappe.db.get_value(
+			"CRM Customer",
+			ticket_doc.get("customer_id"),
+			["mobile_no", "email"],
+			as_dict=True,
+		)
+		if cust:
+			customer_phone = cust.get("mobile_no") or customer_phone
+			customer_email = cust.get("email") or customer_email
+
 	lifecycle_calls = get_ticket_lifecycle_calls(
-		name, 
-		ticket_doc.mobile_no, 
-		ticket_doc.email, 
-		ticket_doc.creation
+		name,
+		customer_phone,
+		customer_email,
+		ticket_doc.creation,
 	)
 	
 	# Also get any calls directly linked to the ticket via reference fields
@@ -513,8 +562,10 @@ def get_ticket_activities(name, limit=20, offset=0):
 		],
 	)
 	
-	# Combine lifecycle and direct calls, then deduplicate
-	all_call_data = lifecycle_calls + direct_ticket_calls
+	# Also include dynamic linked calls (via Dynamic Link table)
+	linked_calls = get_linked_calls(name).get("calls", [])
+	# Combine lifecycle, direct, and dynamic calls, then deduplicate
+	all_call_data = lifecycle_calls + direct_ticket_calls + linked_calls
 	unique_call_data = list({call["name"]: call for call in all_call_data}.values())
 	calls = [parse_call_log(call) for call in unique_call_data]
 	
@@ -650,6 +701,81 @@ def get_ticket_lifecycle_calls(ticket_name, mobile_no, email, ticket_creation_ti
 				lifecycle_calls.append(call)
 
 	return lifecycle_calls
+
+
+def get_lead_lifecycle_calls(lead_name, lead_creation_time, customer_id=None, mobile_no=None, email=None):
+    """Get call logs that belong to this lead's lifecycle.
+
+    Logic: use CRM Customer from customer_id when available to match phone/email; otherwise
+    fallback to phone/email on the lead. Include calls on/after lead creation until a newer
+    lead exists for the same customer, and exclude empty/dummy calls.
+    """
+    # If there's neither a customer ref nor contact data, nothing to infer
+    if not customer_id and not mobile_no and not email:
+        return []
+
+    where_conditions = []
+    values = []
+
+    if mobile_no:
+        where_conditions.append("(`from` = %s OR `to` = %s)")
+        values.extend([mobile_no, mobile_no])
+
+    if email:
+        if where_conditions:
+            where_conditions.append("OR (customer = %s OR customer_name LIKE %s)")
+        else:
+            where_conditions.append("(customer = %s OR customer_name LIKE %s)")
+        values.extend([email, f"%{email}%"])
+
+    # At minimum, require a condition; else return
+    if not where_conditions:
+        return []
+
+    # Start from lead creation
+    where_conditions.append("AND creation >= %s")
+    values.append(lead_creation_time)
+
+    where_clause = " ".join(where_conditions)
+
+    customer_calls = frappe.db.sql(
+        f"""
+        SELECT name, caller, receiver, `from`, `to`, duration,
+               start_time, end_time, status, type, recording_url,
+               creation, note, customer_name, employee, customer
+        FROM `tabCRM Call Log`
+        WHERE {where_clause}
+        AND (duration IS NOT NULL AND duration > 0 OR status IS NOT NULL AND status != '')
+        ORDER BY start_time ASC, creation ASC
+        """,
+        values,
+        as_dict=True,
+    )
+
+    # Define end boundary: next lead for same customer
+    next_lead_creation = None
+    if customer_id:
+        newer_leads = frappe.get_list(
+            "CRM Lead",
+            filters={
+                "customer_id": customer_id,
+                "creation": [">", lead_creation_time],
+                "name": ["!=", lead_name],
+            },
+            fields=["creation"],
+            order_by="creation asc",
+            limit=1,
+        )
+        if newer_leads:
+            next_lead_creation = newer_leads[0].creation
+
+    lifecycle_calls = []
+    for call in customer_calls:
+        call_time = call.creation
+        if call_time >= lead_creation_time and (next_lead_creation is None or call_time < next_lead_creation):
+            lifecycle_calls.append(call)
+
+    return lifecycle_calls
 
 
 def get_ticket_calls(name):
