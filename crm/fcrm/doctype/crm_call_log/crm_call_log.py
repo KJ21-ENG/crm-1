@@ -268,6 +268,43 @@ class CRMCallLog(Document):
 		self.append("links", {"link_doctype": reference_doctype, "link_name": reference_name})
 
 
+@frappe.whitelist()
+def link_call_log(call_log_name: str, reference_doctype: str, reference_docname: str):
+	"""Explicitly link a call log to a specific Lead/Ticket and set reference fields.
+
+	This makes the call appear only on that specific document in lifecycle views.
+	"""
+	if not call_log_name or not reference_doctype or not reference_docname:
+		raise frappe.ValidationError("Missing parameters to link call log")
+
+	call_log = frappe.get_doc("CRM Call Log", call_log_name)
+	call_log.reference_doctype = reference_doctype
+	call_log.reference_docname = reference_docname
+	# Ensure a dynamic link row exists
+	call_log.link_with_reference_doc(reference_doctype, reference_docname)
+	call_log.save(ignore_permissions=True)
+	return True
+
+
+@frappe.whitelist()
+def delink_call_log(call_log_name: str):
+	"""Remove explicit Lead/Ticket link from a call log and clear dynamic links to them."""
+	if not call_log_name:
+		raise frappe.ValidationError("Missing call log name")
+
+	call_log = frappe.get_doc("CRM Call Log", call_log_name)
+	call_log.reference_doctype = None
+	call_log.reference_docname = None
+	# Remove dynamic links to CRM Lead/Ticket only; keep Notes/Tasks intact
+	remaining_links = []
+	for row in call_log.get("links") or []:
+		if row.link_doctype not in ["CRM Lead", "CRM Ticket"]:
+			remaining_links.append(row)
+	call_log.set("links", remaining_links)
+	call_log.save(ignore_permissions=True)
+	return True
+
+
 def parse_call_log(call):
 	call["show_recording"] = False
 	call["_duration"] = seconds_to_duration(call.get("duration"))
@@ -345,6 +382,8 @@ def get_call_log(name):
 			call["_lead"] = call.get("reference_docname")
 		elif call.get("reference_doctype") == "CRM Deal":
 			call["_deal"] = call.get("reference_docname")
+		elif call.get("reference_doctype") == "CRM Ticket":
+			call["_ticket"] = call.get("reference_docname")
 
 	if call.get("links"):
 		for link in call.get("links"):
@@ -358,6 +397,8 @@ def get_call_log(name):
 				call["_lead"] = link.get("link_name")
 			elif link.get("link_doctype") == "CRM Deal":
 				call["_deal"] = link.get("link_name")
+			elif link.get("link_doctype") == "CRM Ticket":
+				call["_ticket"] = link.get("link_name")
 
 	call["_tasks"] = tasks
 	call["_notes"] = notes

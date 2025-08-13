@@ -25,6 +25,17 @@
                       icon: TaskIcon,
                       onClick: addEditTask,
                     },
+                    {
+                      label: __('Link to Lead/Ticket'),
+                      icon: 'link-2',
+                      onClick: () => (showLinkDialog = true),
+                    },
+                    {
+                      label: __('Delink'),
+                      icon: 'unlink',
+                      onClick: delinkCall,
+                      disabled: !callLog?.data?._lead && !callLog?.data?._ticket && !callLog?.data?.reference_docname,
+                    },
                   ],
                 },
               ]"
@@ -178,6 +189,40 @@
     :defaults="ticketDefaults"
     :call-log="callLog?.data"
   />
+
+  <!-- Link Call Dialog -->
+  <Dialog
+    v-model="showLinkDialog"
+    :options="{
+      title: __('Link Call Log'),
+      size: 'md',
+      actions: [
+        { label: __('Link'), variant: 'solid', onClick: linkCall },
+      ],
+    }"
+  >
+    <template #body-content>
+      <div class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm text-ink-gray-7">{{ __('Document Type') }}</label>
+          <select v-model="linkDoctype" class="form-control">
+            <option value="CRM Lead">CRM Lead</option>
+            <option value="CRM Ticket">CRM Ticket</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-ink-gray-7">{{ __('Document') }}</label>
+          <Link
+            class="form-control"
+            :doctype="linkDoctype"
+            :value="selectedDoc"
+            @change="(v) => (selectedDoc = v)"
+          />
+        </div>
+        <ErrorMessage :message="linkError" />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -201,8 +246,9 @@ import { getCallLogDetail } from '@/utils/callLog'
 import { usersStore } from '@/stores/users'
 import { isMobileView } from '@/composables/settings'
 import { useDocument } from '@/data/document'
-import { FeatherIcon, Dropdown, Avatar, Tooltip, call } from 'frappe-ui'
+import { FeatherIcon, Dropdown, Avatar, Tooltip, call, ErrorMessage } from 'frappe-ui'
 import { ref, computed, h, nextTick, watch } from 'vue'
+import Link from '@/components/Controls/Link.vue'
 import { useRouter } from 'vue-router'
 
 const { isManager } = usersStore()
@@ -212,6 +258,10 @@ const show = defineModel()
 const showNoteModal = ref(false)
 const showTaskModal = ref(false)
 const showTicketModal = ref(false)
+const showLinkDialog = ref(false)
+const linkDoctype = ref('CRM Lead')
+const selectedDoc = ref('')
+const linkError = ref('')
 
 const callLog = defineModel('callLog')
 
@@ -259,31 +309,17 @@ const detailFields = computed(() => {
       },
     },
     {
-      // Commented out - Deal module not in use
-      // icon: data._lead ? LeadsIcon : Dealsicon,
-      icon: LeadsIcon, // Only show Leads icon since Deals are not in use
+      icon: LeadsIcon,
       name: 'reference_doc',
-      // Commented out - Deal module not in use
-      // value: data._lead ? 'Lead' : 'Deal',
-      value: 'Lead', // Only show Lead since Deals are not in use
+      value: data._ticket ? `Ticket: ${data._ticket}` : data._lead ? `Lead: ${data._lead}` : null,
       link: () => {
-        if (data._lead) {
-          router.push({
-            name: 'Lead',
-            params: { leadId: data._lead },
-          })
+        if (data._ticket) {
+          router.push({ name: 'Ticket', params: { ticketId: data._ticket } })
+        } else if (data._lead) {
+          router.push({ name: 'Lead', params: { leadId: data._lead } })
         }
-        // Commented out - Deal module not in use
-        // else {
-        //   router.push({
-        //     name: 'Deal',
-        //     params: { dealId: data._deal },
-        //   })
-        // }
       },
-      // Commented out - Deal module not in use
-      // condition: () => data._lead || data._deal,
-      condition: () => data._lead, // Only show for leads since deals are not in use
+      condition: () => data._ticket || data._lead,
     },
     {
       icon: CalendarIcon,
@@ -384,6 +420,37 @@ function openCallLogModal() {
   nextTick(() => {
     show.value = false
   })
+}
+
+async function linkCall() {
+  linkError.value = ''
+  try {
+    if (!selectedDoc.value) {
+      linkError.value = __('Please select a document')
+      return
+    }
+    await call('crm.fcrm.doctype.crm_call_log.crm_call_log.link_call_log', {
+      call_log_name: callLog.value?.data?.name,
+      reference_doctype: linkDoctype.value,
+      reference_docname: selectedDoc.value,
+    })
+    showLinkDialog.value = false
+    // reload current callLog data to reflect link
+    callLog.value && callLog.value.reload && callLog.value.reload()
+  } catch (e) {
+    linkError.value = e.messages?.[0] || e.message || __('Failed to link call log')
+  }
+}
+
+async function delinkCall() {
+  try {
+    await call('crm.fcrm.doctype.crm_call_log.crm_call_log.delink_call_log', {
+      call_log_name: callLog.value?.data?.name,
+    })
+    callLog.value && callLog.value.reload && callLog.value.reload()
+  } catch (e) {
+    // no-op; optional toast
+  }
 }
 
 function addEditNote() {

@@ -611,9 +611,12 @@ def get_ticket_lifecycle_calls(ticket_name, mobile_no, email, ticket_creation_ti
 	# Add time filter to only get calls AFTER ticket creation
 	where_conditions.append("AND creation >= %s")
 	values.append(ticket_creation_time)
-	
-	# Build the final where clause
+
+	# Build the final where clause and respect explicit linking: if a call log
+	# is explicitly linked (reference_doctype/docname) to a different document,
+	# exclude it from lifecycle results. Allow unlinked or linked to this ticket.
 	where_clause = " ".join(where_conditions)
+	where_clause += " AND (reference_docname IS NULL OR reference_doctype IS NULL OR (reference_doctype = 'CRM Ticket' AND reference_docname = %s))"
 	
 	# Get calls using direct SQL to handle complex OR conditions properly
 	# Filter out dummy calls that have no duration and no status (these are auto-generated entries)
@@ -622,10 +625,10 @@ def get_ticket_lifecycle_calls(ticket_name, mobile_no, email, ticket_creation_ti
 			   start_time, end_time, status, type, recording_url, 
 			   creation, note, customer_name, employee, customer
 		FROM `tabCRM Call Log`
-		WHERE {where_clause}
+        WHERE {where_clause}
 		AND (duration IS NOT NULL AND duration > 0 OR status IS NOT NULL AND status != '')
 		ORDER BY start_time ASC, creation ASC
-	""", values, as_dict=True)
+	""", values + [ticket_name], as_dict=True)
 
 	# Filter calls to only include those within this ticket's lifecycle
 	# Lifecycle = from ticket creation until a newer ticket is created for same customer
@@ -737,6 +740,7 @@ def get_lead_lifecycle_calls(lead_name, lead_creation_time, customer_id=None, mo
     values.append(lead_creation_time)
 
     where_clause = " ".join(where_conditions)
+    where_clause += " AND (reference_docname IS NULL OR reference_doctype IS NULL OR (reference_doctype = 'CRM Lead' AND reference_docname = %s))"
 
     customer_calls = frappe.db.sql(
         f"""
@@ -748,7 +752,7 @@ def get_lead_lifecycle_calls(lead_name, lead_creation_time, customer_id=None, mo
         AND (duration IS NOT NULL AND duration > 0 OR status IS NOT NULL AND status != '')
         ORDER BY start_time ASC, creation ASC
         """,
-        values,
+        values + [lead_name],
         as_dict=True,
     )
 
