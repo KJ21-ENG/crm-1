@@ -68,7 +68,17 @@
               </template>
             </Button>
           </Dropdown>
-          <!-- User assignment field is always hidden - assignment is automatic -->
+          <!-- Assign To (only when opening from Lead/Ticket detail page and it has assignees) -->
+          <div v-if="showManualAssignee" class="min-w-[220px] flex-1">
+            <div class="mb-1.5 text-xs text-ink-gray-5">{{ __('Assign To') }}</div>
+            <Link
+              class="form-control"
+              doctype="User"
+              :filters="assignedUserFilter"
+              :value="_task.assigned_to"
+              @change="(v) => (_task.assigned_to = v)"
+            />
+          </div>
           <CustomDateTimePicker
             class="datepicker"
             v-model="_task.due_date"
@@ -84,8 +94,8 @@
           </Dropdown>
         </div>
         
-        <!-- Assignment notification -->
-        <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <!-- Assignment notification (hide when manual assignee select is visible) -->
+        <div v-if="!showManualAssignee" class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div class="flex items-center gap-2">
             <FeatherIcon name="info" class="h-4 w-4 text-blue-600" />
             <p class="text-sm text-blue-800">
@@ -112,9 +122,9 @@ import Link from '@/components/Controls/Link.vue'
 import { taskStatusOptions, taskPriorityOptions, getFormat } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { capture } from '@/telemetry'
-import { TextEditor, Dropdown, Tooltip, call } from 'frappe-ui'
+import { TextEditor, Dropdown, Tooltip, call, createResource } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
@@ -159,6 +169,39 @@ const _task = ref({
   priority: 'Low',
   reference_doctype: props.doctype,
   reference_docname: null,
+})
+
+// Load parent doc assignees from _assign (JSON array)
+const assignedUsers = createResource({
+  url: 'frappe.client.get_value',
+  params: {
+    doctype: props.doctype,
+    filters: { name: props.doc },
+    fieldname: '_assign',
+  },
+  auto: false,
+  transform: (data) => {
+    try {
+      const raw = data?._assign || ''
+      const arr = raw ? JSON.parse(raw) : []
+      return Array.isArray(arr) ? arr : []
+    } catch (e) {
+      return []
+    }
+  },
+  onSuccess: (ids) => {
+    if (ids?.length && !_task.value.assigned_to) {
+      _task.value.assigned_to = ids[0]
+    }
+  },
+})
+
+const showManualAssignee = computed(() => {
+  return Boolean(props.doc) && Array.isArray(assignedUsers.data) && assignedUsers.data.length > 0
+})
+
+const assignedUserFilter = computed(() => {
+  return assignedUsers.data?.length ? { name: ['in', assignedUsers.data] } : {}
 })
 
 function updateTaskStatus(status) {
@@ -298,6 +341,9 @@ onMounted(() => show.value && render())
 watch(show, (value) => {
   if (!value) return
   render()
+  if (props.doc) {
+    assignedUsers.fetch()
+  }
 })
 </script>
 
