@@ -186,12 +186,8 @@
             />
           </div>
 
-          <!-- Quick Actions and Top Performers -->
+          <!-- Top Performers -->
           <div class="space-y-6">
-            <!-- Quick Actions -->
-            <QuickActions :actions="quickActions" />
-            
-            <!-- Top Performers -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Performers</h3>
               
@@ -273,7 +269,6 @@ import StatsCard from '@/components/Dashboard/StatsCard.vue'
 import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
-import QuickActions from '@/components/Dashboard/QuickActions.vue'
 import { useDashboard } from '@/stores/dashboard'
 
 const route = useRoute()
