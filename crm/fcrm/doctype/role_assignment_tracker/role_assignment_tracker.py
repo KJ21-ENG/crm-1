@@ -208,13 +208,12 @@ class RoleAssignmentTracker(Document):
 	@staticmethod
 	def get_role_users(role_name):
 		"""Get all users for a specific role (excluding admin)"""
-		users = frappe.get_all("Has Role", 
+		users = frappe.get_all(
+			"Has Role",
 			filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]},
-			fields=["parent"]
+			fields=["parent"],
 		)
-		
-		user_list = [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]
-		return user_list
+		return [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]
 
 	@staticmethod
 	def assign_to_next_user_from_list(role_name, user_list, document_type, document_name, assigned_by=None):

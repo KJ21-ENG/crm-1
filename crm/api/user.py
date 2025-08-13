@@ -18,28 +18,38 @@ def add_existing_users(users, role="Sales User"):
 def update_user_role(user, new_role):
 	"""
 	Update the role of the user to Sales Manager, Sales User, System Manager, or Support User.
-	Only Administrator can change user roles.
+	Only Administrator or System Manager can change user roles.
 	:param user: The name of the user
 	:param new_role: The new role to assign
 	"""
 
-	if frappe.session.user != "Administrator":
-		frappe.throw("Only Administrator can change user roles")
+	# Permission: Administrator or System Manager
+	if not (frappe.session.user == "Administrator" or "System Manager" in frappe.get_roles()):
+		frappe.throw("Only Administrator or System Manager can change user roles")
 
-	if new_role not in ["System Manager", "Sales Manager", "Sales User", "Support User"]:
+	allowed_roles = [
+		"System Manager",
+		"Sales Manager",
+		"Sales User",
+		"Support User",
+		"Support Manager",
+	]
+	if new_role not in allowed_roles:
 		frappe.throw("Cannot assign this role")
 
 	user_doc = frappe.get_doc("User", user)
 
-	# Remove all CRM roles first
-	user_doc.remove_roles("System Manager", "Sales Manager", "Sales User", "Support User")
+	# Remove all CRM-related roles first
+	user_doc.remove_roles(*allowed_roles)
 
-	# Then add the new role and its dependencies
+	# Then add only the selected role (no manager → user inheritance)
 	if new_role == "System Manager":
-		user_doc.append_roles("System Manager", "Sales Manager", "Sales User", "Support User")
+		user_doc.append_roles("System Manager")
 		user_doc.set("block_modules", [])
 	elif new_role == "Sales Manager":
-		user_doc.append_roles("Sales Manager", "Sales User")
+		user_doc.append_roles("Sales Manager")
+	elif new_role == "Support Manager":
+		user_doc.append_roles("Support Manager")
 	elif new_role == "Sales User":
 		user_doc.append_roles("Sales User")
 		update_module_in_user(user_doc, "FCRM")
@@ -48,6 +58,10 @@ def update_user_role(user, new_role):
 		update_module_in_user(user_doc, "FCRM")
 
 	user_doc.save(ignore_permissions=True)
+
+	# Safety: deduplicate Has Role entries so a user has at most one row per role
+	_dedupe_has_role_rows(user, allowed_roles)
+	return {"success": True}
 
 
 @frappe.whitelist()
@@ -71,12 +85,13 @@ def remove_user(user):
 	user_doc = frappe.get_doc("User", user)
 	roles = [d.role for d in user_doc.roles]
 
-	if "Sales User" in roles:
-		user_doc.remove_roles("Sales User")
-	if "Sales Manager" in roles:
-		user_doc.remove_roles("Sales Manager")
+	# Remove all CRM roles
+	to_remove = [r for r in ("System Manager", "Sales Manager", "Sales User", "Support Manager", "Support User") if r in roles]
+	if to_remove:
+		user_doc.remove_roles(*to_remove)
 
 	user_doc.save(ignore_permissions=True)
+	_dedupe_has_role_rows(user, ("System Manager", "Sales Manager", "Sales User", "Support Manager", "Support User"))
 	frappe.msgprint(f"User {user} has been removed from CRM roles.")
 
 
@@ -89,3 +104,23 @@ def update_module_in_user(user, module):
 
 	if block_modules:
 		user.set("block_modules", block_modules)
+
+
+def _dedupe_has_role_rows(user, roles):
+	"""Ensure there is at most one `Has Role` row per (user, role). Deletes extras, keeps oldest."""
+	try:
+		for role in roles:
+			rows = frappe.get_all(
+				"Has Role",
+				filters={"parent": user, "role": role},
+				fields=["name"],
+				order_by="creation asc",
+			)
+			if len(rows) > 1:
+				keep = rows[0]["name"]
+				for r in rows[1:]:
+					frappe.db.delete("Has Role", r["name"])
+		frappe.db.commit()
+	except Exception:
+		# Non-fatal; log and continue
+		frappe.log_error(f"Failed deduping Has Role for user {user}", "Has Role Dedup")

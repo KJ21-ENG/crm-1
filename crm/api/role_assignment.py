@@ -5,47 +5,6 @@ from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
 from crm.api.activities import emit_activity_update
 
-def _get_assigned_users_for_document(doctype: str, docname: str):
-    """Return a set of users already assigned to the given document.
-    Looks at both the document's _assign field and open/working ToDo entries."""
-    try:
-        assigned = set()
-        # From _assign JSON on the document
-        try:
-            parent = frappe.get_doc(doctype, docname)
-            if parent and parent._assign:
-                try:
-                    arr = json.loads(parent._assign) if isinstance(parent._assign, str) else parent._assign
-                    if isinstance(arr, list):
-                        assigned.update([u for u in arr if isinstance(u, str) and u])
-                except Exception:
-                    if isinstance(parent._assign, str) and parent._assign.strip():
-                        assigned.add(parent._assign.strip())
-        except Exception:
-            pass
-
-        # From ToDo (Open/Working)
-        try:
-            todos = frappe.get_all(
-                "ToDo",
-                filters={
-                    "reference_type": doctype,
-                    "reference_name": docname,
-                    "status": ["in", ["Open", "Working"]],
-                },
-                fields=["allocated_to"],
-            )
-            for t in todos:
-                user = (t.get("allocated_to") or "").strip()
-                if user:
-                    assigned.add(user)
-        except Exception:
-            pass
-
-        return assigned
-    except Exception:
-        return set()
-
 @frappe.whitelist()
 def test_role_assignment_tracker():
     """Test function to verify Role Assignment Tracker works with JSON serialization"""
@@ -132,51 +91,31 @@ def get_current_assignments(doc_name, doctype="CRM Lead"):
 
 @frappe.whitelist()
 def get_assignable_roles():
-    """Get list of roles that can be assigned to leads, including user names"""
+    """Get list of roles that can be assigned to leads"""
     roles = [
         'Sales User',
-        'Sales Manager',
+        'Sales Manager', 
         'Support User',
         'Support Manager',
     ]
-
+    
     role_data = []
     for role in roles:
-        # Fetch users who have this role (exclude Administrator)
-        role_users = frappe.get_all(
-            "Has Role",
+        # Get users count for each role
+        users = frappe.get_all("Has Role", 
             filters={"role": role, "parent": ["!=", "Administrator"]},
-            fields=["parent"],
+            fields=["parent"]
         )
-
-        user_ids = [u.parent for u in role_users]
-        if not user_ids:
-            role_data.append({
-                "role": role,
-                "user_count": 0,
-                "enabled": False,
-                "users": [],
-                "user_names": [],
-            })
-            continue
-
-        # Get enabled users' details in one query
-        user_details = frappe.get_all(
-            "User",
-            filters={"name": ["in", user_ids], "enabled": 1},
-            fields=["name", "full_name", "email", "user_image"],
-        )
-
-        user_names = [(ud.get("full_name") or ud.get("name")) for ud in user_details]
-
+        
+        # Filter only enabled users
+        enabled_users = [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]
+        
         role_data.append({
             "role": role,
-            "user_count": len(user_details),
-            "enabled": len(user_details) > 0,
-            "users": user_details,
-            "user_names": user_names,
+            "user_count": len(enabled_users),
+            "enabled": len(enabled_users) > 0
         })
-
+    
     return role_data
 
 @frappe.whitelist()
@@ -232,27 +171,12 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
         if not assigned_by:
             assigned_by = frappe.session.user
         
-        # Build eligible pool for this role and exclude users already assigned to this lead
-        eligible_users = RoleAssignmentTracker.get_role_users(role_name)
-        already_assigned = _get_assigned_users_for_document("CRM Lead", lead_name)
-        available_users = [u for u in eligible_users if u not in already_assigned]
-
-        if not available_users:
-            return {
-                "success": False,
-                "error": f"All eligible users for role '{role_name}' are already assigned to this lead",
-                "all_assigned": True,
-                "eligible_users": eligible_users,
-                "assigned_users": list(already_assigned),
-            }
-
-        # Get the next user from the filtered list using the tracker
-        assigned_user = RoleAssignmentTracker.assign_to_next_user_from_list(
+        # Get the next user for this role using the dedicated tracker
+        assigned_user = RoleAssignmentTracker.assign_to_next_user(
             role_name=role_name,
-            user_list=available_users,
             document_type="CRM Lead",
             document_name=lead_name,
-            assigned_by=assigned_by,
+            assigned_by=assigned_by
         )
         
         # Update the lead assigned_role directly in database to avoid timestamp conflicts
