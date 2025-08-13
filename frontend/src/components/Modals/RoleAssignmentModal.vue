@@ -104,7 +104,7 @@
           >
             <option value="">{{ __('Choose a role...') }}</option>
             <option 
-              v-for="role in availableRoles.data" 
+              v-for="role in filteredRoles" 
               :key="role.role" 
               :value="role.role"
               :disabled="!role.enabled"
@@ -112,6 +112,18 @@
               {{ role.role }} ({{ role.user_count }} {{ __('users') }})
             </option>
           </select>
+
+          <!-- If no roles available to assign -->
+          <div v-if="filteredRoles.length === 0" class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              <p class="text-sm text-yellow-800">
+                {{ __('All eligible users from every role are already assigned to this document') }}
+              </p>
+            </div>
+          </div>
           
           <!-- Message when all eligible employees are assigned -->
           <div v-if="selectedRole && allEligibleEmployeesAssigned" class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -241,11 +253,27 @@ const roleAssignmentStatus = createResource({
   auto: false,
 })
 
+  // Track per-role "all assigned" status for filtering round-robin roles
+  const rolesStatus = ref({})
+
+  const filteredRoles = computed(() => {
+    const roles = availableRoles.data || []
+    const disallowed = new Set(['CRM User', 'CRM Manager'])
+    return roles
+      .filter((r) => r.enabled && rolesStatus.value[r.role] !== true)
+      .filter((r) => !disallowed.has(r.role))
+  })
+
 // Computed property to get available users for direct assignment (filtered by current assignments)
 const availableUsersForDirectAssignment = computed(() => {
   if (!availableUsers.data) return []
   const currentAssignedUsers = currentAssignments.data?.map(a => a.allocated_to) || []
-  return availableUsers.data.filter(user => !currentAssignedUsers.includes(user.name))
+  const cu = getUser()
+  const currentIdentifiers = new Set([cu?.name, cu?.email].filter(Boolean))
+  return availableUsers.data
+    .filter(user => !currentAssignedUsers.includes(user.name))
+    // Exclude current user by matching either by user.name (usually email) or email
+    .filter(user => !currentIdentifiers.has(user.name) && !currentIdentifiers.has(user.email))
 })
 
 // Computed property to check if all eligible employees for the selected role are already assigned
@@ -273,6 +301,26 @@ watch(selectedRole, (newRole) => {
     nextAssignment.fetch()
     roleAssignmentStatus.fetch()
   }
+})
+
+// When current assignments or roles load, pre-compute roles with all users already assigned
+watch([() => availableRoles.data, () => currentAssignments.data], async ([roles]) => {
+  if (!roles || !Array.isArray(roles)) return
+  const statusMap = {}
+  for (const r of roles) {
+    if (!r?.role) continue
+    try {
+      const res = await call('crm.api.role_assignment.check_all_role_users_assigned', {
+        role_name: r.role,
+        doc_name: props.doc.name,
+        doctype: props.doctype,
+      })
+      statusMap[r.role] = Boolean(res?.all_assigned)
+    } catch (e) {
+      statusMap[r.role] = false
+    }
+  }
+  rolesStatus.value = statusMap
 })
 
 // Watch for user selection changes

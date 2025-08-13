@@ -96,8 +96,7 @@ def get_assignable_roles():
         'Sales User',
         'Sales Manager', 
         'Support User',
-        'CRM User',
-        'CRM Manager'
+        'Support Manager',
     ]
     
     role_data = []
