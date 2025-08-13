@@ -4,7 +4,7 @@ import frappe
 def execute():
 	"""
 	Update existing call logs with empty customer_name fields
-	to use auto-generated 'Lead from call xxxxx' format
+	to use auto-generated 'Call From xxxxx' format
 	"""
 	frappe.log("Starting customer name auto-generation migration...")
 	
@@ -35,7 +35,7 @@ def execute():
 					
 					# If still no name found, use auto-generated format
 					if not customer_name:
-						customer_name = f"Lead from call {customer_phone}"
+						customer_name = f"Call From {customer_phone}"
 					
 					# Update the call log
 					frappe.db.set_value(

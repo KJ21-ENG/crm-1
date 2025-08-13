@@ -69,7 +69,7 @@ def search_customer_by_mobile(mobile_no):
         # If not found, return default structure
         return {
             'found': False,
-            'customer_name': f"Lead from call {mobile_no}",
+            'customer_name': f"Call From {mobile_no}",
             'customer_id': None
         }
         
@@ -77,7 +77,7 @@ def search_customer_by_mobile(mobile_no):
         frappe.logger().error(f"Error searching customer by mobile {mobile_no}: {str(e)}")
         return {
             'found': False,
-            'customer_name': f"Lead from call {mobile_no}",
+            'customer_name': f"Call From {mobile_no}",
             'customer_id': None,
             'error': str(e)
         } 

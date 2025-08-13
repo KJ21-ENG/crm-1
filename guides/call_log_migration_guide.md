@@ -12,7 +12,7 @@ This guide documents the complete migration from confusing caller/receiver field
 ## Solution Implemented
 - Employee: Always the internal CRM user involved
 - Customer: Always the external phone number
-- Customer Name: Resolved name or auto-generated "Lead from call XXXXX"
+- Customer Name: Resolved name or auto-generated "Call From XXXXX"
 
 ## Database Changes
 
@@ -72,7 +72,7 @@ def populate_employee_customer_fields(self):
 
 def get_customer_name_from_phone(self, phone_number):
     # Search contacts and leads
-    # If not found, return f"Lead from call {phone_number}"
+    # If not found, return f"Call From {phone_number}"
 
 @staticmethod
 def default_list_data():
@@ -103,7 +103,7 @@ def default_list_data():
 **Direct SQL Update**:
 ```sql
 UPDATE `tabCRM Call Log`
-SET customer_name = CONCAT('Lead from call ', customer)
+SET customer_name = CONCAT('Call From ', customer)
 WHERE (customer_name IS NULL OR customer_name = '')
 AND customer IS NOT NULL
 AND customer != '';
@@ -126,7 +126,7 @@ FROM `tabCRM Call Log` LIMIT 10;
 -- Auto-generated names distribution
 SELECT customer, customer_name, COUNT(*) as count
 FROM `tabCRM Call Log`
-WHERE customer_name LIKE 'Lead from call%'
+WHERE customer_name LIKE 'Call From%'
 GROUP BY customer, customer_name
 ORDER BY count DESC;
 ```
@@ -146,9 +146,9 @@ TRUNCATE TABLE `tabCRM View Settings`;
 - Customer Names: 99.2% populated (131/132)
 
 ### Top Auto-Generated Names
-- Lead from call 1234567890 (67 records)
-- Lead from call 8758127012 (12 records)
-- Lead from call 0987654321 (7 records)
+- Call From 1234567890 (67 records)
+- Call From 8758127012 (12 records)
+- Call From 0987654321 (7 records)
 - And 27 more unique phone numbers
 
 ## Git Commits

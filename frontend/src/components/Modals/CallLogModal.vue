@@ -314,7 +314,7 @@ async function searchCustomerByMobile(mobileNo) {
     console.error('Error searching customer:', error)
     // Set default name if search fails
     if (callLog.doc) {
-      callLog.doc.customer_name = `Lead from call ${mobileNo}`
+      callLog.doc.customer_name = `Call From ${mobileNo}`
     }
   } finally {
     customerSearchLoading.value = false

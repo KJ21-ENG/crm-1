@@ -182,11 +182,11 @@ class CRMCallLog(Document):
 				return lead
 			
 			# If no contact or lead found, generate default name
-			return f"Lead from call {phone_number}"
+			return f"Call From {phone_number}"
 			
 		except Exception as e:
 			frappe.logger().error(f"Error getting customer name for {phone_number}: {str(e)}")
-			return f"Lead from call {phone_number}"
+			return f"Call From {phone_number}"
 
 	@staticmethod
 	def default_list_data():
@@ -421,7 +421,7 @@ def create_lead_from_call_log(call_log, lead_details=None):
 		if call_log.get("customer_name"):
 			lead_details["first_name"] = call_log.get("customer_name")
 		else:
-			lead_details["first_name"] = "Lead from call " + (
+			lead_details["first_name"] = "Call From " + (
 				lead_details.get("mobile_no") or call_log.get("name")
 			)
 

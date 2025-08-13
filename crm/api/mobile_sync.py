@@ -254,7 +254,7 @@ def prepare_call_log_document(call_log_data):
         
         # If still no customer name, generate default
         if not customer_name:
-            customer_name = f"Lead from call {customer}"
+            customer_name = f"Call From {customer}"
 
     doc_data = {
         'doctype': 'CRM Call Log',

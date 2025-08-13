@@ -13,7 +13,7 @@ The original CRM Call Log system used `caller` and `receiver` fields, which crea
 Replaced caller/receiver pattern with clear employee/customer separation:
 - **Employee**: Always the internal CRM user involved in the call
 - **Customer**: Always the external phone number (customer/prospect)
-- **Customer Name**: Resolved name or auto-generated "Lead from call XXXXX"
+- **Customer Name**: Resolved name or auto-generated "Call From XXXXX"
 
 ### **Benefits Achieved**
 - ✅ **Unified Customer View**: All customer data in dedicated columns
@@ -195,11 +195,11 @@ def get_customer_name_from_phone(self, phone_number):
             return lead
         
         # Auto-generate name for unknown customers
-        return f"Lead from call {phone_number}"
+        return f"Call From {phone_number}"
         
     except Exception as e:
         frappe.logger().error(f"Error getting customer name for {phone_number}: {str(e)}")
-        return f"Lead from call {phone_number}"
+        return f"Call From {phone_number}"
 
 @staticmethod
 def default_list_data():
@@ -288,7 +288,7 @@ def prepare_call_log_document(call_log_data):
         customer_name = contact_info['contact_name']
     else:
         # Generate default name for unknown customers
-        customer_name = f"Lead from call {customer}"
+        customer_name = f"Call From {customer}"
     
     doc_data = {
         'doctype': 'CRM Call Log',
@@ -405,7 +405,7 @@ def execute():
                     
                     # If still no name, use auto-generated format
                     if not customer_name:
-                        customer_name = f"Lead from call {customer_phone}"
+                        customer_name = f"Call From {customer_phone}"
                     
                     # Update the call log
                     frappe.db.set_value(
@@ -433,7 +433,7 @@ def execute():
 -- Direct SQL update for existing empty customer names
 mysql -u_153b19f6d09e655e -pzqNuU3BFCAAuAlsE _153b19f6d09e655e -e "
 UPDATE \`tabCRM Call Log\`
-SET customer_name = CONCAT('Lead from call ', customer)
+SET customer_name = CONCAT('Call From ', customer)
 WHERE (customer_name IS NULL OR customer_name = '')
 AND customer IS NOT NULL
 AND customer != ''
@@ -489,7 +489,7 @@ LIMIT 10;
 -- Check auto-generated names
 SELECT customer, customer_name, COUNT(*) as count
 FROM `tabCRM Call Log`
-WHERE customer_name LIKE 'Lead from call%'
+WHERE customer_name LIKE 'Call From%'
 GROUP BY customer, customer_name
 ORDER BY count DESC;
 ```
@@ -513,7 +513,7 @@ LIMIT 5;
 
 - ✅ **List View**: Shows Employee, Customer Name, Customer Phone columns
 - ✅ **Call Creation**: Auto-populates employee/customer fields  
-- ✅ **Auto-Naming**: Unknown customers get "Lead from call..." names
+- ✅ **Auto-Naming**: Unknown customers get "Call From..." names
 - ✅ **Mobile Sync**: New calls from mobile app use new structure
 - ✅ **Backward Compatibility**: Legacy caller/receiver fields preserved
 - ✅ **Data Integrity**: All existing data migrated correctly
@@ -556,12 +556,12 @@ git add crm/fcrm/doctype/crm_call_log/crm_call_log.py crm/api/mobile_sync.py
 
 git commit -m "feat: Auto-generate customer names for unknown numbers
 
-- Modified get_customer_name_from_phone() to return 'Lead from call xxxxx xxxxx' when no contact/lead is found
+- Modified get_customer_name_from_phone() to return 'Call From xxxxx xxxxx' when no contact/lead is found
 - Updated mobile sync API to also use auto-naming logic for unknown customers
 - Ensures customer_name field is always populated instead of being empty
 - Makes it easier for users to identify and convert unknown contacts to leads
 
-Example: Unknown number 9876543210 becomes 'Lead from call 9876543210'
+Example: Unknown number 9876543210 becomes 'Call From 9876543210'
 This name can be changed later when converting to an actual lead."
 ```
 
@@ -573,7 +573,7 @@ git commit -m "feat: Migrate existing call logs to use auto-generated customer n
 
 - Add migration patch update_empty_customer_names.py 
 - Updates all existing call logs with empty customer_name fields
-- Uses 'Lead from call XXXXXXXXXX' format for unknown customers
+- Uses 'Call From XXXXXXXXXX' format for unknown customers
 - Successfully migrated 131 out of 132 call logs (1 already had a proper name)
 - Adds the patch to patches.txt for automatic execution
 
@@ -582,9 +582,9 @@ Migration Results:
 - After: 131 auto-generated names, 1 existing proper name
 
 Examples of generated names:
-- 'Lead from call 1234567890' (67 records)
-- 'Lead from call 8758127012' (12 records)  
-- 'Lead from call 0987654321' (7 records)
+- 'Call From 1234567890' (67 records)
+- 'Call From 8758127012' (12 records)  
+- 'Call From 0987654321' (7 records)
 - And 27 more unique auto-generated names
 
 This ensures all call logs now have meaningful customer names that can be
@@ -606,11 +606,11 @@ easily updated when converting unknown contacts to actual leads."
 ### **Auto-Generated Name Distribution**
 | Customer Phone | Generated Name | Count |
 |----------------|----------------|-------|
-| 1234567890 | Lead from call 1234567890 | 67 |
-| 8758127012 | Lead from call 8758127012 | 12 |
-| 0987654321 | Lead from call 0987654321 | 7 |
-| 9106547079 | Lead from call 9106547079 | 6 |
-| 9426546034 | Lead from call 9426546034 | 5 |
+| 1234567890 | Call From 1234567890 | 67 |
+| 8758127012 | Call From 8758127012 | 12 |
+| 0987654321 | Call From 0987654321 | 7 |
+| 9106547079 | Call From 9106547079 | 6 |
+| 9426546034 | Call From 9426546034 | 5 |
 | *27 others* | *Various auto-generated* | *34* |
 
 ### **List View Transformation**
@@ -626,8 +626,8 @@ easily updated when converting unknown contacts to actual leads."
 ```
 | Employee | Customer Name | Customer Phone | Type | Status | Duration |
 |----------|---------------|----------------|------|--------|----------|
-| Administrator | Lead from call 9876543210 | 9876543210 | Incoming | Completed | 2m |
-| Administrator | Lead from call 1234567890 | 1234567890 | Outgoing | Completed | 1m |
+| Administrator | Call From 9876543210 | 9876543210 | Incoming | Completed | 2m |
+| Administrator | Call From 1234567890 | 1234567890 | Outgoing | Completed | 1m |
 ```
 
 ---

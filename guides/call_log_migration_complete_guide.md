@@ -164,11 +164,11 @@ def get_customer_name_from_phone(self, phone_number):
             return lead
         
         # AUTO-GENERATE for unknowns
-        return f"Lead from call {phone_number}"
+        return f"Call From {phone_number}"
         
     except Exception as e:
         frappe.logger().error(f"Error getting customer name for {phone_number}: {str(e)}")
-        return f"Lead from call {phone_number}"
+        return f"Call From {phone_number}"
 ```
 
 #### 3. List View Configuration
@@ -235,7 +235,7 @@ def prepare_call_log_document(call_log_data):
     if contact_info and contact_info.get('contact_name'):
         customer_name = contact_info['contact_name']
     else:
-        customer_name = f"Lead from call {customer}"
+        customer_name = f"Call From {customer}"
     
     doc_data = {
         'doctype': 'CRM Call Log',
@@ -343,7 +343,7 @@ def execute():
                     
                     # If no name found, auto-generate
                     if not customer_name:
-                        customer_name = f"Lead from call {customer_phone}"
+                        customer_name = f"Call From {customer_phone}"
                     
                     # Update the record
                     frappe.db.set_value(
@@ -398,7 +398,7 @@ LIMIT 10;
 -- Auto-generated names count
 SELECT customer, customer_name, COUNT(*) as count
 FROM `tabCRM Call Log`
-WHERE customer_name LIKE 'Lead from call%'
+WHERE customer_name LIKE 'Call From%'
 GROUP BY customer, customer_name
 ORDER BY count DESC;
 ```
@@ -407,7 +407,7 @@ ORDER BY count DESC;
 ```sql
 -- Applied direct update for existing data
 UPDATE `tabCRM Call Log`
-SET customer_name = CONCAT('Lead from call ', customer)
+SET customer_name = CONCAT('Call From ', customer)
 WHERE (customer_name IS NULL OR customer_name = '')
 AND customer IS NOT NULL
 AND customer != ''
@@ -435,11 +435,11 @@ TRUNCATE TABLE `tabCRM View Settings`;
 ### Top Auto-Generated Names
 | Phone Number | Generated Name | Count |
 |--------------|----------------|-------|
-| 1234567890 | Lead from call 1234567890 | 67 |
-| 8758127012 | Lead from call 8758127012 | 12 |
-| 0987654321 | Lead from call 0987654321 | 7 |
-| 9106547079 | Lead from call 9106547079 | 6 |
-| 9426546034 | Lead from call 9426546034 | 5 |
+| 1234567890 | Call From 1234567890 | 67 |
+| 8758127012 | Call From 8758127012 | 12 |
+| 0987654321 | Call From 0987654321 | 7 |
+| 9106547079 | Call From 9106547079 | 6 |
+| 9426546034 | Call From 9426546034 | 5 |
 
 ### UI Transformation
 **Before**: Confusing caller/receiver columns  
@@ -466,7 +466,7 @@ git commit -m "feat: Replace caller/receiver with employee/customer structure in
 ```bash
 git commit -m "feat: Auto-generate customer names for unknown numbers
 
-- Modified get_customer_name_from_phone() to return 'Lead from call xxxxx' when no contact/lead found
+- Modified get_customer_name_from_phone() to return 'Call From xxxxx' when no contact/lead found
 - Updated mobile sync API to also use auto-naming logic for unknown customers
 - Ensures customer_name field is always populated instead of being empty
 - Makes it easier for users to identify and convert unknown contacts to leads"
@@ -478,7 +478,7 @@ git commit -m "feat: Migrate existing call logs to use auto-generated customer n
 
 - Add migration patch update_empty_customer_names.py
 - Updates all existing call logs with empty customer_name fields  
-- Uses 'Lead from call XXXXXXXXXX' format for unknown customers
+- Uses 'Call From XXXXXXXXXX' format for unknown customers
 - Successfully migrated 131 out of 132 call logs (1 already had proper name)
 - Ensures all call logs now have meaningful customer names"
 ```
