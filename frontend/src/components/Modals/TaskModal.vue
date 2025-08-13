@@ -70,12 +70,12 @@
           </Dropdown>
           <!-- Assign To (only when opening from Lead/Ticket detail page and it has assignees) -->
           <div v-if="showManualAssignee" class="min-w-[220px] flex-1">
-            <div class="mb-1.5 text-xs text-ink-gray-5">{{ __('Assign To') }}</div>
             <Link
               class="form-control"
               doctype="User"
               :filters="assignedUserFilter"
               :value="_task.assigned_to"
+              :placeholder="__('Assign To')"
               @change="(v) => (_task.assigned_to = v)"
             />
           </div>
@@ -190,7 +190,12 @@ const assignedUsers = createResource({
     }
   },
   onSuccess: (ids) => {
-    if (ids?.length && !_task.value.assigned_to) {
+    if (!ids?.length) return
+    // Prefer current user if present in allowed assignees; otherwise pick first
+    const current = getUser().name
+    if (ids.includes(current)) {
+      _task.value.assigned_to = current
+    } else if (!_task.value.assigned_to || !ids.includes(_task.value.assigned_to)) {
       _task.value.assigned_to = ids[0]
     }
   },
@@ -298,6 +303,10 @@ function render() {
   nextTick(() => {
     title.value?.el?.focus?.()
     _task.value = { ...props.task }
+    // Default to current user if no assignee specified
+    if (!_task.value.assigned_to) {
+      _task.value.assigned_to = getUser().name
+    }
     if (_task.value.title) {
       editMode.value = true
     }
