@@ -31,6 +31,7 @@
     v-else
     ref="scrollContainer"
     class="mx-3 sm:mx-5"
+    style="contain: content; will-change: transform;"
     @scroll="handleScroll"
   >
     <ListRow

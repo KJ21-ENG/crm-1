@@ -99,39 +99,23 @@ const viewControls = ref(null)
 
 // Create a more robust user filter that waits for session
 const userOwnerFilter = computed(() => {
-  // Only apply filter if user is logged in and session is available
-  if (!session.isLoggedIn || !session.user) {
-    console.log('🔍 Call Logs Debug - No user session, returning empty filters')
-    return {}
-  }
-  
-  // If user is Administrator, don't apply owner filter
-  if (session.user === 'Administrator') {
-    console.log('🔍 Call Logs Debug - Administrator user, showing all logs')
-    return {}
-  }
-  
-  const filters = { owner: session.user }
-  console.log('🔍 Call Logs Debug - Regular user, applying owner filter:', filters)
-  return filters
+  if (!session.isLoggedIn || !session.user) return {}
+  if (session.user === 'Administrator') return {}
+  return { owner: session.user }
 })
 
 // Watch for session changes
-watch(() => session.user, (newUser, oldUser) => {
-  console.log('🔍 Session User Changed:', { oldUser, newUser })
+watch(() => session.user, (newUser) => {
   if (newUser && viewControls.value) {
-    console.log('🔍 Reloading call logs due to user change')
     setTimeout(() => {
       viewControls.value.reload?.()
-    }, 100) // Small delay to ensure session is fully updated
+    }, 100)
   }
 }, { immediate: true })
 
 // Watch for login state changes
 watch(() => session.isLoggedIn, (isLoggedIn) => {
-  console.log('🔍 Login state changed:', isLoggedIn)
   if (isLoggedIn && viewControls.value) {
-    console.log('🔍 User logged in, reloading call logs')
     setTimeout(() => {
       viewControls.value.reload?.()
     }, 200)
@@ -140,35 +124,11 @@ watch(() => session.isLoggedIn, (isLoggedIn) => {
 
 // Enhanced filtering with manual data filtering as fallback
 const filteredRows = computed(() => {
-  if (!callLogs.value?.data?.data || !session.user) {
-    return []
-  }
-  
-  // Skip filtering for Administrator
-  if (session.user === 'Administrator') {
-    console.log('🔍 Administrator: Showing all logs without filtering')
-    return callLogs.value.data.data.map((callLog) => {
-      let _rows = {}
-      callLogs.value?.data.rows.forEach((row) => {
-        _rows[row] = getCallLogDetail(row, callLog, callLogs.value?.data.columns)
-      })
-      return _rows
-    })
-  }
-  
-  // Manual client-side filtering as backup for regular users
-  const userCallLogs = callLogs.value.data.data.filter(log => {
-    const isUserLog = log.owner === session.user || log._owner === session.user
-    if (!isUserLog) {
-      console.log('🔍 Filtering out log owned by:', log.owner || log._owner, 'Current user:', session.user)
-    }
-    return isUserLog
-  })
-  
-  console.log('🔍 Total logs:', callLogs.value.data.data.length, 'User logs:', userCallLogs.length)
-  
-  return userCallLogs.map((callLog) => {
-    let _rows = {}
+  const data = callLogs.value?.data?.data
+  if (!data || !session.user) return []
+  // Rely on backend filtering; just format current page
+  return data.map((callLog) => {
+    const _rows = {}
     callLogs.value?.data.rows.forEach((row) => {
       _rows[row] = getCallLogDetail(row, callLog, callLogs.value?.data.columns)
     })
@@ -208,16 +168,8 @@ const openCallLogFromURL = () => {
 onMounted(() => {
   openCallLogFromURL()
   
-  // Debug session state on mount
-  console.log('🔍 CallLogs mounted - Session state:', {
-    user: session.user,
-    isLoggedIn: session.isLoggedIn,
-    userFilter: userOwnerFilter.value
-  })
-  
   // Ensure we reload data after component is mounted with proper session
   if (session.isLoggedIn && session.user) {
-    console.log('🔍 Session ready on mount, triggering reload')
     setTimeout(() => {
       if (viewControls.value?.reload) {
         viewControls.value.reload()
