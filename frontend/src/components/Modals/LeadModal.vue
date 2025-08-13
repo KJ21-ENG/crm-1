@@ -903,20 +903,20 @@ function createNewLead() {
       // This prevents duplicate creation if TaskModal already created a task
       if (pendingTaskData.value && (!pendingTaskData.value.name || pendingTaskData.value.name === null)) {
         try {
+          // Determine the correct assignee for the task (match Ticket behavior):
+          // 1) If role-based assignment returned a user, use that
+          // 2) Else fallback to current user
+          const assignedToForTask = assignedUser || user
+
           const taskDoc = {
             ...pendingTaskData.value,
             reference_doctype: 'CRM Lead',
-            reference_docname: data.name
+            reference_docname: data.name,
+            assigned_to: assignedToForTask,
           }
           
-          // If task has role_for_assignment and we have an assigned user, use that user
-          if (taskDoc.role_for_assignment && assignedUser) {
-            taskDoc.assigned_to = assignedUser
-            delete taskDoc.role_for_assignment
-          } else if (!taskDoc.role_for_assignment) {
-            // If no role was selected, assign to current user
-            taskDoc.assigned_to = user
-          }
+          // Clean auxiliary field if present
+          if (taskDoc.role_for_assignment) delete taskDoc.role_for_assignment
           
           // Remove the name field if it's null (prevents insertion conflicts)
           delete taskDoc.name

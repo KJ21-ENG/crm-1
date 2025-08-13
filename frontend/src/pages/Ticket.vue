@@ -867,11 +867,6 @@ const tabs = computed(() => {
       label: __('Notes'),
       icon: NoteIcon,
     },
-    {
-      name: 'Data',
-      label: __('Data'),
-      icon: DetailsIcon,
-    },
     // Keep WhatsApp and Emails at the end if needed
     {
       name: 'WhatsApp',
