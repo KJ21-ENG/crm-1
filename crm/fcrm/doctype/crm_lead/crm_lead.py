@@ -25,8 +25,10 @@ class CRMLead(Document):
 		self.set_full_name()
 		self.set_lead_name()
 		self.set_title()
-		self.validate_email()
-		validate_identity_documents(self)
+		# Skip customer-info validations when using centralized customer store
+		if not getattr(self, "customer_id", None):
+			self.validate_email()
+			validate_identity_documents(self)
 		if not self.is_new() and self.has_value_changed("lead_owner") and self.lead_owner:
 			self.share_with_agent(self.lead_owner)
 			self.assign_agent(self.lead_owner)
@@ -91,8 +93,13 @@ class CRMLead(Document):
 
 	def set_lead_name(self):
 		if not self.lead_name:
-			# Check for leads being created through data import
-			if not self.organization and not self.email and not self.flags.ignore_mandatory:
+			# When linked to a customer, do not enforce person/org name locally
+			if (
+				not getattr(self, "customer_id", None)
+				and not self.organization
+				and not self.email
+				and not self.flags.ignore_mandatory
+			):
 				frappe.throw(_("A Lead requires either a person's name or an organization's name"))
 			elif self.organization:
 				self.lead_name = self.organization

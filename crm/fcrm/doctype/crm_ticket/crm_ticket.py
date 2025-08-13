@@ -25,8 +25,10 @@ class CRMTicket(Document):
 	def validate(self):
 		self.set_customer_name()
 		self.set_title()
-		self.validate_email()
-		validate_identity_documents(self)
+		# Skip customer-info validations when using centralized customer store
+		if not getattr(self, "customer_id", None):
+			self.validate_email()
+			validate_identity_documents(self)
 		# Handle ticket_owner assignment logic
 		if not self.is_new() and self.has_value_changed("ticket_owner") and self.ticket_owner:
 			self.share_with_agent(self.ticket_owner)

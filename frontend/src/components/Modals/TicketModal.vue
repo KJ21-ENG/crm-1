@@ -686,6 +686,13 @@ const tabs = createResource({
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field) => {
+            // Ensure customer info fields are editable in Quick Entry (override read_only)
+            if (
+              ['first_name', 'last_name', 'email', 'mobile_no', 'phone', 'organization', 'pan_card_number', 'aadhaar_card_number']
+                .includes(field.fieldname)
+            ) {
+              field.read_only = 0
+            }
             // Configure specific field types
             if (field.fieldname == 'status') {
               field.fieldtype = 'Link'

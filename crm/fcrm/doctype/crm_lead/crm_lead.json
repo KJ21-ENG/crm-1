@@ -82,13 +82,14 @@
    "fieldname": "salutation",
    "fieldtype": "Link",
    "label": "Salutation",
-   "options": "Salutation"
+   "options": "Salutation",
+   "read_only": 1
   },
   {
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name",
-   "reqd": 1,
+   "reqd": 0,
    "read_only": 1
   },
   {
@@ -144,7 +145,8 @@
    "label": "Email",
    "options": "Email",
    "search_index": 1,
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "website",
@@ -158,14 +160,16 @@
    "options": "Phone",
    "maxlength": 10,
    "description": "Enter 10-digit mobile number only",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone",
    "options": "Phone",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "lead_source",
@@ -263,7 +267,8 @@
   {
    "fieldname": "job_title",
    "fieldtype": "Data",
-   "label": "Job Title"
+   "label": "Job Title",
+   "read_only": 1
   },
   {
    "fieldname": "organization_tab",
@@ -274,7 +279,8 @@
   {
    "fieldname": "organization",
    "fieldtype": "Data",
-   "label": "Organization"
+   "label": "Organization",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -419,7 +425,8 @@
    "fieldtype": "Data",
    "label": "PAN Card Number",
    "description": "Permanent Account Number (optional)",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "column_break_identity",
@@ -430,7 +437,8 @@
    "fieldtype": "Data",
    "label": "Aadhaar Card Number",
    "description": "12-digit Aadhaar number (optional)",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   }
  ],
  "grid_page_length": 50,
