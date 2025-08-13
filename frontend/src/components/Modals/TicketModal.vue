@@ -847,13 +847,13 @@ async function createNewTicket() {
       return
     }
 
-    // If issue is solved, set status to Closed
+    // If issue is solved, set status to Resolved (not Closed)
     if (issueSolved.value) {
-      ticket.doc.status = 'Closed'
+      ticket.doc.status = 'Resolved'
       ticket.doc.resolved = 1
       ticket.doc.resolved_on = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
       ticket.doc.resolution_time = 0 // Since it was resolved immediately
-      ticket.doc.resolution_details = 'Ticket closed at creation as issue was already resolved.'
+      ticket.doc.resolution_details = 'Ticket resolved at creation as issue was already solved.'
     }
 
     // Create ticket
