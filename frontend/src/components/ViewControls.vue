@@ -1400,6 +1400,8 @@ defineExpose({
   currentView,
   updateSelections,
   updateFilter,
+  // Expose to allow pages to programmatically set/reset page length
+  updatePageLength,
 })
 
 // Watchers

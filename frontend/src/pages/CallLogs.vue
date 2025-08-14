@@ -172,6 +172,12 @@ onMounted(() => {
   if (session.isLoggedIn && session.user) {
     setTimeout(() => {
       if (viewControls.value?.reload) {
+        // Force a sane default page length on first load to avoid huge data pulls
+        try {
+          if (typeof viewControls.value.updatePageLength === 'function') {
+            viewControls.value.updatePageLength(20)
+          }
+        } catch (e) {}
         viewControls.value.reload()
       }
     }, 500) // Longer delay to ensure everything is initialized
