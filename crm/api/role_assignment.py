@@ -370,6 +370,7 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
                 "description": f"Task created for lead assignment to {role_name} role - {first_name} {last_name}".strip(),
                 "priority": "Medium",
                 "status": "Todo",
+                "due_date": frappe.utils.now_datetime(),
             })
             task_doc.insert(ignore_permissions=True)
             task_created = task_doc.name

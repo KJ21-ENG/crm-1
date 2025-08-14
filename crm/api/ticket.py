@@ -1511,6 +1511,7 @@ def assign_ticket_to_role(ticket_name, role_name, assigned_by=None, skip_task_cr
                     "description": f"Task created for ticket assignment to {role_name} role - {ticket_subject}".strip(),
                     "priority": ticket_priority,
                     "status": "Todo",
+                    "due_date": frappe.utils.now_datetime(),
                 })
                 task_doc.insert(ignore_permissions=True)
         
