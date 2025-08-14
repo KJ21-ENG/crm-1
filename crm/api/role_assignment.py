@@ -5,6 +5,45 @@ from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
 from crm.api.activities import emit_activity_update
 
+def _get_assigned_users_for_document(doctype: str, docname: str):
+    """Return a set of users already assigned to the given document.
+    Looks at both the document's _assign field and open/working ToDo entries."""
+    try:
+        assigned = set()
+        # From _assign JSON on the document
+        try:
+            parent = frappe.get_doc(doctype, docname)
+            if parent and getattr(parent, "_assign", None):
+                try:
+                    arr = json.loads(parent._assign) if isinstance(parent._assign, str) else parent._assign
+                    if isinstance(arr, list):
+                        assigned.update([u for u in arr if isinstance(u, str) and u])
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # From ToDo (Open/Working)
+        try:
+            todos = frappe.get_all(
+                "ToDo",
+                filters={
+                    "reference_type": doctype,
+                    "reference_name": docname,
+                    "status": ["in", ["Open", "Working"]],
+                },
+                fields=["allocated_to"],
+            )
+            for t in todos:
+                if t.get("allocated_to"):
+                    assigned.add(t["allocated_to"])
+        except Exception:
+            pass
+
+        return assigned
+    except Exception:
+        return set()
+
 @frappe.whitelist()
 def test_role_assignment_tracker():
     """Test function to verify Role Assignment Tracker works with JSON serialization"""
@@ -188,13 +227,28 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
     try:
         if not assigned_by:
             assigned_by = frappe.session.user
-        
-        # Get the next user for this role using the dedicated tracker
-        assigned_user = RoleAssignmentTracker.assign_to_next_user(
+
+        # Build eligible pool and exclude already-assigned users for this lead
+        eligible_users = RoleAssignmentTracker.get_role_users(role_name)
+        already_assigned = _get_assigned_users_for_document("CRM Lead", lead_name)
+        available_users = [u for u in eligible_users if u not in already_assigned]
+
+        if not available_users:
+            return {
+                "success": False,
+                "error": f"All eligible users for role '{role_name}' are already assigned to this lead",
+                "all_assigned": True,
+                "eligible_users": eligible_users,
+                "assigned_users": list(already_assigned),
+            }
+
+        # Get the next user from the filtered list using the tracker
+        assigned_user = RoleAssignmentTracker.assign_to_next_user_from_list(
             role_name=role_name,
+            user_list=available_users,
             document_type="CRM Lead",
             document_name=lead_name,
-            assigned_by=assigned_by
+            assigned_by=assigned_by,
         )
         
         # Update the lead assigned_role directly in database to avoid timestamp conflicts
@@ -247,6 +301,18 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
             limit=1,
         )
 
+        # Ensure parent _assign includes the user
+        try:
+            parent_assign_json = frappe.db.get_value("CRM Lead", lead_name, "_assign")
+            parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
+            if not isinstance(parent_assign, list):
+                parent_assign = []
+        except Exception:
+            parent_assign = []
+        if assigned_user not in parent_assign:
+            parent_assign.append(assigned_user)
+            frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
+
         task_doc = None
         if existing_tasks:
             # Reassign existing task
@@ -267,17 +333,7 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
             task_doc.save(ignore_permissions=True)
             frappe.db.set_value("CRM Task", task_doc.name, "_assign", json.dumps(assign_list))
 
-            # Ensure parent _assign includes the user
-            parent_assign_json = frappe.db.get_value("CRM Lead", lead_name, "_assign")
-            try:
-                parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
-                if not isinstance(parent_assign, list):
-                    parent_assign = []
-            except Exception:
-                parent_assign = []
-            if assigned_user not in parent_assign:
-                parent_assign.append(assigned_user)
-                frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
+            # Parent _assign already updated above
 
             # Comment on parent about manual reassignment
             comment_content = (
