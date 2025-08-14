@@ -78,6 +78,27 @@
                 :disabled="isAssigning"
               />
               <span class="text-sm">{{ __('Round-Robin Role Assignment') }}</span>
+              <Popover trigger="hover" placement="top">
+                <template #target>
+                  <FeatherIcon name="info" class="w-4 h-4 text-ink-gray-6 cursor-help" />
+                </template>
+                <template #body-main>
+                  <div class="p-2 text-xs leading-4 max-w-xs">
+                    <template v-for="r in debugRoles" :key="r.role + '-dbg'">
+                      <div class="font-medium">{{ r.role }} ({{ r.user_count }})</div>
+                      <div class="ml-2 text-ink-gray-7">
+                        <template v-if="Array.isArray(r.user_names) && r.user_names.length">
+                          <ul class="list-disc ml-4">
+                            <li v-for="n in r.user_names" :key="r.role + n">{{ n }}</li>
+                          </ul>
+                        </template>
+                        <div v-else>{{ __('No users') }}</div>
+                      </div>
+                      <div class="h-2" />
+                    </template>
+                  </div>
+                </template>
+              </Popover>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input 
@@ -112,6 +133,8 @@
               {{ role.role }}
             </option>
           </select>
+
+          <!-- Debug list moved to tooltip -->
 
           <!-- If no roles available to assign -->
           <div v-if="filteredRoles.length === 0" class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -186,7 +209,7 @@
 <script setup>
 import UserAvatar from '@/components/UserAvatar.vue'
 import { usersStore } from '@/stores/users'
-import { createResource, call } from 'frappe-ui'
+import { createResource, call, Tooltip, FeatherIcon, Popover } from 'frappe-ui'
 import { ref, computed, watch } from 'vue'
 import { formatDate } from '@/utils'
 
@@ -213,7 +236,7 @@ const isAssigning = ref(false)
 const error = ref('')
 const successMessage = ref('')
 
-// Get available roles for assignment
+// Get available roles for assignment (now includes user_names for debugging)
 const availableRoles = createResource({
   url: 'crm.api.role_assignment.get_assignable_roles',
   auto: true,
@@ -260,9 +283,15 @@ const roleAssignmentStatus = createResource({
     const roles = availableRoles.data || []
     const disallowed = new Set(['CRM User', 'CRM Manager'])
     return roles
-      .filter((r) => r.enabled && rolesStatus.value[r.role] !== true)
+      .filter((r) => r.enabled)
       .filter((r) => !disallowed.has(r.role))
   })
+
+const debugRoles = computed(() => (availableRoles.data || []).map(r => ({
+  role: r.role,
+  user_count: r.user_count || 0,
+  user_names: Array.isArray(r.user_names) ? r.user_names : [],
+})))
 
 // Computed property to get available users for direct assignment (filtered by current assignments)
 const availableUsersForDirectAssignment = computed(() => {

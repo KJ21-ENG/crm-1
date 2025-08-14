@@ -91,7 +91,7 @@ def get_current_assignments(doc_name, doctype="CRM Lead"):
 
 @frappe.whitelist()
 def get_assignable_roles():
-    """Get list of roles that can be assigned to leads"""
+    """Get list of roles that can be assigned to leads, with user counts and names (for debugging/visibility)"""
     roles = [
         'Sales User',
         'Sales Manager', 
@@ -101,19 +101,31 @@ def get_assignable_roles():
     
     role_data = []
     for role in roles:
-        # Get users count for each role
-        users = frappe.get_all("Has Role", 
+        # Users who have this role (exclude Administrator)
+        role_users = frappe.get_all(
+            "Has Role",
             filters={"role": role, "parent": ["!=", "Administrator"]},
-            fields=["parent"]
+            fields=["parent"],
         )
-        
-        # Filter only enabled users
-        enabled_users = [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]
-        
+
+        enabled_user_ids = [u.parent for u in role_users if frappe.db.get_value("User", u.parent, "enabled")]
+
+        # Fetch names for display
+        user_details = []
+        user_names = []
+        if enabled_user_ids:
+            user_details = frappe.get_all(
+                "User",
+                filters={"name": ["in", enabled_user_ids]},
+                fields=["name", "full_name"],
+            )
+            user_names = [(ud.get("full_name") or ud.get("name")) for ud in user_details]
+
         role_data.append({
             "role": role,
-            "user_count": len(enabled_users),
-            "enabled": len(enabled_users) > 0
+            "user_count": len(enabled_user_ids),
+            "enabled": len(enabled_user_ids) > 0,
+            "user_names": user_names,
         })
     
     return role_data
