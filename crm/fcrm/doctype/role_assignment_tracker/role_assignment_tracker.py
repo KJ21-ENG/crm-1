@@ -210,7 +210,10 @@ class RoleAssignmentTracker(Document):
 		"""Get all users for a specific role (excluding admin)"""
 		users = frappe.get_all(
 			"Has Role",
-			filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]},
+			filters={
+				"role": role_name,
+				"parent": ["not in", ["Administrator", "admin@example.com"]],
+			},
 			fields=["parent"],
 		)
 		return [user.parent for user in users if frappe.db.get_value("User", user.parent, "enabled")]

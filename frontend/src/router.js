@@ -119,6 +119,11 @@ const routes = [
     component: () => import('@/pages/CallLogs.vue'),
   },
   {
+    path: '/round-robin',
+    name: 'Round Robin',
+    component: () => import('@/pages/RoundRobinManager.vue'),
+  },
+  {
     path: '/welcome',
     name: 'Welcome',
     component: () => import('@/pages/Welcome.vue'),

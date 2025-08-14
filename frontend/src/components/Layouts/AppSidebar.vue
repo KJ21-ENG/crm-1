@@ -260,6 +260,11 @@ const links = [
     icon: PhoneIcon,
     to: 'Call Logs',
   },
+  {
+    label: 'Round Robin',
+    icon: PinIcon,
+    to: 'Round Robin',
+  },
 ]
 
 const allViews = computed(() => {

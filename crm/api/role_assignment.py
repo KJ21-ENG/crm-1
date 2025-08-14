@@ -101,30 +101,36 @@ def get_assignable_roles():
     
     role_data = []
     for role in roles:
-        # Users who have this role (exclude Administrator)
+        # Users who have this role (exclude Administrator variants)
         role_users = frappe.get_all(
             "Has Role",
-            filters={"role": role, "parent": ["!=", "Administrator"]},
+            filters={
+                "role": role,
+                "parent": ["not in", ["Administrator", "admin@example.com"]],
+            },
             fields=["parent"],
         )
 
         enabled_user_ids = [u.parent for u in role_users if frappe.db.get_value("User", u.parent, "enabled")]
+        # Extra safety: exclude special users like Guest
+        excluded_ids = {"Administrator", "admin@example.com", "Guest"}
+        filtered_ids = [uid for uid in enabled_user_ids if uid not in excluded_ids]
 
         # Fetch names for display
         user_details = []
         user_names = []
-        if enabled_user_ids:
+        if filtered_ids:
             user_details = frappe.get_all(
                 "User",
-                filters={"name": ["in", enabled_user_ids]},
+                filters={"name": ["in", filtered_ids]},
                 fields=["name", "full_name"],
             )
             user_names = [(ud.get("full_name") or ud.get("name")) for ud in user_details]
 
         role_data.append({
             "role": role,
-            "user_count": len(enabled_user_ids),
-            "enabled": len(enabled_user_ids) > 0,
+            "user_count": len(filtered_ids),
+            "enabled": len(filtered_ids) > 0,
             "user_names": user_names,
         })
     
@@ -565,7 +571,11 @@ def get_assignment_history(role_name, limit=20):
                 entry['user_full_name'] = user.full_name or user.name
                 entry['user_email'] = user.email
         
-        return history[-limit:] if limit else history
+        # Only last N entries, default to 5 for UI efficiency
+        effective_limit = int(limit) if limit else 5
+        if effective_limit <= 0:
+            effective_limit = 5
+        return history[-effective_limit:]
         
     except Exception as e:
         frappe.log_error(f"Error getting assignment history: {str(e)}", "Role Assignment Error")
