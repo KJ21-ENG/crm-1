@@ -332,24 +332,19 @@ watch(selectedRole, (newRole) => {
   }
 })
 
-// When current assignments or roles load, pre-compute roles with all users already assigned
+// When current assignments or roles load, pre-compute roles with all users already assigned (batch API)
 watch([() => availableRoles.data, () => currentAssignments.data], async ([roles]) => {
   if (!roles || !Array.isArray(roles)) return
-  const statusMap = {}
-  for (const r of roles) {
-    if (!r?.role) continue
-    try {
-      const res = await call('crm.api.role_assignment.check_all_role_users_assigned', {
-        role_name: r.role,
-        doc_name: props.doc.name,
-        doctype: props.doctype,
-      })
-      statusMap[r.role] = Boolean(res?.all_assigned)
-    } catch (e) {
-      statusMap[r.role] = false
-    }
+  try {
+    const res = await call('crm.api.role_assignment.get_roles_all_assigned_status', {
+      roles: roles.map(r => r.role),
+      doc_name: props.doc.name,
+      doctype: props.doctype,
+    })
+    rolesStatus.value = res?.status || {}
+  } catch (e) {
+    rolesStatus.value = {}
   }
-  rolesStatus.value = statusMap
 })
 
 // Watch for user selection changes

@@ -590,6 +590,109 @@ def get_role_assignment_status(role_name):
         }
 
 @frappe.whitelist()
+def get_roles_all_assigned_status(roles=None, doc_name=None, doctype="CRM Lead"):
+    """Batch version of check_all_role_users_assigned for multiple roles.
+    Returns a mapping { role: bool } indicating whether all eligible users for that role
+    have already been assigned to the given document (current ToDos + _assign + history)."""
+    try:
+        if isinstance(roles, str):
+            try:
+                roles = json.loads(roles)
+            except Exception:
+                roles = []
+        if not roles:
+            roles = [
+                'Sales User', 'Sales Manager', 'Support User', 'Support Manager'
+            ]
+
+        # Fetch eligible users for all roles in one query
+        role_rows = frappe.get_all(
+            "Has Role",
+            filters={
+                "role": ["in", roles],
+                "parent": ["not in", ["Administrator", "admin@example.com"]],
+            },
+            fields=["role", "parent"],
+        )
+
+        all_user_ids = list({row.parent for row in role_rows})
+        enabled_users = set()
+        if all_user_ids:
+            enabled = frappe.get_all(
+                "User", filters={"name": ["in", all_user_ids], "enabled": 1}, fields=["name"]
+            )
+            enabled_users = {u.name for u in enabled}
+
+        role_to_eligible = {r: [] for r in roles}
+        for row in role_rows:
+            if row.parent in enabled_users:
+                role_to_eligible.setdefault(row.role, []).append(row.parent)
+
+        # Current assignments: ToDo + _assign
+        assigned_now = set()
+        if doc_name:
+            try:
+                todos = frappe.get_all(
+                    "ToDo",
+                    filters={
+                        "reference_type": doctype,
+                        "reference_name": doc_name,
+                        "status": ["in", ["Open", "Working"]],
+                    },
+                    fields=["allocated_to"],
+                )
+                assigned_now.update([t.allocated_to for t in todos if t.allocated_to])
+            except Exception:
+                pass
+
+            try:
+                parent = frappe.get_doc(doctype, doc_name)
+                if parent and getattr(parent, "_assign", None):
+                    arr = json.loads(parent._assign) if isinstance(parent._assign, str) else parent._assign
+                    if isinstance(arr, list):
+                        assigned_now.update([u for u in arr if isinstance(u, str) and u])
+            except Exception:
+                pass
+
+        # History for all roles in one query
+        trackers = frappe.get_all(
+            "Role Assignment Tracker",
+            filters={"name": ["in", roles]},
+            fields=["name", "assignment_history"],
+        )
+        role_to_historical = {r: set() for r in roles}
+        for tr in trackers:
+            hist = []
+            if tr.assignment_history:
+                try:
+                    hist = json.loads(tr.assignment_history) if isinstance(tr.assignment_history, str) else tr.assignment_history
+                except Exception:
+                    hist = []
+            for entry in hist:
+                if entry.get('document_name') == doc_name and entry.get('document_type') == doctype:
+                    uid = entry.get('user')
+                    if uid:
+                        role_to_historical.setdefault(tr.name, set()).add(uid)
+
+        # Compose final map
+        result = {}
+        all_assigned_users_now = assigned_now
+        for role in roles:
+            eligible = role_to_eligible.get(role, [])
+            if not eligible:
+                result[role] = False
+                continue
+            historical = role_to_historical.get(role, set())
+            combined = set(eligible) & (all_assigned_users_now | historical | set(eligible))
+            # all assigned if every eligible user is present in assigned_now ∪ historical
+            result[role] = all(uid in (all_assigned_users_now | historical) for uid in eligible)
+
+        return {"status": result}
+    except Exception as e:
+        frappe.log_error(f"Error in get_roles_all_assigned_status: {str(e)}", "Role Assignment Error")
+        return {"status": {}}
+
+@frappe.whitelist()
 def reset_role_assignment(role_name):
     """Reset round-robin position for a role (admin function)"""
     try:
