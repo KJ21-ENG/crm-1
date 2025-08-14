@@ -98,31 +98,35 @@ const rolesRes = createResource({
 	auto: true,
 	onSuccess(data) {
 		roles.value = (data || []).filter(r => r.enabled)
-		refreshStatuses()
-		refreshHistory()
+		// Kick off status + history in parallel for fast paint
+		Promise.allSettled([refreshStatuses(), refreshHistory()])
 	}
 })
 
 async function refreshStatuses() {
-	for (const r of roles.value) {
-		try {
-			const res = await call('crm.api.role_assignment.get_role_assignment_status', { role_name: r.role })
-			status[r.role] = res?.data || {}
-		} catch (e) {
-			status[r.role] = {}
-		}
-	}
+	await Promise.all(
+		roles.value.map(async (r) => {
+			try {
+				const res = await call('crm.api.role_assignment.get_role_assignment_status', { role_name: r.role })
+				status[r.role] = res?.data || {}
+			} catch (e) {
+				status[r.role] = {}
+			}
+		})
+	)
 }
 
 async function refreshHistory() {
-	for (const r of roles.value) {
-		try {
-			const res = await call('crm.api.role_assignment.get_assignment_history', { role_name: r.role, limit: 5 })
-			history[r.role] = Array.isArray(res) ? res : []
-		} catch (e) {
-			history[r.role] = []
-		}
-	}
+	await Promise.all(
+		roles.value.map(async (r) => {
+			try {
+				const res = await call('crm.api.role_assignment.get_assignment_history', { role_name: r.role, limit: 5 })
+				history[r.role] = Array.isArray(res) ? res : []
+			} catch (e) {
+				history[r.role] = []
+			}
+		})
+	)
 }
 
 async function reload() {

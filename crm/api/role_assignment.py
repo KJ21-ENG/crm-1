@@ -563,19 +563,31 @@ def get_assignment_history(role_name, limit=20):
             return []
         
         history = json.loads(tracker.assignment_history) if isinstance(tracker.assignment_history, str) else tracker.assignment_history
-        
-        # Get user details for each history entry
-        for entry in history:
-            if entry.get('user'):
-                user = frappe.get_doc("User", entry['user'])
-                entry['user_full_name'] = user.full_name or user.name
-                entry['user_email'] = user.email
-        
+
         # Only last N entries, default to 5 for UI efficiency
         effective_limit = int(limit) if limit else 5
         if effective_limit <= 0:
             effective_limit = 5
-        return history[-effective_limit:]
+
+        subset = history[-effective_limit:]
+
+        # Bulk fetch user names (avoid per-entry get_doc)
+        user_ids = list({h.get('user') for h in subset if h.get('user')})
+        if user_ids:
+            users = frappe.get_all(
+                "User",
+                filters={"name": ["in", user_ids]},
+                fields=["name", "full_name", "email"],
+            )
+            name_map = {u.name: (u.full_name or u.name, u.email) for u in users}
+            for entry in subset:
+                uid = entry.get('user')
+                if uid and uid in name_map:
+                    full_name, email = name_map[uid]
+                    entry['user_full_name'] = full_name
+                    entry['user_email'] = email
+
+        return subset
         
     except Exception as e:
         frappe.log_error(f"Error getting assignment history: {str(e)}", "Role Assignment Error")
