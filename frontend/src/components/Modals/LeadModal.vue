@@ -702,8 +702,7 @@ const tabs = createResource({
                   { label: 'Sales User', value: 'Sales User' },
                   { label: 'Sales Manager', value: 'Sales Manager' },
                   { label: 'Support User', value: 'Support User' },
-                  { label: 'CRM User', value: 'CRM User' },
-                  { label: 'CRM Manager', value: 'CRM Manager' }
+                  { label: 'Support Manager', value: 'Support Manager' }
                 ],
                 description: 'Select role for automatic user assignment'
               }
