@@ -565,6 +565,9 @@ async function autoFillCustomerData(mobileNumber) {
       ticket.doc.pan_card_number = customerData.pan_card_number || ticket.doc.pan_card_number
       ticket.doc.aadhaar_card_number = customerData.aadhaar_card_number || ticket.doc.aadhaar_card_number
       ticket.doc.referral_code = customerData.referral_code || ticket.doc.referral_code
+      ticket.doc.marital_status = customerData.marital_status || ticket.doc.marital_status
+      ticket.doc.date_of_birth = customerData.date_of_birth || ticket.doc.date_of_birth
+      ticket.doc.anniversary = customerData.anniversary || ticket.doc.anniversary
       if (customerData.name) {
         ticket.doc.customer_id = customerData.name
       }
@@ -577,14 +580,11 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('  pan_card_number:', originalPAN, '->', ticket.doc.pan_card_number)
       console.log('  aadhaar_card_number:', originalAadhaar, '->', ticket.doc.aadhaar_card_number)
       console.log('  referral_code:', originalReferralCode, '->', ticket.doc.referral_code)
+      console.log('  marital_status:', ticket.doc.marital_status)
+      console.log('  date_of_birth:', ticket.doc.date_of_birth)
+      console.log('  anniversary:', ticket.doc.anniversary)
       
-      // Update ticket subject if it was generic
-      if (!ticket.doc.ticket_subject || ticket.doc.ticket_subject.includes('call')) {
-        const newSubject = `Support request from ${customerData.first_name || ''} ${customerData.last_name || ''}`.trim()
-        console.log('🔍 [AUTO-FILL] Updating subject to:', newSubject)
-        ticket.doc.ticket_subject = newSubject
-        ticket.doc.subject = newSubject
-      }
+      // Note: Removed automatic subject update - let users set their own subject
       
       console.log('✅ [AUTO-FILL] Form auto-filled successfully')
       console.log('🔍 [AUTO-FILL] Final ticket.doc:', JSON.stringify(ticket.doc, null, 2))

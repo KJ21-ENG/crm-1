@@ -456,6 +456,9 @@ async function autoFillCustomerData(mobileNumber) {
       lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
       lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
       lead.doc.referral_through = customerData.referral_code || lead.doc.referral_through
+      lead.doc.marital_status = customerData.marital_status || lead.doc.marital_status
+      lead.doc.date_of_birth = customerData.date_of_birth || lead.doc.date_of_birth
+      lead.doc.anniversary = customerData.anniversary || lead.doc.anniversary
       // Set customer_id to link history immediately
       if (customerData.name) {
         lead.doc.customer_id = customerData.name
@@ -469,6 +472,9 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('  pan_card_number:', originalPAN, '->', lead.doc.pan_card_number)
       console.log('  aadhaar_card_number:', originalAadhaar, '->', lead.doc.aadhaar_card_number)
       console.log('  referral_through:', originalReferralThrough, '->', lead.doc.referral_through)
+      console.log('  marital_status:', lead.doc.marital_status)
+      console.log('  date_of_birth:', lead.doc.date_of_birth)
+      console.log('  anniversary:', lead.doc.anniversary)
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))

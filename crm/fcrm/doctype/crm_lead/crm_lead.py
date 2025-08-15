@@ -185,6 +185,9 @@ class CRMLead(Document):
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
 				referral_through=self.referral_through,
+				marital_status=self.marital_status,
+				date_of_birth=self.date_of_birth,
+				anniversary=self.anniversary,
 				customer_source="Lead",
 				reference_doctype="CRM Lead",
 				reference_docname=self.name
@@ -200,7 +203,8 @@ class CRMLead(Document):
 				customer_fields_to_clear = [
 					'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
 					'phone', 'salutation', 'gender', 'organization', 'job_title',
-					'pan_card_number', 'aadhaar_card_number', 'image', 'lead_name'
+					'pan_card_number', 'aadhaar_card_number', 'image', 'lead_name',
+					'marital_status', 'date_of_birth', 'anniversary'
 				]
 				
 				for field in customer_fields_to_clear:

@@ -80,6 +80,9 @@ class CRMTicket(Document):
 				organization=self.organization,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
+				marital_status=self.marital_status,
+				date_of_birth=self.date_of_birth,
+				anniversary=self.anniversary,
 				customer_source="Ticket",
 				reference_doctype="CRM Ticket",
 				reference_docname=self.name
@@ -95,7 +98,8 @@ class CRMTicket(Document):
 				customer_fields_to_clear = [
 					'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
 					'phone', 'salutation', 'organization', 'pan_card_number', 
-					'aadhaar_card_number', 'image', 'customer_name'
+					'aadhaar_card_number', 'image', 'customer_name', 'marital_status',
+					'date_of_birth', 'anniversary'
 				]
 				
 				for field in customer_fields_to_clear:

@@ -414,7 +414,8 @@ def get_customer_by_mobile(mobile_no):
         {"mobile_no": mobile_no},
         ["name", "customer_name", "first_name", "last_name", "email", 
          "mobile_no", "organization", "status", "customer_source",
-         "pan_card_number", "aadhaar_card_number", "referral_code"],
+         "pan_card_number", "aadhaar_card_number", "referral_code",
+         "marital_status", "date_of_birth", "anniversary"],
         as_dict=True
     )
     
@@ -436,6 +437,9 @@ def update_customer_data(mobile_no, **customer_data):
     for field, value in customer_data.items():
         if value and hasattr(customer_doc, field):
             setattr(customer_doc, field, value)
+        elif field in ['marital_status', 'date_of_birth', 'anniversary'] and value is not None:
+            # Handle empty values for personal fields
+            setattr(customer_doc, field, value)
     
     customer_doc.save()
     
@@ -448,6 +452,7 @@ def update_customer_data(mobile_no, **customer_data):
 @frappe.whitelist()
 def create_customer_from_lead_or_ticket(mobile_no, first_name=None, last_name=None,
                                        email=None, organization=None, job_title=None,
+                                       marital_status=None, date_of_birth=None, anniversary=None,
                                        customer_source="Lead", reference_doctype=None,
                                        reference_docname=None, **kwargs):
     """Create new customer from lead or ticket data"""
@@ -460,6 +465,9 @@ def create_customer_from_lead_or_ticket(mobile_no, first_name=None, last_name=No
         customer_doc.email = email
         customer_doc.organization = organization
         customer_doc.job_title = job_title
+        customer_doc.marital_status = marital_status
+        customer_doc.date_of_birth = date_of_birth
+        customer_doc.anniversary = anniversary
         customer_doc.customer_source = customer_source
         customer_doc.status = "Active"
         

@@ -90,7 +90,10 @@ def auto_fill_customer_data(mobile_no):
             "pan_card_number": customer.get("pan_card_number", ""),
             "aadhaar_card_number": customer.get("aadhaar_card_number", ""),
             "referral_code": customer.get("referral_code", ""),
-            "referral_through": customer.get("referral_through", "")
+            "referral_through": customer.get("referral_through", ""),
+            "marital_status": customer.get("marital_status", ""),
+            "date_of_birth": customer.get("date_of_birth", ""),
+            "anniversary": customer.get("anniversary", "")
         }
     
     return {}
@@ -359,7 +362,8 @@ def get_customer_by_id(customer_id):
         {"name": customer_id},
         ["name", "customer_name", "first_name", "last_name", "email", 
          "mobile_no", "organization", "status", "customer_source",
-         "pan_card_number", "aadhaar_card_number", "referral_code", "image"],
+         "pan_card_number", "aadhaar_card_number", "referral_code", "image",
+         "marital_status", "date_of_birth", "anniversary"],
         as_dict=True
     )
     
