@@ -619,7 +619,8 @@ const tabs = createResource({
               field.fieldtype = 'Data'
               field.label = 'Mobile No'
               field.maxlength = 10
-              field.description = 'Enter 10-digit mobile number only'
+              field.description = ''
+              field.placeholder = 'Mobile No'
               field.read_only = 0
               // Add change handler to trigger auto-fill and validation
               field.onChange = () => {
@@ -652,6 +653,7 @@ const tabs = createResource({
             if (field.fieldname == 'referral_through') {
               field.fieldtype = 'Data'
               field.label = 'Referral Through'
+              field.placeholder = 'Referral Through'
               // Use mandatory_depends_on for dynamic required field
               field.mandatory_depends_on = "eval:doc.lead_category=='Direct'"
               // Use depends_on for dynamic description
@@ -660,6 +662,16 @@ const tabs = createResource({
                 'Client ID used during lead creation (required for Direct leads)' : 
                 'Client ID used during lead creation (optional for Indirect leads)'
               field.read_only = 0
+            }
+
+            // Remove helper descriptions for identity fields
+            if (field.fieldname == 'pan_card_number') {
+              field.description = ''
+              field.placeholder = 'PAN Card Number'
+            }
+            if (field.fieldname == 'aadhaar_card_number') {
+              field.description = ''
+              field.placeholder = 'Aadhaar Card Number'
             }
             
             // Configure account_type field

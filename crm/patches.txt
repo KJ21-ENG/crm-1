@@ -52,3 +52,4 @@ crm.patches.v1_add_final_overdue_fields # 04-08-2025
 crm.patches.v1_0.add_crm_account_type_doctype # add account type master and seed defaults
 crm.patches.v1_0.add_lead_and_ticket_personal_fields # 15-08-2025
 crm.patches.v1_0.reposition_quick_entry_contact_fields # 15-08-2025
+crm.patches.v1_0.fix_marital_status_default # 15-08-2025

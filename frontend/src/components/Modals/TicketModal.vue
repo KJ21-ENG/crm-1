@@ -766,7 +766,8 @@ const tabs = createResource({
               field.fieldtype = 'Data'
               field.label = 'Mobile No'
               field.maxlength = 10
-              field.description = 'Enter 10-digit mobile number only'
+              field.description = ''
+              field.placeholder = 'Mobile No'
               // Add change handler to trigger customer history lookup and auto-fill
               field.onChange = () => {
                 if (ticket.doc.mobile_no) {
@@ -787,16 +788,26 @@ const tabs = createResource({
                 }
               }
             }
+            // Remove helper descriptions for identity fields
+            if (field.fieldname == 'pan_card_number') {
+              field.description = ''
+              field.placeholder = 'PAN Card Number'
+            }
+            if (field.fieldname == 'aadhaar_card_number') {
+              field.description = ''
+              field.placeholder = 'Aadhaar Card Number'
+            }
 
             if (field.fieldname == 'email') {
               field.fieldtype = 'Data'
               field.label = 'Email'
+              field.placeholder = 'Email'
               // Add change handler to trigger customer history lookup
               field.onChange = () => {
                 if (ticket.doc.email) {
                   customerHistory.reload()
                 }
-            }
+              }
             }
 
             if (field.fieldtype === 'Table') {

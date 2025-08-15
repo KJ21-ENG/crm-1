@@ -165,14 +165,18 @@
         @update:modelValue="(v) => fieldChange(v, field)"
       />
     </div>
-    <DatePicker
-      v-else-if="field.fieldtype === 'Date'"
-      :value="data[field.fieldname]"
-      :formatter="(date) => getFormat(date, '', true)"
-      :placeholder="getPlaceholder(field)"
-      input-class="border-none"
-      @change="(v) => fieldChange(v, field)"
-    />
+    <div v-else-if="field.fieldtype === 'Date'" class="relative">
+      <CustomDateTimePicker
+        :model-value="data[field.fieldname]"
+        :placeholder="getPlaceholder(field)"
+        :input-class="'border-none'"
+        :mode="'date'"
+        :show-time="false"
+        :auto-default="false"
+        :year-quick-select="true"
+        @update:modelValue="(v) => fieldChange(v, field)"
+      />
+    </div>
     <FormControl
       v-else-if="
         ['Small Text', 'Text', 'Long Text', 'Code'].includes(field.fieldtype)

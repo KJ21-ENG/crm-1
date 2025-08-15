@@ -38,9 +38,19 @@
                 <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
-            <div class="month-year-display">
-              <span class="month">{{ currentMonthName }}</span>
-              <span class="year">{{ currentYear }}</span>
+            <div class="month-year-display" :class="yearQuickSelect ? 'quick-select' : ''">
+              <template v-if="yearQuickSelect">
+                <select v-model.number="monthIndex" class="month-select">
+                  <option v-for="(m, i) in monthNames" :key="i" :value="i">{{ m }}</option>
+                </select>
+                <select v-model.number="yearValue" class="year-select">
+                  <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+                </select>
+              </template>
+              <template v-else>
+                <span class="month">{{ currentMonthName }}</span>
+                <span class="year">{{ currentYear }}</span>
+              </template>
             </div>
             <button @click="nextMonth" class="nav-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,7 +86,7 @@
           </div>
 
           <!-- Time Picker -->
-          <div class="time-picker">
+          <div v-if="showTimeComputed" class="time-picker">
             <div class="time-section">
               <div class="time-label">Time</div>
               <div class="time-inputs">
@@ -129,6 +139,22 @@ const props = defineProps({
     type: String,
     default: 'border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900'
   },
+  mode: {
+    type: String,
+    default: 'datetime', // 'datetime' | 'date'
+  },
+  showTime: {
+    type: Boolean,
+    default: true,
+  },
+  autoDefault: {
+    type: Boolean,
+    default: true,
+  },
+  yearQuickSelect: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -137,6 +163,9 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const isOpen = ref(false);
 const isDateApplied = ref(false); // Track if date has been applied
 const hasUserSelectedDate = ref(false); // Track if user has explicitly selected a date
+
+const isDateOnly = computed(() => props.mode === 'date' || props.showTime === false)
+const showTimeComputed = computed(() => !isDateOnly.value)
 
 // Get current date and time
 const getCurrentDateTime = () => {
@@ -208,8 +237,27 @@ const currentYear = computed(() => {
   return currentDate.value.getFullYear();
 });
 
+const monthNames = [
+  'January','February','March','April','May','June','July','August','September','October','November','December'
+]
+
+const monthIndex = ref(getCurrentDateTime().getMonth())
+const yearValue = ref(getCurrentDateTime().getFullYear())
+
+const yearOptions = computed(() => {
+  const end = new Date().getFullYear() + 10
+  const start = 1900
+  const arr = []
+  for (let y = end; y >= start; y--) arr.push(y)
+  return arr
+})
+
 const displayValue = computed(() => {
-  // If not applied, still show a friendly current date/time preview
+  // Don't show anything until user applies or modelValue comes from outside
+  if (!isDateApplied.value && !props.modelValue) return ''
+  if (!selectedDate.value && props.modelValue) {
+    return props.modelValue
+  }
   if (!selectedDate.value) return ''
 
   const date = new Date(selectedDate.value)
@@ -218,12 +266,14 @@ const displayValue = computed(() => {
   const day = String(date.getDate()).padStart(2, '0')
   const formattedDate = `${month}/${day}/${year}`
 
-  // Show 12-hour time along with AM/PM for display
+  if (!showTimeComputed.value) {
+    return formattedDate
+  }
+
   const hour12 = selectedHour.value % 12 || 12
   const formattedTime = `${hour12.toString().padStart(2, '0')}:${selectedMinute.value
     .toString()
     .padStart(2, '0')} ${selectedPeriod.value}`
-
   return `${formattedDate} ${formattedTime}`
 })
 
@@ -406,40 +456,40 @@ function applySelection() {
     return;
   }
   
-  // Create the final datetime using the selected date and time in local timezone
-  const finalDate = new Date(selectedDate.value);
-  let hour = selectedHour.value;
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  // Convert 12-hour format to 24-hour format
-  if (selectedPeriod.value === 'PM' && hour !== 12) {
-    hour += 12;
-  } else if (selectedPeriod.value === 'AM' && hour === 12) {
-    hour = 0;
+  let isoString = ''
+  if (showTimeComputed.value) {
+    // Create the final datetime using the selected date and time in local timezone
+    const finalDate = new Date(selectedDate.value);
+    let hour = selectedHour.value;
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Convert 12-hour format to 24-hour format
+    if (selectedPeriod.value === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (selectedPeriod.value === 'AM' && hour === 12) {
+      hour = 0;
+    }
+    finalDate.setHours(hour, selectedMinute.value, 0, 0);
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: userTimezone
+    });
+    const parts = formatter.formatToParts(finalDate);
+    const dateParts = {};
+    parts.forEach(part => { dateParts[part.type] = part.value; });
+    isoString = `${dateParts.year}-${dateParts.month}-${dateParts.day} ${dateParts.hour}:${dateParts.minute}:${dateParts.second}`;
+  } else {
+    const d = selectedDate.value
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    isoString = `${y}-${m}-${day}`
   }
-  
-  // Set the time on the selected date
-  finalDate.setHours(hour, selectedMinute.value, 0, 0);
-  
-  // Format as ISO datetime string (Frappe standard) with proper timezone handling
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: userTimezone
-  });
-
-  const parts = formatter.formatToParts(finalDate);
-  const dateParts = {};
-  parts.forEach(part => {
-    dateParts[part.type] = part.value;
-  });
-
-  const isoString = `${dateParts.year}-${dateParts.month}-${dateParts.day} ${dateParts.hour}:${dateParts.minute}:${dateParts.second}`;
   
   // Mark date as applied
   isDateApplied.value = true;
@@ -488,7 +538,7 @@ onMounted(() => {
     initializeCurrentDateTime();
 
     // If no external value provided, default to current datetime and emit it
-    if (!props.modelValue) {
+    if (!props.modelValue && props.autoDefault) {
       const finalDate = new Date(selectedDate.value)
       let hour = selectedHour.value
       if (selectedPeriod.value === 'PM' && hour !== 12) {
@@ -522,8 +572,10 @@ onMounted(() => {
       emit('change', isoString)
     } else {
       // No change; watcher will hydrate state from external value
-      isDateApplied.value = true
-      hasUserSelectedDate.value = true
+      if (props.modelValue) {
+        isDateApplied.value = true
+        hasUserSelectedDate.value = true
+      }
     }
     
     // Handle click outside in production mode
@@ -556,6 +608,17 @@ onUnmounted(() => {
     console.error('Error in datetime picker cleanup:', error);
   }
 });
+
+// Sync dropdown selects with currentDate and vice-versa
+watch([monthIndex, yearValue], ([m, y]) => {
+  if (typeof m === 'number' && typeof y === 'number') {
+    currentDate.value = new Date(y, m, 1)
+  }
+})
+watch(currentDate, (d) => {
+  monthIndex.value = d.getMonth()
+  yearValue.value = d.getFullYear()
+})
 </script>
 
 <style scoped>
@@ -630,6 +693,12 @@ onUnmounted(() => {
   justify-content: space-between;
   margin-bottom: 16px;
 }
+.month-select, .year-select {
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 0 4px;
+}
 
 .nav-btn {
   display: flex;
@@ -655,6 +724,11 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   font-weight: 600;
+}
+.month-year-display.quick-select {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .month {
