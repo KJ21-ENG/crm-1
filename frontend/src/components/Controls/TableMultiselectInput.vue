@@ -31,6 +31,7 @@
           :doctype="linkField.options"
           @change="(v) => addValue(v)"
           :hideMe="true"
+          :onCreate="onCreateHandler"
         >
           <template #target="{ togglePopover }">
             <button
@@ -47,6 +48,30 @@
       </div>
     </div>
     <ErrorMessage class="mt-2 pl-2" v-if="error" :message="error" />
+
+    <!-- Quick Create Modal for Ticket Subject -->
+    <Dialog v-model="showCreateModal" :options="{ title: __('Add New Subject') }">
+      <template #body-content>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-ink-gray-7 mb-1">
+              {{ __('Subject Name') }}
+            </label>
+            <Input v-model="newSubject.subject_name" :placeholder="__('Enter subject name')" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-ink-gray-7 mb-1">
+              {{ __('Description') }}
+            </label>
+            <Textarea v-model="newSubject.description" :placeholder="__('Enter description (optional)')" class="w-full" rows="3" />
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <Button variant="ghost" :label="__('Cancel')" @click="closeCreateModal" />
+        <Button variant="solid" :label="__('Add Subject')" :loading="creating" @click="createSubject" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -54,6 +79,7 @@
 import Link from '@/components/Controls/Link.vue'
 import { getMeta } from '@/stores/meta'
 import { ref, computed, nextTick } from 'vue'
+import { Dialog, Input, Textarea, Button, call, toast } from 'frappe-ui'
 
 const props = defineProps({
   doctype: {
@@ -155,6 +181,54 @@ const removeLastValue = () => {
     })
   } else {
     valueRef?.focus()
+  }
+}
+
+// Quick-create support for CRM Ticket Subject
+const showCreateModal = ref(false)
+const creating = ref(false)
+const newSubject = ref({ subject_name: '', description: '' })
+let closePopoverRef = null
+
+const onCreateHandler = (value, close) => {
+  // Only handle for CRM Ticket Subject multi-select child
+  if (linkField.value && linkField.value.options === 'CRM Ticket Subject') {
+    newSubject.value = { subject_name: value || '', description: '' }
+    showCreateModal.value = true
+    closePopoverRef = close
+  }
+}
+
+function closeCreateModal() {
+  showCreateModal.value = false
+  newSubject.value = { subject_name: '', description: '' }
+}
+
+async function createSubject() {
+  if (!newSubject.value.subject_name.trim()) {
+    toast.error(__('Subject name is required'))
+    return
+  }
+  creating.value = true
+  try {
+    const doc = await call('frappe.client.insert', {
+      doc: {
+        doctype: 'CRM Ticket Subject',
+        subject_name: newSubject.value.subject_name.trim(),
+        description: newSubject.value.description.trim(),
+        is_active: 1,
+      },
+    })
+    // Add immediately to selection
+    addValue(newSubject.value.subject_name.trim())
+    toast.success(__('Subject created successfully'))
+    if (closePopoverRef) closePopoverRef()
+    closeCreateModal()
+  } catch (error) {
+    console.error('Error creating subject:', error)
+    toast.error(error?.messages?.[0] || __('Failed to create subject'))
+  } finally {
+    creating.value = false
   }
 }
 </script>
