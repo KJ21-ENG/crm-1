@@ -657,22 +657,22 @@ async function loadReferralStats() {
       return
     }
     
-    // Find all leads that used any of this customer's Client IDs as referral_through
-    const referralLeads = await call('frappe.client.get_list', {
-      doctype: 'CRM Lead',
-      filters: {
-        referral_through: ['in', clientIds]
-      },
-      fields: ['name', 'first_name', 'last_name', 'referral_through', 'status', 'creation', 'lead_category', 'mobile_no']
+    // ✅ FIXED: Use the referral analytics API instead of direct lead queries
+    // This ensures we get customer names from the customer table, not null values from leads
+    const referralDetails = await call('crm.api.referral_analytics.get_referral_details', {
+      referral_codes: clientIds.join(','),
+      customer_id: customer.value.data.name
     })
     
     // Filter out self-referrals (same mobile number)
-    const validReferrals = referralLeads.filter(lead => lead.mobile_no !== customer.value.data.mobile_no)
+    const validReferrals = referralDetails.filter(lead => 
+      lead.mobile_no !== customer.value.data.mobile_no
+    )
     
-    // Process referral data
-    const referralDetails = validReferrals.map(lead => ({
+    // Process referral data with proper customer names
+    const processedReferrals = validReferrals.map(lead => ({
       lead_id: lead.name,
-      lead_name: `${lead.first_name} ${lead.last_name}`.trim(),
+      lead_name: getDisplayName(lead), // ✅ Smart name resolution
       referral_through: lead.referral_through,
       status: lead.status,
       creation: lead.creation,
@@ -681,9 +681,18 @@ async function loadReferralStats() {
     }))
     
     referralStats.value = {
-      total_referrals: referralDetails.length,
-      referral_details: referralDetails
+      total_referrals: processedReferrals.length,
+      referral_details: processedReferrals
     }
+    
+    // ✅ Debug logging to track data flow
+    console.log('Referral Stats Updated:', {
+      clientIds,
+      rawReferralDetails: referralDetails,
+      validReferrals,
+      processedReferrals,
+      finalStats: referralStats.value
+    })
     
   } catch (error) {
     console.error('Error loading referral stats:', error)
@@ -695,6 +704,32 @@ function getReferralCountForClientId(clientId) {
   return referralStats.value.referral_details.filter(
     ref => ref.referral_through === clientId
   ).length
+}
+
+// ✅ Helper function to get the best available display name
+function getDisplayName(lead) {
+  // Priority 1: Customer table name (most reliable)
+  if (lead.lead_name && lead.lead_name !== 'null null') {
+    return lead.lead_name
+  }
+  
+  // Priority 2: Combined first_name + last_name from customer table
+  if (lead.first_name || lead.last_name) {
+    const firstName = lead.first_name || ''
+    const lastName = lead.last_name || ''
+    const combined = `${firstName} ${lastName}`.trim()
+    if (combined && combined !== 'null null') {
+      return combined
+    }
+  }
+  
+  // Priority 3: Mobile number as identifier
+  if (lead.mobile_no) {
+    return `Customer (${lead.mobile_no})`
+  }
+  
+  // Priority 4: Lead ID as fallback
+  return `Lead ${lead.lead_id}`
 }
 
 function openEditDialog() {
