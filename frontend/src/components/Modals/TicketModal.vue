@@ -182,6 +182,46 @@
                     </div>
                   </div>
 
+                  <!-- Referral History -->
+                  <div v-if="referralHistory.data?.length">
+                    <h5 class="font-medium text-ink-gray-8 mb-2 flex items-center gap-2">
+                      <CustomersIcon class="h-4 w-4" />
+                      {{ __('Referral History') }} ({{ referralHistory.data.length }})
+                    </h5>
+                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                      <div
+                        v-for="referral in referralHistory.data"
+                        :key="referral.lead_id"
+                        class="p-3 rounded border bg-green-50 hover:bg-green-100 transition-colors cursor-pointer"
+                        @click="router.push({ name: 'Lead', params: { leadId: referral.lead_id } })"
+                      >
+                        <div class="font-medium text-sm text-ink-gray-9">
+                          {{ referral.lead_name }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1">
+                          <Badge 
+                            :label="referral.status" 
+                            :theme="getStatusColor(referral.status)"
+                            variant="subtle"
+                            class="mr-2"
+                          />
+                          {{ formatDate(referral.creation) }}
+                        </div>
+                        <div class="text-xs text-ink-gray-6 mt-1 flex items-center gap-2">
+                          <Badge 
+                            :label="referral.account_type || 'N/A'" 
+                            theme="blue"
+                            variant="subtle"
+                            class="text-xs"
+                          />
+                          <span class="text-green-600">
+                            🎯 {{ __('Referred using:') }} {{ referral.referral_through }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Customer Contact Summary -->
                   <div v-if="customerHistory.data.summary" class="pt-4 border-t">
                     <h5 class="font-medium text-ink-gray-8 mb-2">{{ __('Customer Summary') }}</h5>
@@ -207,9 +247,9 @@
                   </div>
 
                   <!-- No history found -->
-                  <div v-if="!customerHistory.data.tickets?.length && !customerHistory.data.leads?.length" class="text-center py-4">
+                  <div v-if="!customerHistory.data.tickets?.length && !customerHistory.data.leads?.length && !referralHistory.data?.length" class="text-center py-4">
                     <div class="text-ink-gray-6 text-sm">
-                      {{ __('No previous tickets or leads found for this customer') }}
+                      {{ __('No previous tickets, leads, or referrals found for this customer') }}
                     </div>
                     <div class="text-ink-gray-5 text-xs mt-1">
                       {{ __('This appears to be a new customer') }}
@@ -373,6 +413,7 @@
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import TicketIcon from '@/components/Icons/TaskIcon.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
+import CustomersIcon from '@/components/Icons/CustomersIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import TaskModal from '@/components/Modals/TaskModal.vue'
 import { usersStore } from '@/stores/users'
@@ -458,10 +499,26 @@ const customerHistory = createResource({
   auto: false,
 })
 
+// 🆕 Referral history resource
+const referralHistory = createResource({
+  url: 'crm.api.referral_analytics.get_referral_details',
+  makeParams() {
+    const customerId = ticket.doc?.customer_id
+    if (customerId) {
+      // Get customer's referral codes from accounts
+      return { customer_id: customerId }
+    }
+    return null
+  },
+  auto: false,
+})
+
 // Watch for customer contact changes to fetch history
 watch([() => ticket.doc?.mobile_no, () => ticket.doc?.email], ([mobile, email]) => {
   if (mobile || email) {
     customerHistory.reload()
+    // Also reload referral history when customer changes
+    referralHistory.reload()
   }
 }, { immediate: false })
 
@@ -589,6 +646,8 @@ async function autoFillCustomerData(mobileNumber) {
       console.log('✅ [AUTO-FILL] Form auto-filled successfully')
       console.log('🔍 [AUTO-FILL] Final ticket.doc:', JSON.stringify(ticket.doc, null, 2))
       customerHistory.reload()
+      // Also reload referral history after auto-fill
+      referralHistory.reload()
     } else {
       console.log('ℹ️ [AUTO-FILL] No existing customer found for mobile:', mobileNumber)
     }
@@ -977,7 +1036,7 @@ async function createNewTicket() {
         source: props.callLog ? 'call_log' : 'manual',
         department: ticket.doc.department,
         priority: ticket.doc.priority,
-        has_customer_history: !!(customerHistory.data?.tickets?.length || customerHistory.data?.leads?.length)
+        has_customer_history: !!(customerHistory.data?.tickets?.length || customerHistory.data?.leads?.length || referralHistory.data?.length)
       })
     }
   } catch (e) {

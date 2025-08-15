@@ -346,9 +346,17 @@
                             <p class="text-sm text-ink-gray-7">
                               Used your code: <span class="font-medium">{{ referral.referral_through }}</span>
                             </p>
-                            <p class="text-sm text-ink-gray-7">
-                              Created: {{ formatDate(referral.creation) }}
-                            </p>
+                            <div class="flex items-center gap-2 mt-1">
+                              <Badge 
+                                :label="referral.account_type || 'N/A'" 
+                                theme="blue"
+                                variant="subtle"
+                                class="text-xs"
+                              />
+                              <span class="text-sm text-ink-gray-7">
+                                Created: {{ formatDate(referral.creation) }}
+                              </span>
+                            </div>
                           </div>
                           <Badge :label="referral.status" />
                         </div>

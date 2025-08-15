@@ -364,29 +364,62 @@ def export_referral_analytics(date_from=None, date_to=None, account_type=None, l
         return {"error": str(e)} 
 
 @frappe.whitelist()
-def get_referral_details(referral_code=None, referral_codes=None, date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
-    """Get detailed referral information for a specific referral code"""
+def get_referral_details(referral_code=None, referral_codes=None, customer_id=None, date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
+    """Get detailed referral information for a specific referral code or customer"""
     try:
         # Build filters
         params = []
-        # Accept a single code or a list of codes (comma-separated string or list)
-        codes = []
-        if referral_codes:
-            if isinstance(referral_codes, str):
-                # Accept comma-separated string
-                codes = [c.strip() for c in referral_codes.split(',') if c and c.strip()]
-            elif isinstance(referral_codes, (list, tuple)):
-                codes = [c for c in referral_codes if c]
-        elif referral_code:
-            codes = [referral_code]
+        
+        # 🆕 NEW: Handle customer_id parameter to get referrals made BY a customer
+        if customer_id:
+            # Get all referral codes (client IDs) that this customer has
+            customer = frappe.get_doc("CRM Customer", customer_id)
+            if customer and customer.accounts:
+                try:
+                    accounts = customer.accounts
+                    if isinstance(accounts, str):
+                        accounts = json.loads(accounts)
+                    
+                    # Extract all client_ids from customer's accounts
+                    client_ids = [acc.get('client_id') for acc in accounts if acc.get('client_id')]
+                    
+                    if client_ids:
+                        placeholders = ','.join(['%s'] * len(client_ids))
+                        filters = f"l.referral_through IN ({placeholders})"
+                        params.extend(client_ids)
+                    else:
+                        # No referral codes found for this customer
+                        return []
+                except Exception as e:
+                    frappe.log_error(f"Error parsing customer accounts for {customer_id}: {str(e)}")
+                    return []
+            else:
+                # Customer has no accounts/referral codes
+                return []
+        
+        # 🆕 EXISTING: Handle referral_code/referral_codes parameters
+        elif referral_codes or referral_code:
+            codes = []
+            if referral_codes:
+                if isinstance(referral_codes, str):
+                    # Accept comma-separated string
+                    codes = [c.strip() for c in referral_codes.split(',') if c and c.strip()]
+                elif isinstance(referral_codes, (list, tuple)):
+                    codes = [c for c in referral_codes if c]
+            elif referral_code:
+                codes = [referral_code]
 
-        if codes:
-            placeholders = ','.join(['%s'] * len(codes))
-            filters = f"l.referral_through IN ({placeholders})"
-            params.extend(codes)
+            if codes:
+                placeholders = ','.join(['%s'] * len(codes))
+                filters = f"l.referral_through IN ({placeholders})"
+                params.extend(codes)
+            else:
+                # Fallback: ensure no rows when no code provided
+                filters = "1=0"
+        
         else:
-            # Fallback: ensure no rows when no code provided
-            filters = "1=0"
+            # No parameters provided
+            return []
         
         if date_from:
             filters += " AND l.modified >= %s"
