@@ -39,6 +39,9 @@
   "lead_name",
   "middle_name",
   "gender",
+  "marital_status",
+  "date_of_birth",
+  "anniversary",
   "phone",
   "column_break_dbsv",
   "status",
@@ -110,6 +113,22 @@
    "label": "Gender",
    "options": "Gender",
    "read_only": 1
+  },
+  {
+   "fieldname": "marital_status",
+   "fieldtype": "Select",
+   "label": "Marital Status",
+   "options": "Married\nUnmarried"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "anniversary",
+   "fieldtype": "Date",
+   "label": "Anniversary"
   },
   {
    "fieldname": "description",

@@ -26,6 +26,9 @@
   "salutation",
   "first_name",
   "last_name",
+  "marital_status",
+  "date_of_birth",
+  "anniversary",
   "email",
   "mobile_no",
   "organization_tab",
@@ -175,6 +178,22 @@
    "label": "Last Name",
    "read_only": 1,
    "reqd": 0
+  },
+  {
+   "fieldname": "marital_status",
+   "fieldtype": "Select",
+   "label": "Marital Status",
+   "options": "Married\nUnmarried"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "anniversary",
+   "fieldtype": "Date",
+   "label": "Anniversary"
   },
   {
    "default": "New",
