@@ -40,6 +40,26 @@
             :bubbleMenu="true" :content="_note.content" @change="(val) => (_note.content = val)" :placeholder="__('Took a call with John Doe and discussed the new project.')
               " />
         </div>
+        <!-- Link Note to Lead/Ticket -->
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <FormControl
+              type="select"
+              :label="__('Document Type')"
+              v-model="_note.reference_doctype"
+              :options="['CRM Lead', 'CRM Ticket']"
+            />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-ink-gray-7">{{ __('Document') }}</label>
+            <Link
+              class="form-control"
+              :doctype="_note.reference_doctype || 'CRM Lead'"
+              :value="_note.reference_docname"
+              @change="(v) => (_note.reference_docname = v)"
+            />
+          </div>
+        </div>
         <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
       </div>
     </template>
@@ -49,10 +69,11 @@
 <script setup>
 import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import { capture } from '@/telemetry'
-import { TextEditor, call } from 'frappe-ui'
+import { TextEditor, call, ErrorMessage } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import Link from '@/components/Controls/Link.vue'
 
 const props = defineProps({
   note: {
@@ -88,7 +109,12 @@ async function updateNote() {
     let d = await call('frappe.client.set_value', {
       doctype: 'FCRM Note',
       name: _note.value.name,
-      fieldname: _note.value,
+      fieldname: {
+        title: _note.value.title,
+        content: _note.value.content,
+        reference_doctype: _note.value.reference_doctype || props.doctype,
+        reference_docname: _note.value.reference_docname || props.doc || '',
+      },
     })
     if (d.name) {
       notes.value?.reload()
@@ -100,8 +126,8 @@ async function updateNote() {
         doctype: 'FCRM Note',
         title: _note.value.title,
         content: _note.value.content,
-        reference_doctype: props.doctype,
-        reference_docname: props.doc || '',
+        reference_doctype: _note.value.reference_doctype || props.doctype,
+        reference_docname: _note.value.reference_docname || props.doc || '',
       },
     }, {
       onError: (err) => {
@@ -121,20 +147,20 @@ async function updateNote() {
 }
 
 function redirect() {
-  if (!props.note?.reference_docname) return
+  if (!_note.value?.reference_docname) return
   // Determine route name and params based on reference_doctype
   let routeName = 'Lead'
-  let params = { leadId: props.note.reference_docname }
+  let params = { leadId: _note.value.reference_docname }
 
-  if (props.note.reference_doctype === 'CRM Deal') {
+  if (_note.value.reference_doctype === 'CRM Deal') {
     routeName = 'Deal'
-    params = { dealId: props.note.reference_docname }
-  } else if (props.note.reference_doctype === 'CRM Ticket') {
+    params = { dealId: _note.value.reference_docname }
+  } else if (_note.value.reference_doctype === 'CRM Ticket') {
     routeName = 'Ticket'
-    params = { ticketId: props.note.reference_docname }
-  } else if (props.note.reference_doctype === 'CRM Customer') {
+    params = { ticketId: _note.value.reference_docname }
+  } else if (_note.value.reference_doctype === 'CRM Customer') {
     routeName = 'Customer'
-    params = { customerId: props.note.reference_docname }
+    params = { customerId: _note.value.reference_docname }
   }
 
   router.push({ name: routeName, params })
@@ -148,6 +174,9 @@ watch(
     nextTick(() => {
       title.value?.el?.focus()
       _note.value = { ...props.note }
+      // ensure defaults for linking when creating from Notes page
+      if (!_note.value.reference_doctype) _note.value.reference_doctype = props.doctype
+      if (_note.value.reference_docname == null) _note.value.reference_docname = props.doc || ''
       if (_note.value.title || _note.value.content) {
         editMode.value = true
       }
