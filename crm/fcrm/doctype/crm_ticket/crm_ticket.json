@@ -12,6 +12,7 @@
  "field_order": [
   "details",
   "ticket_subject",
+  "ticket_subjects",
   "subject",
   "description",
   "priority",
@@ -74,6 +75,16 @@
    "label": "Subject",
    "options": "CRM Ticket Subject",
    "reqd": 1
+  },
+  {
+   "fieldname": "ticket_subjects",
+   "fieldtype": "Table MultiSelect",
+   "label": "Subjects",
+   "options": "CRM Ticket Subject Item",
+   "depends_on": "eval:1==1",
+   "in_list_view": 0,
+   "reqd": 0,
+   "description": "Select one or more subjects"
   },
   {
    "fieldname": "subject",

@@ -122,6 +122,7 @@
       v-else-if="field.fieldtype === 'Table MultiSelect'"
       v-model="data[field.fieldname]"
       :doctype="field.options"
+      :placeholder="getPlaceholder(field)"
       @change="(v) => fieldChange(v, field)"
     />
 

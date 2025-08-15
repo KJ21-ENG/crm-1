@@ -89,6 +89,14 @@ def create_ticket(doc):
             **doc,
             "owner": frappe.session.user
         })
+        # If frontend sent multi subjects but no single link, normalize before insert
+        try:
+            if not ticket_doc.get("ticket_subject") and ticket_doc.get("ticket_subjects"):
+                rows = ticket_doc.get("ticket_subjects") or []
+                if isinstance(rows, list) and rows and rows[0].get("subject"):
+                    ticket_doc["ticket_subject"] = rows[0]["subject"]
+        except Exception:
+            pass
         
         # If this is from a call log, handle the call log data
         if doc.get("call_log"):

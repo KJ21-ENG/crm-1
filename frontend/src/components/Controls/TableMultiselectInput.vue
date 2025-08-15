@@ -1,13 +1,14 @@
 <template>
   <div>
     <div
-      class="group flex flex-wrap gap-1 min-h-20 p-1.5 rounded text-base bg-surface-gray-2 hover:bg-surface-gray-3 focus:border-outline-gray-4 focus:ring-0 focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-ink-gray-8 transition-colors w-full"
+      class="group flex flex-wrap items-center gap-1 min-h-10 p-1 rounded text-sm bg-surface-gray-2 hover:bg-surface-gray-3 focus:border-outline-gray-4 focus:ring-0 focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-ink-gray-8 transition-colors w-full"
     >
       <Button
         ref="valuesRef"
         v-for="value in parsedValues"
         :key="value"
         :label="value"
+        size="sm"
         theme="gray"
         variant="subtle"
         class="rounded bg-surface-white hover:!bg-surface-gray-1 focus-visible:ring-outline-gray-4"
@@ -33,9 +34,14 @@
         >
           <template #target="{ togglePopover }">
             <button
-              class="w-full h-7 cursor-text"
+              class="w-full h-7 px-2 cursor-text flex items-center text-ink-gray-5"
               @click.stop="togglePopover"
-            />
+            >
+              <span v-if="!parsedValues.length">{{ placeholderText }}</span>
+            </button>
+          </template>
+          <template #item-label="{ option }">
+            <div class="truncate text-ink-gray-8">{{ option.label || option.value }}</div>
           </template>
         </Link>
       </div>
@@ -53,6 +59,10 @@ const props = defineProps({
   doctype: {
     type: String,
     required: true,
+  },
+  placeholder: {
+    type: String,
+    default: 'Select options...'
   },
   errorMessage: {
     type: Function,
@@ -87,6 +97,10 @@ const parsedValues = computed(() => {
   getLinkField()
   if (!linkField.value) return []
   return values.value.map((row) => row[linkField.value.fieldname])
+})
+
+const placeholderText = computed(() => {
+  return props.placeholder || 'Select options...'
 })
 
 const getLinkField = () => {

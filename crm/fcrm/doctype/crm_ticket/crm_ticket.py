@@ -21,9 +21,11 @@ from crm.fcrm.utils.validation import validate_identity_documents
 class CRMTicket(Document):
 	def before_validate(self):
 		self.set_sla()
+		self.normalize_subjects()
 
 	def validate(self):
 		self.set_customer_name()
+		self.normalize_subjects()
 		self.set_title()
 		# Skip customer-info validations when using centralized customer store
 		if not getattr(self, "customer_id", None):
@@ -154,18 +156,46 @@ class CRMTicket(Document):
 			)
 
 	def set_title(self):
-		# Get the actual subject name from the linked document
-		subject_name = self.ticket_subject
-		if self.ticket_subject:
-			try:
-				subject_doc = frappe.get_doc("CRM Ticket Subject", self.ticket_subject)
-				subject_name = subject_doc.subject_name
-				# Store the actual subject name for easier querying
-				self.subject = subject_name
-			except frappe.DoesNotExistError:
-				pass
-		
-		self.title = subject_name or f"Ticket from {self.customer_name or 'Customer'}"
+		# Derive subject/text for title from multi-select if available
+		subject_text = None
+		if getattr(self, "ticket_subjects", None):
+			labels = []
+			for row in (self.ticket_subjects or []):
+				if not row.subject:
+					continue
+				try:
+					s_doc = frappe.get_doc("CRM Ticket Subject", row.subject)
+					labels.append(s_doc.subject_name)
+				except Exception:
+					labels.append(row.subject)
+			if labels:
+				subject_text = ", ".join(labels)
+		# fallback to single link
+		if not subject_text:
+			subject_text = self.ticket_subject
+			if self.ticket_subject:
+				try:
+					subject_doc = frappe.get_doc("CRM Ticket Subject", self.ticket_subject)
+					subject_text = subject_doc.subject_name
+				except frappe.DoesNotExistError:
+					pass
+		# store normalized subject for list/search
+		self.subject = subject_text
+		self.title = subject_text or f"Ticket from {self.customer_name or 'Customer'}"
+
+	def normalize_subjects(self):
+		"""Ensure compatibility between new multi-select and legacy single link.
+		- If multi-select has values, set first into ticket_subject for compatibility.
+		- If neither is set, leave as-is and let validations elsewhere handle requiredness.
+		"""
+		try:
+			rows = list(self.ticket_subjects or [])
+		except Exception:
+			rows = []
+		if rows:
+			first = rows[0].subject if getattr(rows[0], "subject", None) else None
+			if first and self.ticket_subject != first:
+				self.ticket_subject = first
 
 	def validate_email(self):
 		if self.email:

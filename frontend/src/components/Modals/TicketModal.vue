@@ -486,6 +486,7 @@ onMounted(async () => {
     mobile_no: '',
     pan_card_number: '', // Identity document field
     aadhaar_card_number: '', // Identity document field
+    ticket_subjects: [],
     ticket_subject: '',
     subject: '',
     description: '',
@@ -979,7 +980,6 @@ async function createNewTicket() {
 function validateFields() {
   const requiredFields = {
     first_name: 'First Name',
-    ticket_subject: 'Subject',
     priority: 'Priority',
     issue_type: 'Issue Type',
     ticket_source: 'Ticket Source',
@@ -994,6 +994,16 @@ function validateFields() {
         isValid: false,
         error: `${label} is required`
       }
+    }
+  }
+
+  // Subject validation: allow either single subject or multi subjects
+  const hasSingleSubject = Boolean(ticket.doc.ticket_subject && ticket.doc.ticket_subject.trim())
+  const hasMultiSubjects = Array.isArray(ticket.doc.ticket_subjects) && ticket.doc.ticket_subjects.length > 0
+  if (!hasSingleSubject && !hasMultiSubjects) {
+    return {
+      isValid: false,
+      error: 'Subject is required'
     }
   }
 

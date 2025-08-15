@@ -406,7 +406,7 @@
       reference_doctype: 'CRM Ticket',
       reference_name: ticket.data?.name,
       assigned_to: ticket.data?.assigned_to,
-      title: `Follow-up for ${ticket.data?.ticket_subject}`,
+      title: `Follow-up for ${ticket.data?.subject}`,
     }"
   />
 
