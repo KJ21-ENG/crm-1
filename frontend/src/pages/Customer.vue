@@ -87,6 +87,18 @@
                   <label class="text-sm text-ink-gray-7">Phone</label>
                   <p class="text-ink-gray-12">{{ customer.data.phone }}</p>
                 </div>
+                <div v-if="customer.data.marital_status">
+                  <label class="text-sm text-ink-gray-7">Marital Status</label>
+                  <p class="text-ink-gray-12">{{ customer.data.marital_status }}</p>
+                </div>
+                <div v-if="customer.data.date_of_birth">
+                  <label class="text-sm text-ink-gray-7">Date of Birth</label>
+                  <p class="text-ink-gray-12">{{ formatDate(customer.data.date_of_birth) }}</p>
+                </div>
+                <div v-if="customer.data.anniversary">
+                  <label class="text-sm text-ink-gray-7">Anniversary</label>
+                  <p class="text-ink-gray-12">{{ formatDate(customer.data.anniversary) }}</p>
+                </div>
                 <div v-if="customer.data.job_title">
                   <label class="text-sm text-ink-gray-7">Job Title</label>
                   <p class="text-ink-gray-12">{{ customer.data.job_title }}</p>
@@ -404,6 +416,45 @@
           placeholder="Enter mobile number"
         />
 
+        <FormControl
+          v-model="editCustomer.marital_status"
+          label="Marital Status"
+          type="select"
+          :options="['', 'Married', 'Unmarried']"
+          placeholder="Select marital status"
+        />
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Date of Birth</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="editCustomer.date_of_birth"
+                placeholder="Enter Date of Birth"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Anniversary</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="editCustomer.anniversary"
+                placeholder="Enter Anniversary"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
           <FormControl
             v-model="editCustomer.pan_card_number"
@@ -462,6 +513,7 @@ import {
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 
 const props = defineProps({
   customerId: {
@@ -662,7 +714,11 @@ function openEditDialog() {
     pan_card_number: customer.value.data.pan_card_number || '',
     aadhaar_card_number: customer.value.data.aadhaar_card_number || '',
     referral_code: customer.value.data.referral_code || '',
-    referral_through: customer.value.data.referral_through || ''
+    referral_through: customer.value.data.referral_through || '',
+    marital_status: customer.value.data.marital_status || '',
+    // For date fields, preserve the actual value (including null) instead of converting to empty string
+    date_of_birth: customer.value.data.date_of_birth,
+    anniversary: customer.value.data.anniversary
   }
   showEditDialog.value = true
 }
@@ -707,11 +763,50 @@ async function updateCustomer() {
       editCustomer.value.pincode = pin
     }
 
+    // Prepare data for API call, only including changed fields
+    const updateData = {}
+    const originalData = customer.value.data
+    
+    // Only include fields that have actually changed
+    Object.keys(editCustomer.value).forEach(key => {
+      const newValue = editCustomer.value[key]
+      const oldValue = originalData[key]
+      
+      // Handle date fields specially
+      if (key === 'date_of_birth' || key === 'anniversary') {
+        if (newValue !== oldValue) {
+          // If new value is empty string and old value exists, convert to null
+          if (newValue === '' && oldValue) {
+            updateData[key] = null
+          } else if (newValue !== '') {
+            // Only update if new value is not empty
+            updateData[key] = newValue
+          }
+        }
+      } else {
+        // For non-date fields, only update if changed
+        if (newValue !== oldValue) {
+          updateData[key] = newValue
+        }
+      }
+    })
+    
+    console.log('Original customer data:', originalData)
+    console.log('Edit form data:', editCustomer.value)
+    console.log('Fields to update:', updateData)
+    
+    // If no fields changed, don't make API call
+    if (Object.keys(updateData).length === 0) {
+      console.log('No fields changed, skipping update')
+      updating.value = false
+      return
+    }
+    
     // Call the update API
     await call('frappe.client.set_value', {
       doctype: 'CRM Customer',
       name: props.customerId,
-      fieldname: editCustomer.value
+      fieldname: updateData
     })
     
     // Refresh customer data

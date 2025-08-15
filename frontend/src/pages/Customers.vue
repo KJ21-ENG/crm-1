@@ -89,6 +89,45 @@
             placeholder="Enter mobile number"
           />
 
+          <FormControl
+            v-model="newCustomer.marital_status"
+            label="Marital Status"
+            type="select"
+            :options="['', 'Married', 'Unmarried']"
+            placeholder="Select marital status"
+          />
+
+          <div class="grid grid-cols-2 gap-4">
+                      <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Date of Birth</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="newCustomer.date_of_birth"
+                placeholder="Enter Date of Birth"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Anniversary</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="newCustomer.anniversary"
+                placeholder="Enter Anniversary"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+          </div>
+
           <!-- Address Fields -->
           <div class="grid grid-cols-2 gap-4">
             <FormControl
@@ -165,6 +204,7 @@ import {
 import { ref, computed, onMounted } from 'vue'
 import ViewControls from '@/components/ViewControls.vue'
 import CustomersListView from '@/components/ListViews/CustomersListView.vue'
+import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -177,6 +217,9 @@ const newCustomer = ref({
   last_name: '',
   email: '',
   mobile_no: '',
+  marital_status: '',
+  date_of_birth: '',
+  anniversary: '',
   address_line_1: '',
   address_line_2: '',
   city: '',
@@ -254,11 +297,16 @@ const createCustomer = async () => {
   
   try {
     creating.value = true
-    await call('crm.api.customers.create_or_update_customer', {
+    
+    // Prepare customer data, handling empty dates properly
+    const customerData = {
       mobile_no: newCustomer.value.mobile_no,
       first_name: newCustomer.value.first_name,
       last_name: newCustomer.value.last_name,
       email: newCustomer.value.email,
+      marital_status: newCustomer.value.marital_status,
+      date_of_birth: newCustomer.value.date_of_birth || null,
+      anniversary: newCustomer.value.anniversary || null,
       address_line_1: newCustomer.value.address_line_1,
       address_line_2: newCustomer.value.address_line_2,
       city: newCustomer.value.city,
@@ -270,7 +318,11 @@ const createCustomer = async () => {
       referral_code: newCustomer.value.referral_code,
       referral_through: newCustomer.value.referral_through,
       customer_source: 'Direct'
-    })
+    }
+    
+    console.log('Creating customer with data:', customerData)
+    
+    await call('crm.api.customers.create_or_update_customer', customerData)
     
     // Reset form
     newCustomer.value = {
@@ -278,6 +330,9 @@ const createCustomer = async () => {
       last_name: '',
       email: '',
       mobile_no: '',
+      marital_status: '',
+      date_of_birth: '',
+      anniversary: '',
       address_line_1: '',
       address_line_2: '',
       city: '',

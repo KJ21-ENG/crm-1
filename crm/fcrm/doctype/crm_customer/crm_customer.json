@@ -20,7 +20,9 @@
    "phone",
    "column_break_1",
    "salutation",
-   "gender",
+   "marital_status",
+   "date_of_birth",
+   "anniversary",
    "organization",
    "job_title",
    "section_break_2",
@@ -102,10 +104,20 @@
    "options": "Mr\nMs\nMrs\nDr\nProf"
   },
   {
-   "fieldname": "gender",
+   "fieldname": "marital_status",
    "fieldtype": "Select",
-   "label": "Gender",
-   "options": "Male\nFemale\nOther"
+   "label": "Marital Status",
+   "options": "\nMarried\nUnmarried"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "anniversary",
+   "fieldtype": "Date",
+   "label": "Anniversary"
   },
   {
    "fieldname": "organization",
