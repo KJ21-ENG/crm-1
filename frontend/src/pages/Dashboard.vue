@@ -1,16 +1,16 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="bg-white border-b border-gray-200 px-4 py-3">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 class="text-xl font-bold text-gray-900">Dashboard</h1>
           <p class="text-sm text-gray-600 mt-1">
             Welcome back! Here's what's happening with your CRM.
           </p>
         </div>
         
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3">
           <!-- View Selector -->
           <div class="flex items-center space-x-2">
             <span class="text-sm font-medium text-gray-700">View:</span>
@@ -61,7 +61,7 @@
 
     <!-- Tab Navigation -->
     <div class="bg-white border-b border-gray-200">
-      <div class="px-6">
+      <div class="px-4">
         <nav class="flex space-x-8" role="tablist">
           <button
             v-for="(tab, index) in tabs"
@@ -70,7 +70,7 @@
             @keydown.enter="activeTab = tab.id"
             @keydown.space.prevent="activeTab = tab.id"
             :class="[
-              'py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+              'py-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
               activeTab === tab.id
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -98,9 +98,9 @@
     </div>
 
     <!-- Main Content -->
-    <div class="p-6">
+    <div class="p-4">
       <!-- Error State -->
-      <div v-if="error" class="mb-6">
+      <div v-if="error" class="mb-4">
         <Alert variant="error">
           <div class="flex items-center">
             <FeatherIcon name="alert-circle" class="w-5 h-5 mr-2" />
@@ -110,7 +110,7 @@
       </div>
 
       <!-- Tab Content Header -->
-      <div class="mb-6">
+      <div class="mb-4">
         <div class="flex items-center space-x-2 text-sm text-gray-600">
           <FeatherIcon name="home" class="w-4 h-4" />
           <span>/</span>
@@ -126,7 +126,7 @@
         :aria-labelledby="`tab-analytics`"
       >
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <StatsCard
             v-for="card in statsCards"
             :key="card.title"
@@ -140,7 +140,7 @@
         </div>
 
         <!-- Charts and Analytics -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <!-- Lead Status Distribution -->
           <ChartCard
             :title="`Lead Status Distribution (${getViewContext()})`"
@@ -163,7 +163,7 @@
         </div>
 
         <!-- Trends Chart -->
-        <div class="mb-8">
+        <div class="mb-6">
           <ChartCard
             :title="trendsChartTitle"
             :data="trendsChart"
@@ -187,40 +187,40 @@
           </div>
 
           <!-- Top Performers -->
-          <div class="space-y-6">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Performers</h3>
+          <div class="space-y-4">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 class="text-lg font-semibold text-gray-900 mb-3">Top Performers</h3>
               
-              <div v-if="loading" class="space-y-4">
+              <div v-if="loading" class="space-y-3">
                 <div v-for="i in 5" :key="i" class="animate-pulse">
                   <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
                     <div class="flex-1">
                       <div class="h-4 bg-gray-200 rounded w-1/2"></div>
-                      <div class="h-3 bg-gray-200 rounded w-1/3 mt-2"></div>
+                      <div class="h-3 bg-gray-200 rounded w-1/3 mt-1"></div>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div v-else-if="error" class="text-center py-8 text-red-600">
+              <div v-else-if="error" class="text-center py-6 text-red-600">
                 <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
                 <p>{{ error }}</p>
               </div>
               
-              <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-8 text-gray-500">
+              <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-6 text-gray-500">
                 <FeatherIcon name="users" class="w-8 h-8 mx-auto mb-2" />
                 <p>No performance data available</p>
               </div>
               
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-3">
                 <div 
                   v-for="(performer, index) in topPerformers" 
                   :key="performer.user.name"
-                  class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span class="text-sm font-medium text-blue-600">
                         {{ performer.user.full_name?.charAt(0) || performer.user.name?.charAt(0) }}
                       </span>

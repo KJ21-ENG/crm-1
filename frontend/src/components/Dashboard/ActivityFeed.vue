@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <div class="flex items-center justify-between mb-4">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between mb-3">
       <h3 class="text-lg font-semibold text-gray-900">Recent Activities</h3>
       <Button 
         variant="ghost" 
@@ -12,38 +12,38 @@
       </Button>
     </div>
     
-    <div v-if="loading" class="space-y-4">
+    <div v-if="loading" class="space-y-3">
       <div v-for="i in 5" :key="i" class="animate-pulse">
         <div class="flex items-center space-x-3">
-          <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
+          <div class="w-7 h-7 bg-gray-200 rounded-full"></div>
           <div class="flex-1">
             <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div class="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+            <div class="h-3 bg-gray-200 rounded w-1/2 mt-1"></div>
           </div>
         </div>
       </div>
     </div>
     
-    <div v-else-if="error" class="text-center py-8 text-red-600">
+    <div v-else-if="error" class="text-center py-6 text-red-600">
       <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
       <p>{{ error }}</p>
     </div>
     
-    <div v-else-if="!activities || activities.length === 0" class="text-center py-8 text-gray-500">
-      <FeatherIcon name="activity" class="w-8 h-8 mx-auto mb-2" />
+    <div v-else-if="!activities || activities.length === 0" class="text-center py-6 text-gray-500">
+      <FeatherIcon name="activity" class="w-8 w-8 mx-auto mb-2" />
       <p>No recent activities</p>
     </div>
     
-    <div v-else class="space-y-4">
+    <div v-else class="space-y-3">
       <div 
         v-for="activity in activities" 
         :key="activity.data.name"
-        class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+        class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
       >
         <div class="flex-shrink-0">
           <div 
             :class="[
-              'w-8 h-8 rounded-full flex items-center justify-center',
+              'w-7 h-7 rounded-full flex items-center justify-center',
               getActivityIconBg(activity.type)
             ]"
           >
@@ -69,7 +69,7 @@
           <p class="text-sm text-gray-600 mt-1">
             {{ getActivityDescription(activity) }}
           </p>
-          <div class="flex items-center mt-2">
+          <div class="flex items-center mt-1">
             <Badge 
               :variant="getStatusVariant(activity.data.status)"
               size="sm"

@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <div class="flex items-center justify-between mb-4">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between mb-3">
       <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
       <div v-if="showRefresh" class="flex items-center space-x-2">
         <Button 
@@ -14,25 +14,25 @@
       </div>
     </div>
     
-    <div v-if="loading" class="flex items-center justify-center h-64">
+    <div v-if="loading" class="flex items-center justify-center h-48">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
     </div>
     
-    <div v-else-if="error" class="flex items-center justify-center h-64 text-red-600">
+    <div v-else-if="error" class="flex items-center justify-center h-48 text-red-600">
       <div class="text-center">
         <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
         <p>{{ error }}</p>
       </div>
     </div>
     
-    <div v-else-if="!data || data.length === 0" class="flex items-center justify-center h-64 text-gray-500">
+    <div v-else-if="!data || data.length === 0" class="flex items-center justify-center h-48 text-gray-500">
       <div class="text-center">
         <FeatherIcon name="bar-chart-2" class="w-8 h-8 mx-auto mb-2" />
         <p>No data available</p>
       </div>
     </div>
     
-    <div v-else class="h-64">
+    <div v-else class="h-48">
       <canvas ref="chartCanvas"></canvas>
     </div>
     

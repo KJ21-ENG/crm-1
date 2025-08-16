@@ -1,25 +1,25 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-    <div class="flex items-center space-x-4">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-center space-x-3">
       <div 
         :class="[
-          'p-3 rounded-full flex-shrink-0',
+          'p-2 rounded-full flex-shrink-0',
           iconBgColor
         ]"
       >
         <FeatherIcon 
           :name="icon" 
           :class="[
-            'w-6 h-6',
+            'w-5 h-5',
             iconColor
           ]"
         />
       </div>
       <div class="flex-1">
         <p class="text-sm font-medium text-gray-600">{{ title }}</p>
-        <p class="text-3xl font-bold text-gray-900 mt-2">{{ value }}</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ value }}</p>
         <p v-if="subtitle" class="text-sm text-gray-500 mt-1">{{ subtitle }}</p>
-        <div v-if="change" class="flex items-center mt-2">
+        <div v-if="change" class="flex items-center mt-1">
           <span 
             :class="[
               'text-sm font-medium',

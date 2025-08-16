@@ -1,26 +1,26 @@
 <template>
   <div class="user-dashboard">
     <!-- User Profile Header -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
       <div class="flex items-center space-x-4">
         <div class="flex-shrink-0">
-          <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <span class="text-2xl font-bold text-white">
+          <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <span class="text-xl font-bold text-white">
               {{ userInitials }}
             </span>
           </div>
         </div>
         <div class="flex-1">
-          <h2 class="text-2xl font-bold text-gray-900">{{ userInfo.full_name || userInfo.name }}</h2>
-          <p class="text-gray-600">{{ userInfo.role }} • {{ userInfo.email }}</p>
-          <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+          <h2 class="text-xl font-bold text-gray-900">{{ userInfo.full_name || userInfo.name }}</h2>
+          <p class="text-gray-600 text-sm">{{ userInfo.role }} • {{ userInfo.email }}</p>
+          <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
             <span>Member since {{ formatDate(userInfo.creation) }}</span>
             <span v-if="userInfo.last_login">Last login: {{ formatDate(userInfo.last_login) }}</span>
           </div>
         </div>
         <div class="flex-shrink-0">
           <div class="text-right">
-            <div class="text-3xl font-bold text-blue-600">{{ performanceMetrics.efficiency_score || 0 }}</div>
+            <div class="text-2xl font-bold text-blue-600">{{ performanceMetrics.efficiency_score || 0 }}</div>
             <div class="text-sm text-gray-600">Efficiency Score</div>
           </div>
         </div>
@@ -28,13 +28,13 @@
     </div>
 
     <!-- Performance Overview Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Leads Assigned</p>
             <p class="text-2xl font-bold text-gray-900">{{ userOverview.leads_assigned || 0 }}</p>
-            <div v-if="performanceMetrics.improvements?.leads" class="flex items-center mt-2">
+            <div v-if="performanceMetrics.improvements?.leads" class="flex items-center mt-1">
               <span 
                 :class="[
                   'text-sm font-medium',
@@ -46,18 +46,18 @@
               <span class="text-sm text-gray-500 ml-1">vs last period</span>
             </div>
           </div>
-          <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-            <FeatherIcon name="user-plus" class="h-6 w-6 text-blue-600" />
+          <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <FeatherIcon name="user-plus" class="h-5 w-5 text-blue-600" />
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tickets Assigned</p>
             <p class="text-2xl font-bold text-gray-900">{{ userOverview.tickets_assigned || 0 }}</p>
-            <div v-if="performanceMetrics.improvements?.tickets" class="flex items-center mt-2">
+            <div v-if="performanceMetrics.improvements?.tickets" class="flex items-center mt-1">
               <span 
                 :class="[
                   'text-sm font-medium',
@@ -69,18 +69,18 @@
               <span class="text-sm text-gray-500 ml-1">vs last period</span>
             </div>
           </div>
-          <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-            <FeatherIcon name="ticket" class="h-6 w-6 text-orange-600" />
+          <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+            <FeatherIcon name="ticket" class="h-5 w-5 text-orange-600" />
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tasks Assigned</p>
             <p class="text-2xl font-bold text-gray-900">{{ userOverview.tasks_assigned || 0 }}</p>
-            <div v-if="performanceMetrics.improvements?.tasks" class="flex items-center mt-2">
+            <div v-if="performanceMetrics.improvements?.tasks" class="flex items-center mt-1">
               <span 
                 :class="[
                   'text-sm font-medium',
@@ -92,35 +92,35 @@
               <span class="text-sm text-gray-500 ml-1">vs last period</span>
             </div>
           </div>
-          <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-            <FeatherIcon name="check-square" class="h-6 w-6 text-green-600" />
+          <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+            <FeatherIcon name="check-square" class="h-5 w-5 text-green-600" />
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Calls Made</p>
             <p class="text-2xl font-bold text-gray-900">{{ userOverview.calls_made || 0 }}</p>
             <p class="text-sm text-gray-500 mt-1">Total duration: {{ formatDuration(userOverview.total_duration || 0) }}</p>
           </div>
-          <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-            <FeatherIcon name="phone" class="h-6 w-6 text-purple-600" />
+          <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+            <FeatherIcon name="phone" class="h-5 w-5 text-purple-600" />
           </div>
         </div>
       </div>
     </div>
 
     <!-- Conversion Rates & Performance -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
       <!-- Lead Conversion Rate -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Lead Conversion</h3>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">Lead Conversion</h3>
         <div class="text-center">
-          <div class="text-4xl font-bold text-blue-600 mb-2">{{ userLeadAnalytics.conversion_rate || 0 }}%</div>
+          <div class="text-3xl font-bold text-blue-600 mb-2">{{ userLeadAnalytics.conversion_rate || 0 }}%</div>
           <p class="text-sm text-gray-600">Conversion Rate</p>
-          <div class="mt-4">
+          <div class="mt-3">
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div 
                 class="bg-blue-600 h-2 rounded-full transition-all duration-500"
@@ -132,12 +132,12 @@
       </div>
 
       <!-- Ticket Resolution Rate -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Ticket Resolution</h3>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">Ticket Resolution</h3>
         <div class="text-center">
-          <div class="text-4xl font-bold text-orange-600 mb-2">{{ userTicketAnalytics.resolution_rate || 0 }}%</div>
+          <div class="text-3xl font-bold text-orange-600 mb-2">{{ userTicketAnalytics.resolution_rate || 0 }}%</div>
           <p class="text-sm text-gray-600">Resolution Rate</p>
-          <div class="mt-4">
+          <div class="mt-3">
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div 
                 class="bg-orange-600 h-2 rounded-full transition-all duration-500"
@@ -149,15 +149,16 @@
       </div>
 
       <!-- Task Completion Rate -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Task Completion</h3>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">Task Completion</h3>
         <div class="text-center">
-          <div class="text-4xl font-bold text-green-600 mb-2">{{ userTaskAnalytics.completion_rate || 0 }}%</div>
+          <div class="text-3xl font-bold text-green-600 mb-2">{{ userTaskAnalytics.completion_rate || 0 }}%</div>
           <p class="text-sm text-gray-600">Completion Rate</p>
-          <div class="mt-4">
+          <div class="mt-3">
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div 
-                class="bg-green-600 h-2 rounded-full transition-all duration-500"
+                class="h-2 rounded-full transition-all duration-500"
+                :class="getGoalProgressColor(userTaskAnalytics.completion_rate || 0)"
                 :style="{ width: `${Math.min(userTaskAnalytics.completion_rate || 0, 100)}%` }"
               ></div>
             </div>
@@ -167,7 +168,7 @@
     </div>
 
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- User Trends Chart -->
       <ChartCard
         :title="`Your Activity Trends (${getViewContext()})`"
@@ -191,126 +192,176 @@
 
     <!-- Activity Pattern & Goals -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Your Daily Activity Pattern -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <FeatherIcon name="clock" class="h-5 w-5 text-indigo-500 mr-2" />
-          Your Daily Activity Pattern
-        </h3>
-        
-        <div v-if="loading" class="space-y-4">
-          <div class="animate-pulse">
-            <div class="h-48 bg-gray-200 rounded-lg"></div>
+      <!-- Left Column: Daily Activity Pattern -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+            <FeatherIcon name="clock" class="h-5 w-5 text-indigo-500 mr-2" />
+            Your Daily Activity Pattern
+          </h3>
+          
+          <div v-if="loading" class="space-y-3">
+            <div class="animate-pulse">
+              <div class="h-32 bg-gray-200 rounded-lg"></div>
+            </div>
           </div>
-        </div>
-        
-        <div v-else-if="!userPeakHours || !userPeakHours.hourly_data" class="text-center py-8 text-gray-500">
-          <FeatherIcon name="clock" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p>No activity data available for this period</p>
-          <p class="text-sm">Start working to see your activity patterns!</p>
-        </div>
-        
-        <div v-else class="space-y-4">
-          <!-- Compact Activity Timeline -->
-          <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
-            <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">24-Hour Activity</h4>
-            
-            <!-- Timeline Chart -->
-            <div class="relative">
-              <!-- Time Labels -->
-              <div class="flex justify-between text-xs text-gray-500 mb-2 px-1">
-                <span>6AM</span>
-                <span>12PM</span>
-                <span>6PM</span>
-                <span>12AM</span>
-              </div>
+          
+          <div v-else-if="!userPeakHours || !userPeakHours.hourly_data" class="text-center py-6 text-gray-500">
+            <FeatherIcon name="clock" class="h-10 w-10 mx-auto mb-2 text-gray-300" />
+            <p class="text-sm">No activity data available</p>
+          </div>
+          
+          <div v-else class="space-y-3">
+            <!-- Compact Activity Timeline -->
+            <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-3 rounded-lg border border-gray-200">
+              <h4 class="text-sm font-medium text-gray-700 mb-2 text-center">24-Hour Activity</h4>
               
-              <!-- Activity Bars -->
-              <div class="grid grid-cols-24 gap-0.5 items-end">
-                <div 
-                  v-for="(hourData, index) in userPeakHours.hourly_data" 
-                  :key="hourData.hour"
-                  class="relative group flex items-end"
-                >
-                  <!-- Activity Bar -->
+              <!-- Timeline Chart -->
+              <div class="relative">
+                <!-- Time Labels -->
+                <div class="flex justify-between text-xs text-gray-500 mb-2 px-1">
+                  <span>6AM</span>
+                  <span>12PM</span>
+                  <span>6PM</span>
+                  <span>12AM</span>
+                </div>
+                
+                <!-- Activity Bars -->
+                <div class="grid grid-cols-24 gap-0.5 items-end">
                   <div 
-                    class="w-full bg-gray-200 rounded-sm transition-all duration-300 hover:scale-105 cursor-pointer"
-                    :style="{ 
-                      height: `${Math.max(6, (hourData.total_activity / Math.max(userPeakHours.max_activity, 1)) * 40)}px`,
-                      backgroundColor: hourData.total_activity > 0 ? getActivityBarColor(hourData.total_activity, userPeakHours.max_activity) : '#e5e7eb'
-                    }"
-                  ></div>
-                  
-                  <!-- Tooltip -->
-                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    <div class="text-center">
-                      <div class="font-semibold">{{ hourData.hour }}</div>
-                      <div class="text-gray-300">{{ hourData.total_activity }} activities</div>
+                    v-for="(hourData, index) in userPeakHours.hourly_data" 
+                    :key="hourData.hour"
+                    class="relative group flex items-end"
+                  >
+                    <!-- Activity Bar -->
+                    <div 
+                      class="w-full bg-gray-200 rounded-sm transition-all duration-300 hover:scale-105 cursor-pointer"
+                      :style="{ 
+                        height: `${Math.max(4, (hourData.total_activity / Math.max(userPeakHours.max_activity, 1)) * 30)}px`,
+                        backgroundColor: hourData.total_activity > 0 ? getActivityBarColor(hourData.total_activity, userPeakHours.max_activity) : '#e5e7eb'
+                      }"
+                    ></div>
+                    
+                    <!-- Tooltip -->
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                      <div class="text-center">
+                        <div class="font-semibold">{{ hourData.hour }}</div>
+                        <div class="text-gray-300">{{ hourData.total_activity }} activities</div>
+                      </div>
+                      <!-- Arrow -->
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-gray-900"></div>
                     </div>
-                    <!-- Arrow -->
-                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                
+                <!-- Peak Hours Highlight -->
+                <div v-if="userPeakHours.peak_hours && userPeakHours.peak_hours.length > 0" class="mt-2 text-center">
+                  <div class="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                    <FeatherIcon name="star" class="h-3 w-3 mr-1 text-indigo-600" />
+                    Peak: {{ formatPeakHours(userPeakHours.peak_hours) }}
                   </div>
                 </div>
               </div>
-              
-              <!-- Peak Hours Highlight -->
-              <div v-if="userPeakHours.peak_hours && userPeakHours.peak_hours.length > 0" class="mt-3 text-center">
-                <div class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
-                  <FeatherIcon name="star" class="h-3 w-3 mr-1 text-indigo-600" />
-                  Peak: {{ formatPeakHours(userPeakHours.peak_hours) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activities (Below Daily Activity) -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-4">
+          <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+            <FeatherIcon name="activity" class="h-5 w-5 text-purple-500 mr-2" />
+            Recent Activities
+          </h3>
+          
+          <div v-if="loading" class="space-y-3">
+            <div v-for="i in 4" :key="i" class="animate-pulse">
+              <div class="h-10 bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+          
+          <div v-else-if="!userRecentActivities || userRecentActivities.length === 0" class="text-center py-4 text-gray-500">
+            <FeatherIcon name="clock" class="h-8 w-8 mx-auto mb-2 text-gray-300" />
+            <p class="text-sm">No recent activities</p>
+          </div>
+          
+          <div v-else class="space-y-2">
+            <div 
+              v-for="activity in userRecentActivities.slice(0, 4)" 
+              :key="`${activity.type}-${activity.data.name}`"
+              class="flex items-center p-2 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <div class="flex-shrink-0 mr-2">
+                <div class="h-6 w-6 rounded-full flex items-center justify-center"
+                     :class="getActivityIconClass(activity.type)">
+                  <FeatherIcon :name="getActivityIcon(activity.type)" class="h-3 w-3 text-white" />
                 </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 text-sm truncate">
+                  {{ getActivityTitle(activity) }}
+                </p>
+                <p class="text-xs text-gray-600">
+                  {{ formatTimeAgo(activity.data.creation) }}
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                <Badge :variant="getActivityBadgeVariant(activity.type)" size="sm">
+                  {{ activity.type }}
+                </Badge>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Goals -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <FeatherIcon name="target" class="h-5 w-5 text-blue-500 mr-2" />
-          Your Goals & Progress
-        </h3>
-        
-        <div v-if="loading" class="space-y-3">
-          <div v-for="i in 4" :key="i" class="animate-pulse">
-            <div class="h-20 bg-gray-200 rounded-lg"></div>
+      <!-- Right Column: Goals & Progress (Equal Width) -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <FeatherIcon name="target" class="h-5 w-5 text-blue-500 mr-2" />
+            Your Goals & Progress
+          </h3>
+          
+          <div v-if="loading" class="space-y-3">
+            <div v-for="i in 4" :key="i" class="animate-pulse">
+              <div class="h-16 bg-gray-200 rounded-lg"></div>
+            </div>
           </div>
-        </div>
-        
-        <div v-else-if="!userGoals || userGoals.length === 0" class="text-center py-8 text-gray-500">
-          <FeatherIcon name="flag" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p>No goals set for this period</p>
-          <p class="text-sm">Set goals to track your progress!</p>
-        </div>
-        
-        <div v-else class="space-y-4">
-          <div 
-            v-for="goal in userGoals" 
-            :key="goal.title"
-            class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
-          >
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-center">
-                <FeatherIcon :name="goal.icon" class="h-5 w-5 text-blue-500 mr-2" />
-                <span class="font-medium text-gray-900">{{ goal.title }}</span>
+          
+          <div v-else-if="!userGoals || userGoals.length === 0" class="text-center py-8 text-gray-500">
+            <FeatherIcon name="flag" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
+            <p>No goals set for this period</p>
+            <p class="text-sm">Set goals to track your progress!</p>
+          </div>
+          
+          <div v-else class="space-y-4">
+            <div 
+              v-for="goal in userGoals.filter(g => g.title !== 'Communication Goal')" 
+              :key="goal.title"
+              class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                  <FeatherIcon :name="goal.icon" class="h-5 w-5 text-blue-500 mr-2" />
+                  <span class="font-medium text-gray-900">{{ goal.title }}</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-lg font-bold text-blue-600">{{ goal.current }}/{{ goal.target }}</span>
+                  <div class="text-sm text-gray-500">{{ goal.progress_percentage }}%</div>
+                </div>
               </div>
-              <div class="text-right">
-                <span class="text-lg font-bold text-blue-600">{{ goal.current }}/{{ goal.target }}</span>
-                <div class="text-sm text-gray-500">{{ goal.progress_percentage }}%</div>
+              <p class="text-sm text-gray-600 mb-3">{{ goal.description }}</p>
+              <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div 
+                  class="h-3 rounded-full transition-all duration-500"
+                  :class="getGoalProgressColor(goal.progress_percentage)"
+                  :style="{ width: `${Math.min(goal.progress_percentage, 100)}%` }"
+                ></div>
               </div>
-            </div>
-            <p class="text-sm text-gray-600 mb-3">{{ goal.description }}</p>
-            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
-              <div 
-                class="h-3 rounded-full transition-all duration-500"
-                :class="getGoalProgressColor(goal.progress_percentage)"
-                :style="{ width: `${Math.min(goal.progress_percentage, 100)}%` }"
-              ></div>
-            </div>
-            <div class="flex items-center justify-between text-xs text-gray-500">
-              <span>Progress</span>
-              <span>{{ goal.progress_percentage }}% Complete</span>
+              <div class="flex items-center justify-between text-xs text-gray-500">
+                <span>Progress</span>
+                <span>{{ goal.progress_percentage }}% Complete</span>
+              </div>
             </div>
           </div>
         </div>
@@ -321,52 +372,7 @@
 
 
     <!-- Recent Activities -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-        <FeatherIcon name="activity" class="h-5 w-5 text-purple-500 mr-2" />
-        Recent Activities
-      </h3>
-      
-      <div v-if="loading" class="space-y-4">
-        <div v-for="i in 5" :key="i" class="animate-pulse">
-          <div class="h-12 bg-gray-200 rounded-lg"></div>
-        </div>
-      </div>
-      
-      <div v-else-if="!userRecentActivities || userRecentActivities.length === 0" class="text-center py-8 text-gray-500">
-        <FeatherIcon name="clock" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
-        <p>No recent activities</p>
-        <p class="text-sm">Start working to see your activities here!</p>
-      </div>
-      
-      <div v-else class="space-y-3">
-        <div 
-          v-for="activity in userRecentActivities" 
-          :key="`${activity.type}-${activity.data.name}`"
-          class="flex items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
-        >
-          <div class="flex-shrink-0 mr-3">
-            <div class="h-8 w-8 rounded-full flex items-center justify-center"
-                 :class="getActivityIconClass(activity.type)">
-              <FeatherIcon :name="getActivityIcon(activity.type)" class="h-4 w-4 text-white" />
-            </div>
-          </div>
-          <div class="flex-1">
-            <p class="font-medium text-gray-900">
-              {{ getActivityTitle(activity) }}
-            </p>
-            <p class="text-sm text-gray-600">
-              {{ formatTimeAgo(activity.data.creation) }}
-            </p>
-          </div>
-          <div class="flex-shrink-0">
-            <Badge :variant="getActivityBadgeVariant(activity.type)" size="sm">
-              {{ activity.type }}
-            </Badge>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Remove the old Recent Activities section since it's now in the left column -->
   </div>
 </template>
 
