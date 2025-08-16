@@ -200,8 +200,7 @@ const roleMap = {
 }
 
 const usersList = computed(() => {
-  let filteredUsers =
-    users.data?.crmUsers?.filter((user) => user.name !== 'Administrator') || []
+  let filteredUsers = users.data?.crmUsers || []
 
   return filteredUsers
     .filter(

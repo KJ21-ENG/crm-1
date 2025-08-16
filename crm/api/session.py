@@ -50,9 +50,9 @@ def get_users():
 
 	crm_users = []
 
-	# crm users are users with role Sales User, Sales Manager, Support Manager, or Support User
+	# crm users are users with role Sales User, Sales Manager, Support Manager, Support User, or System Manager (Admin)
 	for user in users:
-		if any(role in user.roles for role in ["Sales User", "Sales Manager", "Support Manager", "Support User"]):
+		if any(role in user.roles for role in ["Sales User", "Sales Manager", "Support Manager", "Support User", "System Manager"]):
 			crm_users.append(user)
 
 	return users, crm_users
