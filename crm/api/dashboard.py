@@ -453,22 +453,38 @@ def get_recent_activities(view='daily'):
     
     activities = []
     
-    # Recent leads
-    recent_leads = frappe.db.get_list("CRM Lead",
-        fields=["name", "lead_name", "status", "lead_owner", "creation"],
-        filters=date_filter,
-        order_by="creation desc",
-        limit=3
-    )
+    # Recent leads with proper customer name lookup
+    recent_leads = frappe.db.sql("""
+        SELECT 
+            l.name, 
+            l.status, 
+            l.lead_owner, 
+            l.creation,
+            l.customer_id,
+            COALESCE(c.customer_name, c.full_name, l.lead_name, 'Unknown Customer') as display_name
+        FROM `tabCRM Lead` l
+        LEFT JOIN `tabCRM Customer` c ON l.customer_id = c.name
+        WHERE l.creation BETWEEN %s AND %s
+        ORDER BY l.creation DESC
+        LIMIT 3
+    """, (start_date, end_date), as_dict=True)
     activities.extend([{"type": "lead", "data": lead} for lead in recent_leads])
     
-    # Recent tickets
-    recent_tickets = frappe.db.get_list("CRM Ticket",
-        fields=["name", "customer_name", "status", "assigned_to", "creation"],
-        filters=date_filter,
-        order_by="creation desc",
-        limit=3
-    )
+    # Recent tickets with proper customer name lookup
+    recent_tickets = frappe.db.sql("""
+        SELECT 
+            t.name, 
+            t.status, 
+            t.assigned_to, 
+            t.creation,
+            t.customer_id,
+            COALESCE(c.customer_name, c.full_name, t.customer_name, 'Unknown Customer') as display_name
+        FROM `tabCRM Ticket` t
+        LEFT JOIN `tabCRM Customer` c ON t.customer_id = c.name
+        WHERE t.creation BETWEEN %s AND %s
+        ORDER BY t.creation DESC
+        LIMIT 3
+    """, (start_date, end_date), as_dict=True)
     activities.extend([{"type": "ticket", "data": ticket} for ticket in recent_tickets])
     
     # Recent tasks
@@ -880,32 +896,41 @@ def get_user_recent_activities(user, view='daily'):
     
     activities = []
     
-    # Recent leads
-    recent_leads = frappe.db.get_list("CRM Lead",
-        fields=["name", "lead_name", "status", "creation"],
-        filters={**date_filter, "lead_owner": user},
-        order_by="creation desc",
-        limit=3
-    )
+    # Recent leads with proper customer name lookup
+    recent_leads = frappe.db.sql("""
+        SELECT 
+            l.name, 
+            l.status, 
+            l.creation,
+            l.customer_id,
+            COALESCE(c.customer_name, c.full_name, l.lead_name, 'Unknown Customer') as display_name
+        FROM `tabCRM Lead` l
+        LEFT JOIN `tabCRM Customer` c ON l.customer_id = c.name
+        WHERE l.creation BETWEEN %s AND %s 
+        AND l.lead_owner = %s
+        ORDER BY l.creation DESC
+        LIMIT 3
+    """, (start_date, end_date, user), as_dict=True)
+    
     activities.extend([{"type": "lead", "data": lead, "action": "assigned"} for lead in recent_leads])
     
-    # Recent tickets
-    recent_tickets = frappe.db.get_list("CRM Ticket",
-        fields=["name", "customer_name", "status", "creation"],
-        filters={**date_filter, "assigned_to": user},
-        order_by="creation desc",
-        limit=3
-    )
-    activities.extend([{"type": "ticket", "data": ticket, "action": "assigned"} for ticket in recent_tickets])
+    # Recent tickets with proper customer name lookup
+    recent_tickets = frappe.db.sql("""
+        SELECT 
+            t.name, 
+            t.status, 
+            t.creation,
+            t.customer_id,
+            COALESCE(c.customer_name, c.full_name, t.customer_name, 'Unknown Customer') as display_name
+        FROM `tabCRM Ticket` t
+        LEFT JOIN `tabCRM Customer` c ON t.customer_id = c.name
+        WHERE t.creation BETWEEN %s AND %s 
+        AND t.assigned_to = %s
+        ORDER BY t.creation DESC
+        LIMIT 3
+    """, (start_date, end_date, user), as_dict=True)
     
-    # Recent tasks
-    recent_tasks = frappe.db.get_list("CRM Task",
-        fields=["name", "title", "status", "creation"],
-        filters={**date_filter, "assigned_to": user},
-        order_by="creation desc",
-        limit=3
-    )
-    activities.extend([{"type": "task", "data": task, "action": "assigned"} for task in recent_tasks])
+    activities.extend([{"type": "ticket", "data": ticket, "action": "assigned"} for ticket in recent_tickets])
     
     return sorted(activities, key=lambda x: x["data"]["creation"], reverse=True)[:10]
 

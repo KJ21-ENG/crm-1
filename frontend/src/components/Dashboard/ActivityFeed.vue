@@ -138,12 +138,12 @@ const getActivityIconColor = (type) => {
 
 const getActivityTitle = (activity) => {
   const titles = {
-    lead: activity.data.lead_name || 'New Lead',
-    ticket: activity.data.customer_name || 'New Ticket',
-    task: activity.data.subject || 'New Task',
-    deal: activity.data.organization || 'New Deal'
+    lead: `${activity.data.display_name || 'Unknown Customer'} (${activity.data.status})`,
+    ticket: `${activity.data.display_name || 'Unknown Customer'} (${activity.data.status})`,
+    task: `${activity.data.subject || 'Unknown Task'} (${activity.data.status})`,
+    deal: `${activity.data.organization || 'Unknown Deal'} (${activity.data.status})`
   }
-  return titles[activity.type] || 'New Activity'
+  return titles[activity.type] || 'Unknown Activity'
 }
 
 const getActivityDescription = (activity) => {

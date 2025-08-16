@@ -590,8 +590,8 @@ const getActivityIconClass = (type) => {
 
 const getActivityTitle = (activity) => {
   const titles = {
-    lead: `${activity.data.lead_name} (${activity.data.status})`,
-    ticket: `${activity.data.customer_name} (${activity.data.status})`,
+    lead: `${activity.data.display_name || 'Unknown Customer'} (${activity.data.status})`,
+    ticket: `${activity.data.display_name || 'Unknown Customer'} (${activity.data.status})`,
     task: `${activity.data.title} (${activity.data.status})`
   }
   return titles[activity.type] || 'Unknown Activity'
