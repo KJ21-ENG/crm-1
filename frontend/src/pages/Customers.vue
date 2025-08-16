@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full flex-col overflow-hidden">
     <!-- Header -->
     <div class="border-b bg-white px-5 py-4">
       <div class="flex items-center justify-between">
