@@ -6,7 +6,7 @@ import json
 
 
 @frappe.whitelist()
-def get_dashboard_data(view='daily', _refresh=None):
+def get_dashboard_data(view='daily', custom_start_date=None, custom_end_date=None, _refresh=None):
     """Get comprehensive dashboard data for CRM"""
     try:
         # Force fresh data by clearing any potential cache
@@ -20,7 +20,7 @@ def get_dashboard_data(view='daily', _refresh=None):
             frappe.clear_cache()
         
         # Get date range for debugging
-        start_date, end_date = get_date_range(view)
+        start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
         
         # Debug: Log the date range being used
         print(f"Dashboard Debug - View: {view}, Start Date: {start_date}, End Date: {end_date}")
@@ -81,11 +81,11 @@ def get_dashboard_data(view='daily', _refresh=None):
 
 
 @frappe.whitelist()
-def get_user_dashboard_data(view='daily', _refresh=None):
+def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_date=None, _refresh=None):
     """Get user-specific dashboard data for the current user"""
     try:
         # Debug: Log function entry
-        print(f"🔍 DEBUG: get_user_dashboard_data called with view={view}, _refresh={_refresh}")
+        print(f"🔍 DEBUG: get_user_dashboard_data called with view={view}, custom_start_date={custom_start_date}, custom_end_date={custom_end_date}, _refresh={_refresh}")
         
         # Get current user
         current_user = frappe.session.user
@@ -114,7 +114,7 @@ def get_user_dashboard_data(view='daily', _refresh=None):
         
         # Get date range for debugging
         try:
-            start_date, end_date = get_date_range(view)
+            start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
             print(f"🔍 DEBUG: Date range - Start: {start_date}, End: {end_date}")
         except Exception as date_error:
             print(f"❌ ERROR: Failed to get date range: {date_error}")
@@ -274,13 +274,34 @@ def get_user_roles():
         return {"error": str(e), "debug": {"exception_type": type(e).__name__}}
 
 
-def get_date_range(view):
+def get_date_range(view, custom_start_date=None, custom_end_date=None):
     """Get date range based on view type"""
     from frappe.utils import getdate, now_datetime, add_days, add_to_date, get_datetime
     from datetime import datetime, timedelta
     
     today = getdate()
     now = now_datetime()
+    
+    if view == 'custom' and custom_start_date and custom_end_date:
+        # Handle custom date range
+        try:
+            if isinstance(custom_start_date, str):
+                start_date = datetime.strptime(custom_start_date, '%Y-%m-%d')
+            else:
+                start_date = custom_start_date
+            
+            if isinstance(custom_end_date, str):
+                end_date = datetime.strptime(custom_end_date, '%Y-%m-%d')
+                # Set end time to end of day
+                end_date = datetime.combine(end_date.date(), datetime.max.time())
+            else:
+                end_date = custom_end_date
+                
+            return start_date, end_date
+        except Exception as e:
+            print(f"Error parsing custom dates: {e}")
+            # Fallback to monthly view if custom dates fail
+            pass
     
     if view == 'daily':
         # For daily view, use the entire day from 00:00:00 to 23:59:59
@@ -1183,42 +1204,62 @@ def get_user_goals(user, view='daily'):
         **date_filter, "employee": user
     })
     
+    # Dynamic goal calculation based on actual assigned/created items
+    # For leads: Goal is to convert ALL assigned leads to accounts
+    lead_goal = leads_assigned if leads_assigned > 0 else 1
+    
+    # For tickets: Goal is to resolve ALL assigned tickets
+    ticket_goal = tickets_assigned if tickets_assigned > 0 else 1
+    
+    # For tasks: Goal is to complete ALL assigned tasks
+    task_goal = tasks_assigned if tasks_assigned > 0 else 1
+    
+    # For calls: Goal is to maintain activity (minimum 5 calls, or 20% more than current)
+    call_goal = max(5, int(calls_made * 1.2)) if calls_made > 0 else 5
+    
     return [
         {
             "title": "Lead Conversion Goal",
-            "target": max(5, leads_assigned),  # Dynamic target based on assigned leads
+            "target": lead_goal,
             "current": leads_converted,
-            "description": f"Convert leads to customers (Currently {leads_converted}/{leads_assigned})",
+            "description": f"Convert {lead_goal} leads to customers (Currently {leads_converted}/{leads_assigned} assigned)",
             "icon": "target",
             "type": "leads",
-            "progress_percentage": round((leads_converted / max(leads_assigned, 1)) * 100, 1)
+            "progress_percentage": round((leads_converted / max(lead_goal, 1)) * 100, 1),
+            "assigned_count": leads_assigned,
+            "goal_type": "conversion"
         },
         {
             "title": "Ticket Resolution Goal",
-            "target": max(10, tickets_assigned),  # Dynamic target based on assigned tickets
+            "target": ticket_goal,
             "current": tickets_resolved,
-            "description": f"Resolve support tickets (Currently {tickets_resolved}/{tickets_assigned})",
+            "description": f"Resolve {ticket_goal} support tickets (Currently {tickets_resolved}/{tickets_assigned} assigned)",
             "icon": "check-circle",
             "type": "tickets",
-            "progress_percentage": round((tickets_resolved / max(tickets_assigned, 1)) * 100, 1)
+            "progress_percentage": round((tickets_resolved / max(ticket_goal, 1)) * 100, 1),
+            "assigned_count": tickets_assigned,
+            "goal_type": "resolution"
         },
         {
             "title": "Task Completion Goal",
-            "target": max(15, tasks_assigned),  # Dynamic target based on assigned tasks
+            "target": task_goal,
             "current": tasks_completed,
-            "description": f"Complete assigned tasks (Currently {tasks_completed}/{tasks_assigned})",
+            "description": f"Complete {task_goal} assigned tasks (Currently {tasks_completed}/{tasks_assigned} assigned)",
             "icon": "list",
             "type": "tasks",
-            "progress_percentage": round((tasks_completed / max(tasks_assigned, 1)) * 100, 1)
+            "progress_percentage": round((tasks_completed / max(task_goal, 1)) * 100, 1),
+            "assigned_count": tasks_assigned,
+            "goal_type": "completion"
         },
         {
             "title": "Communication Goal",
-            "target": max(20, calls_made),  # Dynamic target based on current activity
+            "target": call_goal,
             "current": calls_made,
-            "description": f"Make customer calls (Currently {calls_made} calls)",
+            "description": f"Make {call_goal} customer calls (Currently {calls_made} calls made)",
             "icon": "phone",
             "type": "calls",
-            "progress_percentage": round((calls_made / max(calls_made, 1)) * 100, 1)
+            "progress_percentage": round((calls_made / max(call_goal, 1)) * 100, 1),
+            "goal_type": "activity"
         }
     ]
 

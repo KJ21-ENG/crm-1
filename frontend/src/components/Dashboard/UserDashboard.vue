@@ -367,6 +367,19 @@
                 </div>
               </div>
               <p class="text-sm text-gray-600 mb-3">{{ goal.description }}</p>
+              
+              <!-- Enhanced goal details -->
+              <div v-if="goal.assigned_count !== undefined" class="mb-3 p-2 bg-gray-50 rounded text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">Assigned:</span>
+                  <span class="font-medium text-gray-800">{{ goal.assigned_count }}</span>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                  <span class="text-gray-600">Goal Type:</span>
+                  <span class="font-medium text-gray-800 capitalize">{{ goal.goal_type }}</span>
+                </div>
+              </div>
+              
               <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
                 <div 
                   class="h-3 rounded-full transition-all duration-500"

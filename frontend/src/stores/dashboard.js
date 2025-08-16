@@ -7,10 +7,11 @@ export function useDashboard() {
   const dashboardData = ref(null)
   const userDashboardData = ref(null)
   const lastUpdated = ref(null)
-  const currentView = ref('monthly') // 'daily', 'weekly', 'monthly'
+  const currentView = ref('monthly') // 'daily', 'weekly', 'monthly', 'custom'
+  const customDateRange = ref({ start: null, end: null })
   const autoRefreshInterval = ref(null)
 
-  const fetchDashboardData = async (view = 'daily') => {
+  const fetchDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null) => {
     loading.value = true
     error.value = null
     
@@ -18,13 +19,23 @@ export function useDashboard() {
       // Clear any existing data first
       dashboardData.value = null
       
+      const params = { 
+        view,
+        _t: Date.now(), // Cache busting parameter
+        _refresh: 'true' // Force refresh flag
+      }
+      
+      // Add custom date parameters if provided
+      if (view === 'custom' && customStartDate && customEndDate) {
+        params.custom_start_date = customStartDate
+        params.custom_end_date = customEndDate
+        // Store custom date range for tooltip display
+        customDateRange.value = { start: customStartDate, end: customEndDate }
+      }
+      
       const response = await frappeRequest({ 
         url: '/api/method/crm.api.dashboard.get_dashboard_data',
-        params: { 
-          view,
-          _t: Date.now(), // Cache busting parameter
-          _refresh: 'true' // Force refresh flag
-        },
+        params,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -52,8 +63,8 @@ export function useDashboard() {
     }
   }
 
-  const fetchUserDashboardData = async (view = 'daily') => {
-    console.log('🔍 DEBUG: fetchUserDashboardData called with view:', view)
+  const fetchUserDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null) => {
+    console.log('🔍 DEBUG: fetchUserDashboardData called with view:', view, 'customStartDate:', customStartDate, 'customEndDate:', customEndDate)
     loading.value = true
     error.value = null
     
@@ -66,6 +77,14 @@ export function useDashboard() {
         view,
         _t: Date.now(), // Cache busting parameter
         _refresh: 'true' // Force refresh flag
+      }
+      
+      // Add custom date parameters if provided
+      if (view === 'custom' && customStartDate && customEndDate) {
+        requestParams.custom_start_date = customStartDate
+        requestParams.custom_end_date = customEndDate
+        // Store custom date range for tooltip display
+        customDateRange.value = { start: customStartDate, end: customEndDate }
       }
       
       console.log('🔍 DEBUG: Request params:', requestParams)
@@ -157,6 +176,13 @@ export function useDashboard() {
     console.log('🔍 DEBUG: Previous currentView:', currentView.value)
     currentView.value = view
     console.log('🔍 DEBUG: New currentView:', currentView.value)
+    
+    // Don't fetch data for custom view - it will be handled by custom date picker
+    if (view === 'custom') {
+      console.log('🔍 DEBUG: Custom view selected, waiting for date selection')
+      return
+    }
+    
     Promise.all([
       fetchDashboardData(view),
       fetchUserDashboardData(view)
@@ -201,6 +227,21 @@ export function useDashboard() {
   const userAchievements = computed(() => userDashboardData.value?.achievements || [])
   const userGoals = computed(() => userDashboardData.value?.goals || [])
   const userPeakHours = computed(() => userDashboardData.value?.peak_hours || {})
+
+  // Custom date range formatting
+  const customDateRangeFormatted = computed(() => {
+    if (currentView.value === 'custom' && customDateRange.value.start && customDateRange.value.end) {
+      const startDate = new Date(customDateRange.value.start)
+      const endDate = new Date(customDateRange.value.end)
+      const formatDate = (date) => date.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      })
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`
+    }
+    return null
+  })
 
   // Stats cards data - removed specified cards
   const statsCards = computed(() => {
@@ -291,6 +332,7 @@ export function useDashboard() {
     userDashboardData,
     lastUpdated,
     currentView,
+    customDateRangeFormatted,
     
     // Actions
     fetchDashboardData,

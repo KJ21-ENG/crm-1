@@ -18,7 +18,7 @@
               <button
                 v-for="view in viewOptions"
                 :key="view.value"
-                @click="changeView(view.value)"
+                @click="handleViewChange(view.value)"
                 :class="[
                   'px-3 py-1 text-sm font-medium rounded-md transition-colors relative group',
                   currentView === view.value
@@ -40,6 +40,21 @@
                 </div>
               </button>
             </div>
+            
+            <!-- Custom Date Range Picker Button -->
+            <button
+              @click="openCustomDatePicker"
+              class="ml-2 p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors group relative"
+              title="Select Custom Date Range"
+            >
+              <FeatherIcon name="edit-3" class="w-4 h-4" />
+              <!-- Tooltip -->
+              <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                <span>Custom Date Range</span>
+                <!-- Arrow -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+              </div>
+            </button>
           </div>
           
           <div v-if="lastUpdated" class="text-sm text-gray-500">
@@ -94,6 +109,58 @@
             ></div>
           </button>
         </nav>
+      </div>
+    </div>
+
+    <!-- Custom Date Range Picker Modal -->
+    <div v-if="showCustomDatePicker" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Select Custom Date Range</h3>
+          <button
+            @click="showCustomDatePicker = false"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <FeatherIcon name="x" class="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div class="p-4 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <input
+                v-model="customStartDate"
+                type="date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+              <input
+                v-model="customEndDate"
+                type="date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              @click="showCustomDatePicker = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="applyCustomDateRange"
+              :disabled="!customStartDate || !customEndDate || customStartDate > customEndDate"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -318,6 +385,7 @@ const {
   error,
   lastUpdated,
   currentView,
+  customDateRangeFormatted,
   statsCards,
   leadStatusChart,
   ticketStatusChart,
@@ -420,13 +488,25 @@ watch(activeTab, (newTab) => {
       console.log('🔍 DEBUG: User dashboard data already loaded:', userDashboardData)
     }
   }
+  
+  // If switching away from user dashboard and we're in custom view, clear custom date range
+  if (newTab !== 'user' && currentView.value === 'custom') {
+    console.log('🔍 DEBUG: Switching away from user dashboard in custom view, clearing custom date range')
+    // This will be handled when the new tab data is fetched
+  }
 })
+
+// Custom date range picker state
+const showCustomDatePicker = ref(false)
+const customStartDate = ref('')
+const customEndDate = ref('')
 
 // View options
 const viewOptions = [
   { label: 'Daily', value: 'daily' },
   { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' }
+  { label: 'Monthly', value: 'monthly' },
+  { label: 'Custom', value: 'custom' }
 ]
 
 // Computed property for trends chart title
@@ -438,6 +518,8 @@ const trendsChartTitle = computed(() => {
       return '7-Day Trends'
     case 'monthly':
       return 'Current Month Trends'
+    case 'custom':
+      return 'Custom Range Trends'
     default:
       return 'Trends'
   }
@@ -467,6 +549,8 @@ const getViewContext = () => {
       return 'This Week'
     case 'monthly':
       return 'This Month'
+    case 'custom':
+      return 'Custom Range'
     default:
       return 'All Time'
   }
@@ -474,6 +558,11 @@ const getViewContext = () => {
 
 const getViewTooltip = (viewType) => {
   if (loading.value) return 'Loading...'
+  
+  // For custom view, show the actual custom date range
+  if (viewType === 'custom' && customDateRangeFormatted.value) {
+    return customDateRangeFormatted.value
+  }
   
   // For the current view, show the actual date range
   if (viewType === currentView.value && dateRange.value.formatted_range) {
@@ -497,9 +586,67 @@ const getViewTooltip = (viewType) => {
       const firstDay = new Date(currentYear, currentMonth, 1)
       const lastDay = new Date(currentYear, currentMonth + 1, 0)
       return `${formatDate(firstDay)} - ${formatDate(lastDay)}`
+    case 'custom':
+      return customDateRangeFormatted.value || 'Custom Range'
     default:
-      return 'Date range'
+      return 'Custom Range'
   }
+}
+
+// Custom date range methods
+const applyCustomDateRange = async () => {
+  if (!customStartDate.value || !customStartDate.value > customEndDate.value) {
+    return
+  }
+  
+  try {
+    // Set custom view
+    currentView.value = 'custom'
+    
+    // Fetch data with custom date range
+    if (activeTab.value === 'user') {
+      await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value)
+    } else {
+      await fetchDashboardData('custom', customStartDate.value, customEndDate.value)
+    }
+    
+    // Close modal
+    showCustomDatePicker.value = false
+    
+    // Reset custom dates
+    customStartDate.value = ''
+    customEndDate.value = ''
+  } catch (error) {
+    console.error('Error applying custom date range:', error)
+  }
+}
+
+// Function to handle view changes and clear custom date range when needed
+const handleViewChange = async (view) => {
+  // If switching away from custom view, clear custom date range
+  if (currentView.value === 'custom' && view !== 'custom') {
+    // Clear custom date range by fetching data for the new view
+    if (activeTab.value === 'user') {
+      await fetchUserDashboardData(view)
+    } else {
+      await fetchDashboardData(view)
+    }
+  }
+  
+  // Change the view
+  await changeView(view)
+}
+
+const openCustomDatePicker = () => {
+  // Set default dates to current month
+  const today = new Date()
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  
+  customStartDate.value = firstDay.toISOString().split('T')[0]
+  customEndDate.value = lastDay.toISOString().split('T')[0]
+  
+  showCustomDatePicker.value = true
 }
 
 const getActiveTabLabel = () => {
