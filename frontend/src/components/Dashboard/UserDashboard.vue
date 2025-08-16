@@ -211,33 +211,6 @@
         </div>
         
         <div v-else class="space-y-4">
-          <!-- Activity Summary Cards -->
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-lg font-bold text-blue-700">{{ userPeakHours.total_calls || 0 }}</div>
-                  <div class="text-xs text-blue-600 font-medium">Calls</div>
-                </div>
-                <div class="h-8 w-8 bg-blue-200 rounded-full flex items-center justify-center">
-                  <FeatherIcon name="phone" class="h-4 w-4 text-blue-700" />
-                </div>
-              </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-lg font-bold text-green-700">{{ formatDuration(userPeakHours.total_duration || 0) }}</div>
-                  <div class="text-xs text-green-600 font-medium">Duration</div>
-                </div>
-                <div class="h-8 w-8 bg-green-200 rounded-full flex items-center justify-center">
-                  <FeatherIcon name="clock" class="h-4 w-4 text-green-700" />
-                </div>
-              </div>
-            </div>
-          </div>
-          
           <!-- Compact Activity Timeline -->
           <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
             <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">24-Hour Activity</h4>
@@ -285,20 +258,6 @@
                 <div class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
                   <FeatherIcon name="star" class="h-3 w-3 mr-1 text-indigo-600" />
                   Peak: {{ formatPeakHours(userPeakHours.peak_hours) }}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Quick Insights -->
-          <div class="grid grid-cols-1 gap-2">
-            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <div class="flex items-center">
-                <div class="h-6 w-6 bg-blue-200 rounded-full flex items-center justify-center mr-2">
-                  <FeatherIcon name="phone" class="h-3 w-3 text-blue-700" />
-                </div>
-                <div class="text-xs text-blue-700">
-                  <span class="font-medium">Best Time:</span> {{ getBestCallTime(userPeakHours.hourly_data) }}
                 </div>
               </div>
             </div>
@@ -631,8 +590,11 @@ const formatPeakHours = (peakHours) => {
   if (!peakHours || peakHours.length === 0) return 'None'
   
   const formattedHours = peakHours.map(hour => {
-    const hourStr = hour.toString().padStart(2, '0')
-    return `${hourStr}:00`
+    const hourNum = parseInt(hour)
+    if (hourNum === 0) return '12:00 AM'
+    if (hourNum < 12) return `${hourNum}:00 AM`
+    if (hourNum === 12) return '12:00 PM'
+    return `${hourNum - 12}:00 PM`
   })
   
   if (formattedHours.length === 1) {
