@@ -169,31 +169,48 @@
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <!-- User Trends Chart -->
-      <ChartCard
-        :title="`Your Activity Trends (${getViewContext()})`"
-        :data="userTrendsChart"
-        type="line"
-        :loading="loading"
-        :error="error"
-        @refresh="$emit('refresh')"
-      />
+      <!-- Left Column: Activity Trends (Same width as Daily Activity Pattern) -->
+      <div class="lg:col-span-1">
+        <ChartCard
+          :title="`Your Activity Trends (${getViewContext()})`"
+          :data="userTrendsChart"
+          type="line"
+          :loading="loading"
+          :error="error"
+          @refresh="$emit('refresh')"
+        />
+      </div>
 
-      <!-- Lead Status Distribution -->
-      <ChartCard
-        :title="`Your Lead Status (${getViewContext()})`"
-        :data="userLeadStatusChart"
-        type="doughnut"
-        :loading="loading"
-        :error="error"
-        @refresh="$emit('refresh')"
-      />
+      <!-- Right Column: Lead Status + Ticket Status (Side by Side, Equal Widths) -->
+      <div class="lg:col-span-1">
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Lead Status Distribution (Left) -->
+          <ChartCard
+            :title="`Lead Status (${getViewContext()})`"
+            :data="userLeadStatusChart"
+            type="doughnut"
+            :loading="loading"
+            :error="error"
+            @refresh="$emit('refresh')"
+          />
+
+          <!-- Ticket Status Distribution (Right) -->
+          <ChartCard
+            :title="`Ticket Status (${getViewContext()})`"
+            :data="userTicketStatusChart"
+            type="doughnut"
+            :loading="loading"
+            :error="error"
+            @refresh="$emit('refresh')"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Activity Pattern & Goals -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Left Column: Daily Activity Pattern -->
-      <div class="lg:col-span-1">
+      <!-- Left Column: Daily Activity Pattern + Recent Activities -->
+      <div class="lg:col-span-1 flex flex-col">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
             <FeatherIcon name="clock" class="h-5 w-5 text-indigo-500 mr-2" />
@@ -267,7 +284,7 @@
         </div>
 
         <!-- Recent Activities (Below Daily Activity) -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-4 flex-1">
           <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
             <FeatherIcon name="activity" class="h-5 w-5 text-purple-500 mr-2" />
             Recent Activities
@@ -314,7 +331,7 @@
         </div>
       </div>
 
-      <!-- Right Column: Goals & Progress (Equal Width) -->
+      <!-- Right Column: Goals & Progress (Equal Height) -->
       <div class="lg:col-span-1">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full">
           <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -495,6 +512,13 @@ const userTrendsChart = computed(() => {
 
 const userLeadStatusChart = computed(() => 
   userLeadAnalytics.value.status_distribution?.map(item => ({
+    label: item.status,
+    value: item.count
+  })) || []
+)
+
+const userTicketStatusChart = computed(() => 
+  userTicketAnalytics.value.status_distribution?.map(item => ({
     label: item.status,
     value: item.count
   })) || []
