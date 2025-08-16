@@ -29,7 +29,7 @@
           </div>
         </div>
         
-        <div v-else-if="supportPages.data?.length === 0" class="flex items-center justify-center h-64">
+        <div v-else-if="!paginatedData.length" class="flex items-center justify-center h-64">
           <div class="text-center">
             <SupportPagesIcon class="h-12 w-12 text-ink-gray-4 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-ink-gray-9 mb-2">{{ __('No support pages found') }}</h3>
@@ -45,7 +45,7 @@
         <div v-else class="p-5">
           <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div 
-              v-for="page in supportPages.data" 
+              v-for="page in paginatedData" 
               :key="page.name"
               class="border rounded-lg p-4 hover:shadow-md transition-shadow"
               :class="{ 'border-green-200 bg-green-50': page.is_active, 'border-gray-200 bg-gray-50': !page.is_active }"
@@ -94,6 +94,17 @@
       </div>
     </div>
   </div>
+  
+  <!-- Pagination -->
+  <Pagination
+    v-if="paginatedData.length > 0 && totalCount > 0"
+    class="border-t px-3 py-2 sm:px-5"
+    :current-page="currentPage"
+    :page-size="pageSize"
+    :total-count="totalCount"
+    @page-change="handlePageChange"
+    @page-size-change="handlePageSizeChange"
+  />
   
   <!-- Create/Edit Modal -->
   <Dialog 
@@ -161,6 +172,7 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
+import Pagination from '@/components/Pagination.vue'
 import { 
   Breadcrumbs, 
   Button, 
@@ -172,7 +184,7 @@ import {
   call,
   toast 
 } from 'frappe-ui'
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -181,6 +193,11 @@ const router = useRouter()
 const showCreateModal = ref(false)
 const editingPage = ref(null)
 const saving = ref(false)
+
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalCount = ref(0)
 
 // Form data
 const formData = reactive({
@@ -204,6 +221,22 @@ const supportPages = createResource({
     order_by: 'creation_date desc'
   },
   auto: true,
+  onResponse: (response) => {
+    // Update total count from response
+    if (response && response.length !== undefined) {
+      totalCount.value = response.length
+    }
+  }
+})
+
+// Computed property for paginated data
+const paginatedData = computed(() => {
+  if (!supportPages.data) return []
+  
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  
+  return supportPages.data.slice(startIndex, endIndex)
 })
 
 // Methods
@@ -293,6 +326,26 @@ async function deletePage(page) {
     toast.error(__('Error deleting support page: {0}', [error.message]))
   }
 }
+
+function handlePageChange(page) {
+  currentPage.value = page
+  // No need to reload for client-side pagination
+}
+
+function handlePageSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1 // Reset to first page when page size changes
+  // No need to reload for client-side pagination
+}
+
+// Watch for data changes to update total count
+watch(() => supportPages.data, (newData) => {
+  if (newData && newData.length > 0) {
+    totalCount.value = newData.length
+  } else {
+    totalCount.value = 0
+  }
+}, { immediate: true })
 
 onMounted(() => {
   if (!supportPages.data) {
