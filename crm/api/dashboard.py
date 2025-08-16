@@ -80,6 +80,144 @@ def get_dashboard_data(view='daily', _refresh=None):
         return {"error": str(e)}
 
 
+@frappe.whitelist()
+def get_user_dashboard_data(view='daily', _refresh=None):
+    """Get user-specific dashboard data for the current user"""
+    try:
+        # Debug: Log function entry
+        print(f"🔍 DEBUG: get_user_dashboard_data called with view={view}, _refresh={_refresh}")
+        
+        # Get current user
+        current_user = frappe.session.user
+        print(f"🔍 DEBUG: Current user from session: {current_user}")
+        
+        # Check if user is authenticated
+        if not current_user or current_user == 'Guest':
+            print(f"❌ ERROR: User not authenticated: {current_user}")
+            return {"error": "User not authenticated", "debug": {"user": current_user}}
+        
+        # Force fresh data by clearing any potential cache
+        try:
+            frappe.cache.delete_keys(f"user_dashboard_data_{current_user}*")
+            print(f"🔍 DEBUG: Cleared cache keys for user: {current_user}")
+        except Exception as cache_error:
+            print(f"⚠️ WARNING: Cache clearing failed: {cache_error}")
+        
+        # If refresh flag is set, also clear any other potential caches
+        if _refresh:
+            try:
+                frappe.cache.delete_keys(f"user_dashboard_{current_user}*")
+                frappe.cache.delete_keys(f"dashboard*")
+                print(f"🔍 DEBUG: Cleared additional cache keys for refresh")
+            except Exception as cache_error:
+                print(f"⚠️ WARNING: Additional cache clearing failed: {cache_error}")
+        
+        # Get date range for debugging
+        try:
+            start_date, end_date = get_date_range(view)
+            print(f"🔍 DEBUG: Date range - Start: {start_date}, End: {end_date}")
+        except Exception as date_error:
+            print(f"❌ ERROR: Failed to get date range: {date_error}")
+            return {"error": f"Date range error: {date_error}", "debug": {"view": view}}
+        
+        # Debug: Log the date range being used
+        print(f"🔍 DEBUG: User Dashboard Debug - User: {current_user}, View: {view}, Start Date: {start_date}, End Date: {end_date}")
+        
+        try:
+            # Test basic database connectivity
+            test_count = frappe.db.count("User", filters={"name": current_user})
+            print(f"🔍 DEBUG: Database connectivity test - User count: {test_count}")
+            
+            if test_count == 0:
+                print(f"❌ ERROR: User {current_user} not found in database")
+                return {"error": f"User {current_user} not found", "debug": {"user": current_user}}
+            
+        except Exception as db_error:
+            print(f"❌ ERROR: Database connectivity test failed: {db_error}")
+            return {"error": f"Database error: {db_error}", "debug": {"user": current_user}}
+        
+        try:
+            result = {
+                "user_info": get_user_info(current_user),
+                "overview": get_user_overview_stats(current_user, view),
+                "lead_analytics": get_user_lead_analytics(current_user, view),
+                "ticket_analytics": get_user_ticket_analytics(current_user, view),
+                "task_analytics": get_user_task_analytics(current_user, view),
+                "call_log_analytics": get_user_call_log_analytics(current_user, view),
+                "performance_metrics": get_user_performance_metrics(current_user, view),
+                "recent_activities": get_user_recent_activities(current_user, view),
+                "trends": get_user_trends_data(current_user, view),
+                "achievements": get_user_achievements(current_user, view),
+                "goals": get_user_goals(current_user, view),
+                "date_range": {
+                    "view": view,
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                    "formatted_range": get_formatted_date_range(start_date, end_date, view)
+                },
+                "_debug": {
+                    "user": current_user,
+                    "view": view,
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                    "function": "get_user_dashboard_data",
+                    "timestamp": str(frappe.utils.now()),
+                    "session_id": frappe.session.sid if hasattr(frappe.session, 'sid') else 'N/A'
+                }
+            }
+            
+            print(f"✅ SUCCESS: User Dashboard API Success - User: {current_user}")
+            print(f"🔍 DEBUG: Result keys: {list(result.keys())}")
+            print(f"🔍 DEBUG: User info keys: {list(result.get('user_info', {}).keys())}")
+            print(f"🔍 DEBUG: Overview keys: {list(result.get('overview', {}).keys())}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ ERROR: Dashboard API Error in result creation: {str(e)}")
+            print(f"🔍 DEBUG: Exception type: {type(e).__name__}")
+            print(f"🔍 DEBUG: Exception args: {e.args}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+            frappe.log_error(f"Dashboard API Error in result creation: {str(e)}")
+            return {"error": str(e), "debug": {"user": current_user, "exception_type": type(e).__name__}}
+            
+    except Exception as e:
+        print(f"❌ ERROR: User Dashboard API Error: {str(e)}")
+        print(f"🔍 DEBUG: Exception type: {type(e).__name__}")
+        print(f"🔍 DEBUG: Exception args: {e.args}")
+        import traceback
+        print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        frappe.log_error(f"Dashboard API Error: {str(e)}")
+        return {"error": str(e), "debug": {"exception_type": type(e).__name__}}
+
+
+@frappe.whitelist()
+def test_user_dashboard_api():
+    """Simple test endpoint to verify API accessibility"""
+    try:
+        print("🔍 DEBUG: test_user_dashboard_api called")
+        
+        current_user = frappe.session.user
+        print(f"🔍 DEBUG: Current user: {current_user}")
+        
+        return {
+            "status": "success",
+            "message": "User Dashboard API is working",
+            "user": current_user,
+            "timestamp": str(frappe.utils.now()),
+            "debug": {
+                "function": "test_user_dashboard_api",
+                "session_active": bool(current_user and current_user != 'Guest')
+            }
+        }
+    except Exception as e:
+        print(f"❌ ERROR: Test API failed: {str(e)}")
+        import traceback
+        print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        return {"error": str(e), "status": "error"}
+
+
 def get_date_range(view):
     """Get date range based on view type"""
     from frappe.utils import getdate, now_datetime, add_days, add_to_date, get_datetime
@@ -484,3 +622,589 @@ def get_quick_actions():
             "color": "orange"
         }
     ] 
+
+
+def get_user_info(user):
+    """Get basic user information"""
+    try:
+        print(f"🔍 DEBUG: get_user_info called for user: {user}")
+        
+        user_doc = frappe.get_doc("User", user)
+        print(f"🔍 DEBUG: User doc retrieved successfully: {user_doc.name}")
+        
+        user_roles = frappe.get_roles(user)
+        print(f"🔍 DEBUG: User roles: {user_roles}")
+        
+        primary_role = get_user_role(user)
+        print(f"🔍 DEBUG: Primary role: {primary_role}")
+        
+        result = {
+            "name": user_doc.name,
+            "full_name": user_doc.full_name,
+            "email": user_doc.email,
+            "image": user_doc.user_image,
+            "role": primary_role,
+            "last_login": user_doc.last_login,
+            "creation": user_doc.creation
+        }
+        
+        print(f"🔍 DEBUG: User info result: {result}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ ERROR: Error getting user info: {str(e)}")
+        print(f"🔍 DEBUG: Exception type: {type(e).__name__}")
+        import traceback
+        print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        frappe.log_error(f"Error getting user info: {str(e)}")
+        return {"name": user, "full_name": user, "email": "", "image": "", "role": "", "last_login": None, "creation": None}
+
+
+def get_user_role(user):
+    """Get user's primary role"""
+    try:
+        user_roles = frappe.get_roles(user)
+        # Return the first non-system role
+        system_roles = ['Guest', 'Administrator', 'System Manager', 'All']
+        for role in user_roles:
+            if role not in system_roles:
+                return role
+        return user_roles[0] if user_roles else "User"
+    except:
+        return "User"
+
+
+def get_user_overview_stats(user, view='daily'):
+    """Get user-specific overview statistics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    return {
+        "leads_assigned": frappe.db.count("CRM Lead", filters={
+            **date_filter, "lead_owner": user
+        }),
+        "leads_created": frappe.db.count("CRM Lead", filters={
+            **date_filter, "owner": user
+        }),
+        "tickets_assigned": frappe.db.count("CRM Ticket", filters={
+            **date_filter, "assigned_to": user
+        }),
+        "tickets_created": frappe.db.count("CRM Ticket", filters={
+            **date_filter, "owner": user
+        }),
+        "tasks_assigned": frappe.db.count("CRM Task", filters={
+            **date_filter, "assigned_to": user
+        }),
+        "tasks_created": frappe.db.count("CRM Task", filters={
+            **date_filter, "owner": user
+        }),
+        "calls_made": frappe.db.count("CRM Call Log", filters={
+            **date_filter, "employee": user
+        }),
+        "avg_response_time": get_user_avg_response_time(user, view)
+    }
+
+
+def get_user_lead_analytics(user, view='daily'):
+    """Get user-specific lead analytics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    return {
+        "status_distribution": frappe.db.get_list("CRM Lead", 
+            fields=["status", "count(name) as count"],
+            filters={**date_filter, "lead_owner": user},
+            group_by="status",
+            order_by="count desc"
+        ),
+        "conversion_rate": get_user_lead_conversion_rate(user, view),
+        "recent_leads": frappe.db.get_list("CRM Lead",
+            fields=["name", "lead_name", "status", "creation", "follow_up_date"],
+            filters={**date_filter, "lead_owner": user},
+            order_by="creation desc",
+            limit=5
+        ),
+        "leads_by_source": frappe.db.get_list("CRM Lead",
+            fields=["source", "count(name) as count"],
+            filters={**date_filter, "lead_owner": user},
+            group_by="source",
+            order_by="count desc"
+        )
+    }
+
+
+def get_user_ticket_analytics(user, view='daily'):
+    """Get user-specific ticket analytics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    return {
+        "status_distribution": frappe.db.get_list("CRM Ticket",
+            fields=["status", "count(name) as count"],
+            filters={**date_filter, "assigned_to": user},
+            group_by="status",
+            order_by="count desc"
+        ),
+        "priority_distribution": frappe.db.get_list("CRM Ticket",
+            fields=["priority", "count(name) as count"],
+            filters={**date_filter, "assigned_to": user},
+            group_by="priority",
+            order_by="count desc"
+        ),
+        "recent_tickets": frappe.db.get_list("CRM Ticket",
+            fields=["name", "customer_name", "status", "priority", "creation"],
+            filters={**date_filter, "assigned_to": user},
+            order_by="creation desc",
+            limit=5
+        ),
+        "resolution_rate": get_user_ticket_resolution_rate(user, view)
+    }
+
+
+def get_user_task_analytics(user, view='daily'):
+    """Get user-specific task analytics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    return {
+        "status_distribution": frappe.db.get_list("CRM Task",
+            fields=["status", "count(name) as count"],
+            filters={**date_filter, "assigned_to": user},
+            group_by="status",
+            order_by="count desc"
+        ),
+        "priority_distribution": frappe.db.get_list("CRM Task",
+            fields=["priority", "count(name) as count"],
+            filters={**date_filter, "assigned_to": user},
+            group_by="priority",
+            order_by="count desc"
+        ),
+        "recent_tasks": frappe.db.get_list("CRM Task",
+            fields=["name", "title", "status", "priority", "due_date", "creation"],
+            filters={**date_filter, "assigned_to": user},
+            order_by="creation desc",
+            limit=5
+        ),
+        "completion_rate": get_user_task_completion_rate(user, view)
+    }
+
+
+def get_user_call_log_analytics(user, view='daily'):
+    """Get user-specific call log analytics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    return {
+        "call_type_distribution": frappe.db.get_list("CRM Call Log",
+            fields=["type", "count(name) as count"],
+            filters={**date_filter, "employee": user},
+            group_by="type",
+            order_by="count desc"
+        ),
+        "call_status_distribution": frappe.db.get_list("CRM Call Log",
+            fields=["status", "count(name) as count"],
+            filters={**date_filter, "employee": user},
+            group_by="status",
+            order_by="count desc"
+        ),
+        "total_duration": get_user_total_call_duration(user, view),
+        "recent_calls": frappe.db.get_list("CRM Call Log",
+            fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+            filters={**date_filter, "employee": user},
+            order_by="start_time desc",
+            limit=5
+        )
+    }
+
+
+def get_user_performance_metrics(user, view='daily'):
+    """Get comprehensive user performance metrics"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    # Get previous period for comparison
+    if view == 'daily':
+        prev_start = start_date - timedelta(days=1)
+        prev_end = start_date
+    elif view == 'weekly':
+        prev_start = start_date - timedelta(days=7)
+        prev_end = start_date
+    else:  # monthly
+        prev_start = start_date - timedelta(days=30)
+        prev_end = start_date
+    
+    prev_date_filter = {"creation": ["between", [prev_start, prev_end]]}
+    
+    # Current period metrics
+    current_leads = frappe.db.count("CRM Lead", filters={**date_filter, "lead_owner": user})
+    current_tickets = frappe.db.count("CRM Ticket", filters={**date_filter, "assigned_to": user})
+    current_tasks = frappe.db.count("CRM Task", filters={**date_filter, "assigned_to": user})
+    
+    # Previous period metrics
+    prev_leads = frappe.db.count("CRM Lead", filters={**prev_date_filter, "lead_owner": user})
+    prev_tickets = frappe.db.count("CRM Ticket", filters={**prev_date_filter, "assigned_to": user})
+    prev_tasks = frappe.db.count("CRM Task", filters={**prev_date_filter, "assigned_to": user})
+    
+    # Calculate improvements
+    lead_improvement = calculate_improvement(current_leads, prev_leads)
+    ticket_improvement = calculate_improvement(current_tickets, prev_tickets)
+    task_improvement = calculate_improvement(current_tasks, prev_tasks)
+    
+    return {
+        "current_period": {
+            "leads": current_leads,
+            "tickets": current_tickets,
+            "tasks": current_tasks
+        },
+        "previous_period": {
+            "leads": prev_leads,
+            "tickets": prev_tickets,
+            "tasks": prev_tasks
+        },
+        "improvements": {
+            "leads": lead_improvement,
+            "tickets": ticket_improvement,
+            "tasks": task_improvement
+        },
+        "efficiency_score": calculate_efficiency_score(user, view)
+    }
+
+
+def get_user_recent_activities(user, view='daily'):
+    """Get user-specific recent activities"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    activities = []
+    
+    # Recent leads
+    recent_leads = frappe.db.get_list("CRM Lead",
+        fields=["name", "lead_name", "status", "creation"],
+        filters={**date_filter, "lead_owner": user},
+        order_by="creation desc",
+        limit=3
+    )
+    activities.extend([{"type": "lead", "data": lead, "action": "assigned"} for lead in recent_leads])
+    
+    # Recent tickets
+    recent_tickets = frappe.db.get_list("CRM Ticket",
+        fields=["name", "customer_name", "status", "creation"],
+        filters={**date_filter, "assigned_to": user},
+        order_by="creation desc",
+        limit=3
+    )
+    activities.extend([{"type": "ticket", "data": ticket, "action": "assigned"} for ticket in recent_tickets])
+    
+    # Recent tasks
+    recent_tasks = frappe.db.get_list("CRM Task",
+        fields=["name", "title", "status", "creation"],
+        filters={**date_filter, "assigned_to": user},
+        order_by="creation desc",
+        limit=3
+    )
+    activities.extend([{"type": "task", "data": task, "action": "assigned"} for task in recent_tasks])
+    
+    return sorted(activities, key=lambda x: x["data"]["creation"], reverse=True)[:10]
+
+
+def get_user_trends_data(user, view='daily'):
+    """Get user-specific trends data"""
+    from frappe.utils import getdate, now_datetime, add_days
+    from datetime import datetime, timedelta
+    
+    today = getdate()
+    now = now_datetime()
+    dates = []
+    lead_counts = []
+    ticket_counts = []
+    task_counts = []
+    
+    if view == 'daily':
+        # Show last 24 hours (hourly data points)
+        for i in range(24):
+            hour_start = datetime.combine(today, datetime.min.time()) + timedelta(hours=i)
+            hour_end = hour_start + timedelta(hours=1) if i < 23 else datetime.combine(today, datetime.max.time())
+            
+            dates.insert(0, hour_start.strftime("%H:00"))
+            
+            lead_count = frappe.db.count("CRM Lead", filters={
+                "creation": ["between", [hour_start, hour_end]],
+                "lead_owner": user
+            })
+            lead_counts.insert(0, lead_count)
+            
+            ticket_count = frappe.db.count("CRM Ticket", filters={
+                "creation": ["between", [hour_start, hour_end]],
+                "assigned_to": user
+            })
+            ticket_counts.insert(0, ticket_count)
+            
+            task_count = frappe.db.count("CRM Task", filters={
+                "creation": ["between", [hour_start, hour_end]],
+                "assigned_to": user
+            })
+            task_counts.insert(0, task_count)
+    elif view == 'weekly':
+        # Show last 7 days (daily data points)
+        for i in range(7):
+            date = add_days(today, -i)
+            dates.insert(0, date.strftime("%Y-%m-%d"))
+            
+            lead_count = frappe.db.count("CRM Lead", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "lead_owner": user
+            })
+            lead_counts.insert(0, lead_count)
+            
+            ticket_count = frappe.db.count("CRM Ticket", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "assigned_to": user
+            })
+            ticket_counts.insert(0, ticket_count)
+            
+            task_count = frappe.db.count("CRM Task", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "assigned_to": user
+            })
+            task_counts.insert(0, task_count)
+    else:  # monthly
+        # Show last 30 days (daily data points)
+        for i in range(30):
+            date = add_days(today, -i)
+            dates.insert(0, date.strftime("%Y-%m-%d"))
+            
+            lead_count = frappe.db.count("CRM Lead", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "lead_owner": user
+            })
+            lead_counts.insert(0, lead_count)
+            
+            ticket_count = frappe.db.count("CRM Ticket", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "assigned_to": user
+            })
+            ticket_counts.insert(0, ticket_count)
+            
+            task_count = frappe.db.count("CRM Task", filters={
+                "creation": ["between", [date, add_days(date, 1)]],
+                "assigned_to": user
+            })
+            task_counts.insert(0, task_count)
+    
+    return {
+        "dates": dates,
+        "lead_trends": lead_counts,
+        "ticket_trends": ticket_counts,
+        "task_trends": task_counts
+    }
+
+
+def get_user_achievements(user, view='daily'):
+    """Get user achievements and milestones"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    achievements = []
+    
+    # Lead conversion achievements
+    converted_leads = frappe.db.count("CRM Lead", filters={
+        **date_filter, "lead_owner": user, "status": "Account Opened"
+    })
+    if converted_leads > 0:
+        achievements.append({
+            "type": "success",
+            "title": f"Converted {converted_leads} Lead(s)",
+            "description": "Great job converting leads to customers!",
+            "icon": "check-circle",
+            "value": converted_leads
+        })
+    
+    # Ticket resolution achievements
+    resolved_tickets = frappe.db.count("CRM Ticket", filters={
+        **date_filter, "assigned_to": user, "status": "Resolved"
+    })
+    if resolved_tickets > 0:
+        achievements.append({
+            "type": "success",
+            "title": f"Resolved {resolved_tickets} Ticket(s)",
+            "description": "Excellent customer support work!",
+            "icon": "award",
+            "value": resolved_tickets
+        })
+    
+    # Task completion achievements
+    completed_tasks = frappe.db.count("CRM Task", filters={
+        **date_filter, "assigned_to": user, "status": "Completed"
+    })
+    if completed_tasks > 0:
+        achievements.append({
+            "type": "success",
+            "title": f"Completed {completed_tasks} Task(s)",
+            "description": "Outstanding task management!",
+            "icon": "check-square",
+            "value": completed_tasks
+        })
+    
+    # Call volume achievements
+    total_calls = frappe.db.count("CRM Call Log", filters={
+        **date_filter, "employee": user
+    })
+    if total_calls >= 10:
+        achievements.append({
+            "type": "info",
+            "title": f"Made {total_calls} Calls",
+            "description": "Excellent communication activity!",
+            "icon": "phone",
+            "value": total_calls
+        })
+    
+    return achievements
+
+
+def get_user_goals(user, view='daily'):
+    """Get user goals and targets"""
+    # This could be extended to integrate with a goal-setting system
+    # For now, return some encouraging default goals
+    return [
+        {
+            "title": "Lead Conversion Goal",
+            "target": 5,
+            "current": 0,  # This would be calculated from actual data
+            "description": "Convert at least 5 leads this period",
+            "icon": "target",
+            "type": "leads"
+        },
+        {
+            "title": "Ticket Resolution Goal",
+            "target": 10,
+            "current": 0,  # This would be calculated from actual data
+            "description": "Resolve at least 10 tickets this period",
+            "icon": "check-circle",
+            "type": "tickets"
+        },
+        {
+            "title": "Task Completion Goal",
+            "target": 15,
+            "current": 0,  # This would be calculated from actual data
+            "description": "Complete at least 15 tasks this period",
+            "icon": "list",
+            "type": "tasks"
+        }
+    ]
+
+
+# Helper functions
+def get_user_avg_response_time(user, view='daily'):
+    """Calculate average response time for user's tickets"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    tickets_with_response = frappe.db.get_list("CRM Ticket",
+        fields=["first_response_time"],
+        filters={**date_filter, "assigned_to": user, "first_response_time": ["is", "set"]}
+    )
+    
+    if tickets_with_response:
+        total_time = sum(ticket.first_response_time or 0 for ticket in tickets_with_response)
+        return round(total_time / len(tickets_with_response), 2)
+    return 0
+
+
+def get_user_lead_conversion_rate(user, view='daily'):
+    """Calculate user's lead conversion rate"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    total_leads = frappe.db.count("CRM Lead", filters={**date_filter, "lead_owner": user})
+    converted_leads = frappe.db.count("CRM Lead", filters={
+        **date_filter, "lead_owner": user, "status": "Account Opened"
+    })
+    
+    if total_leads > 0:
+        return round((converted_leads / total_leads) * 100, 1)
+    return 0
+
+
+def get_user_ticket_resolution_rate(user, view='daily'):
+    """Calculate user's ticket resolution rate"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    total_tickets = frappe.db.count("CRM Ticket", filters={**date_filter, "assigned_to": user})
+    resolved_tickets = frappe.db.count("CRM Ticket", filters={
+        **date_filter, "assigned_to": user, "status": "Resolved"
+    })
+    
+    if total_tickets > 0:
+        return round((resolved_tickets / total_tickets) * 100, 1)
+    return 0
+
+
+def get_user_task_completion_rate(user, view='daily'):
+    """Calculate user's task completion rate"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    total_tasks = frappe.db.count("CRM Task", filters={**date_filter, "assigned_to": user})
+    completed_tasks = frappe.db.count("CRM Task", filters={
+        **date_filter, "assigned_to": user, "status": "Completed"
+    })
+    
+    if total_tasks > 0:
+        return round((completed_tasks / total_tasks) * 100, 1)
+    return 0
+
+
+def get_user_total_call_duration(user, view='daily'):
+    """Calculate total call duration for user"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    call_logs = frappe.db.get_list("CRM Call Log",
+        fields=["duration"],
+        filters={**date_filter, "employee": user, "duration": ["is", "set"]}
+    )
+    
+    total_duration = sum(call.duration or 0 for call in call_logs)
+    return round(total_duration, 2)
+
+
+def calculate_improvement(current, previous):
+    """Calculate improvement percentage"""
+    if previous == 0:
+        return 100 if current > 0 else 0
+    return round(((current - previous) / previous) * 100, 1)
+
+
+def calculate_efficiency_score(user, view='daily'):
+    """Calculate overall efficiency score for user"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    # Get various metrics
+    lead_conversion_rate = get_user_lead_conversion_rate(user, view)
+    ticket_resolution_rate = get_user_ticket_resolution_rate(user, view)
+    task_completion_rate = get_user_task_completion_rate(user, view)
+    avg_response_time = get_user_avg_response_time(user, view)
+    
+    # Calculate efficiency score (0-100)
+    # Higher conversion rates and completion rates = higher score
+    # Lower response time = higher score
+    score = 0
+    
+    # Lead conversion (30% weight)
+    score += (lead_conversion_rate / 100) * 30
+    
+    # Ticket resolution (30% weight)
+    score += (ticket_resolution_rate / 100) * 30
+    
+    # Task completion (25% weight)
+    score += (task_completion_rate / 100) * 25
+    
+    # Response time (15% weight) - inverse relationship
+    if avg_response_time > 0:
+        # Lower response time = higher score
+        response_score = max(0, 15 - (avg_response_time / 2))
+        score += response_score
+    
+    return round(score, 1) 

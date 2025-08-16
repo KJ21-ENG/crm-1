@@ -257,6 +257,22 @@
       >
         <ReferralAnalyticsDashboard />
       </div>
+
+      <!-- User Dashboard Tab Content -->
+      <div 
+        v-if="activeTab === 'user'"
+        :id="`tab-panel-user`"
+        role="tabpanel"
+        :aria-labelledby="`tab-user`"
+      >
+        <UserDashboard
+          :loading="loading"
+          :error="error"
+          :user-dashboard-data="userDashboardData"
+          :current-view="currentView"
+          @refresh="refreshDashboard"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -267,6 +283,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
 import StatsCard from '@/components/Dashboard/StatsCard.vue'
 import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
+import UserDashboard from '@/components/Dashboard/UserDashboard.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import { useDashboard } from '@/stores/dashboard'
@@ -288,7 +305,9 @@ const {
   quickActions,
   topPerformers,
   dateRange,
+  userDashboardData,
   fetchDashboardData,
+  fetchUserDashboardData,
   refreshDashboard,
   changeView,
   startAutoRefresh,
@@ -301,7 +320,7 @@ const activeTab = ref('analytics')
 // Initialize tab from URL query parameter
 const initializeTabFromURL = () => {
   const tabFromURL = route.query.tab
-  if (tabFromURL && ['analytics', 'referral'].includes(tabFromURL)) {
+  if (tabFromURL && ['analytics', 'referral', 'user'].includes(tabFromURL)) {
     activeTab.value = tabFromURL
   }
 }
@@ -318,7 +337,19 @@ const updateURLForTab = (tabId) => {
 
 // Watch for tab changes and update URL
 watch(activeTab, (newTab) => {
+  console.log('🔍 DEBUG: Tab changed to:', newTab)
   updateURLForTab(newTab)
+  
+  // If switching to user dashboard, ensure data is loaded
+  if (newTab === 'user') {
+    console.log('🔍 DEBUG: User Dashboard tab activated, checking data')
+    if (!userDashboardData || Object.keys(userDashboardData).length === 0) {
+      console.log('🔍 DEBUG: User dashboard data empty, fetching...')
+      fetchUserDashboardData()
+    } else {
+      console.log('🔍 DEBUG: User dashboard data already loaded:', userDashboardData)
+    }
+  }
 })
 
 const tabs = [
@@ -336,6 +367,12 @@ const tabs = [
       text: 'New',
       variant: 'green'
     }
+  },
+  {
+    id: 'user',
+    label: 'User Dashboard',
+    icon: 'user',
+    badge: null
   }
 ]
 
@@ -421,8 +458,12 @@ const getActiveTabLabel = () => {
 }
 
 onMounted(() => {
+  console.log('🔍 DEBUG: Dashboard.vue mounted')
   initializeTabFromURL()
+  console.log('🔍 DEBUG: Initializing dashboard data')
   fetchDashboardData()
+  console.log('🔍 DEBUG: Initializing user dashboard data')
+  fetchUserDashboardData()
   // Auto-refresh disabled - removed startAutoRefresh() call
 })
 
