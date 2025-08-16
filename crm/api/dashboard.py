@@ -81,11 +81,11 @@ def get_dashboard_data(view='daily', custom_start_date=None, custom_end_date=Non
 
 
 @frappe.whitelist()
-def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_date=None, _refresh=None):
-    """Get user-specific dashboard data for the current user"""
+def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_date=None, target_user_id=None, _refresh=None):
+    """Get user-specific dashboard data for the current user or target user (admin only)"""
     try:
         # Debug: Log function entry
-        print(f"🔍 DEBUG: get_user_dashboard_data called with view={view}, custom_start_date={custom_start_date}, custom_end_date={custom_end_date}, _refresh={_refresh}")
+        print(f"🔍 DEBUG: get_user_dashboard_data called with view={view}, custom_start_date={custom_start_date}, custom_end_date={custom_end_date}, target_user_id={target_user_id}, _refresh={_refresh}")
         
         # Get current user
         current_user = frappe.session.user
@@ -96,17 +96,33 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
             print(f"❌ ERROR: User not authenticated: {current_user}")
             return {"error": "User not authenticated", "debug": {"user": current_user}}
         
+        # Determine which user's data to fetch
+        target_user = target_user_id if target_user_id else current_user
+        print(f"🔍 DEBUG: Target user for data: {target_user}")
+        
+        # If admin is viewing another user's data, check permissions
+        if target_user != current_user:
+            if not frappe.has_permission("User", "read"):
+                print(f"❌ ERROR: User {current_user} doesn't have permission to view other users' data")
+                return {"error": "Insufficient permissions to view other users' data"}
+            
+            # Verify target user exists and is enabled
+            target_user_exists = frappe.db.exists("User", {"name": target_user, "enabled": 1})
+            if not target_user_exists:
+                print(f"❌ ERROR: Target user {target_user} not found or disabled")
+                return {"error": f"Target user {target_user} not found or disabled"}
+        
         # Force fresh data by clearing any potential cache
         try:
-            frappe.cache.delete_keys(f"user_dashboard_data_{current_user}*")
-            print(f"🔍 DEBUG: Cleared cache keys for user: {current_user}")
+            frappe.cache.delete_keys(f"user_dashboard_data_{target_user}*")
+            print(f"🔍 DEBUG: Cleared cache keys for user: {target_user}")
         except Exception as cache_error:
             print(f"⚠️ WARNING: Cache clearing failed: {cache_error}")
         
         # If refresh flag is set, also clear any other potential caches
         if _refresh:
             try:
-                frappe.cache.delete_keys(f"user_dashboard_{current_user}*")
+                frappe.cache.delete_keys(f"user_dashboard_{target_user}*")
                 frappe.cache.delete_keys(f"dashboard*")
                 print(f"🔍 DEBUG: Cleared additional cache keys for refresh")
             except Exception as cache_error:
@@ -121,35 +137,35 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
             return {"error": f"Date range error: {date_error}", "debug": {"view": view}}
         
         # Debug: Log the date range being used
-        print(f"🔍 DEBUG: User Dashboard Debug - User: {current_user}, View: {view}, Start Date: {start_date}, End Date: {end_date}")
+        print(f"🔍 DEBUG: User Dashboard Debug - Target User: {target_user}, View: {view}, Start Date: {start_date}, End Date: {end_date}")
         
         try:
             # Test basic database connectivity
-            test_count = frappe.db.count("User", filters={"name": current_user})
+            test_count = frappe.db.count("User", filters={"name": target_user})
             print(f"🔍 DEBUG: Database connectivity test - User count: {test_count}")
             
             if test_count == 0:
-                print(f"❌ ERROR: User {current_user} not found in database")
-                return {"error": f"User {current_user} not found", "debug": {"user": current_user}}
+                print(f"❌ ERROR: Target user {target_user} not found in database")
+                return {"error": f"Target user {target_user} not found", "debug": {"user": target_user}}
             
         except Exception as db_error:
             print(f"❌ ERROR: Database connectivity test failed: {db_error}")
-            return {"error": f"Database error: {db_error}", "debug": {"user": current_user}}
+            return {"error": f"Database error: {db_error}", "debug": {"user": target_user}}
         
         try:
             result = {
-                "user_info": get_user_info(current_user),
-                "overview": get_user_overview_stats(current_user, view),
-                "lead_analytics": get_user_lead_analytics(current_user, view),
-                "ticket_analytics": get_user_ticket_analytics(current_user, view),
-                "task_analytics": get_user_task_analytics(current_user, view),
-                "call_log_analytics": get_user_call_log_analytics(current_user, view),
-                "performance_metrics": get_user_performance_metrics(current_user, view),
-                "recent_activities": get_user_recent_activities(current_user, view),
-                "trends": get_user_trends_data(current_user, view),
-                "achievements": get_user_achievements(current_user, view),
-                "goals": get_user_goals(current_user, view),
-                "peak_hours": get_user_peak_hours(current_user, view),
+                "user_info": get_user_info(target_user),
+                "overview": get_user_overview_stats(target_user, view),
+                "lead_analytics": get_user_lead_analytics(target_user, view),
+                "ticket_analytics": get_user_ticket_analytics(target_user, view),
+                "task_analytics": get_user_task_analytics(target_user, view),
+                "call_log_analytics": get_user_call_log_analytics(target_user, view),
+                "performance_metrics": get_user_performance_metrics(target_user, view),
+                "recent_activities": get_user_recent_activities(target_user, view),
+                "trends": get_user_trends_data(target_user, view),
+                "achievements": get_user_achievements(target_user, view),
+                "goals": get_user_goals(target_user, view),
+                "peak_hours": get_user_peak_hours(target_user, view),
                 "date_range": {
                     "view": view,
                     "start_date": str(start_date),
@@ -157,7 +173,8 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
                     "formatted_range": get_formatted_date_range(start_date, end_date, view)
                 },
                 "_debug": {
-                    "user": current_user,
+                    "target_user": target_user,
+                    "requested_by": current_user,
                     "view": view,
                     "start_date": str(start_date),
                     "end_date": str(end_date),
@@ -168,7 +185,7 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
                 }
             }
             
-            print(f"✅ SUCCESS: User Dashboard API Success - User: {current_user}")
+            print(f"✅ SUCCESS: User Dashboard API Success - Target User: {target_user}, Requested by: {current_user}")
             print(f"🔍 DEBUG: Result keys: {list(result.keys())}")
             print(f"🔍 DEBUG: User info keys: {list(result.get('user_info', {}).keys())}")
             print(f"🔍 DEBUG: Overview keys: {list(result.get('overview', {}).keys())}")
@@ -182,7 +199,7 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
             import traceback
             print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
             frappe.log_error(f"Dashboard API Error in result creation: {str(e)}")
-            return {"error": str(e), "debug": {"user": current_user, "exception_type": type(e).__name__}}
+            return {"error": str(e), "debug": {"target_user": target_user, "exception_type": type(e).__name__}}
             
     except Exception as e:
         print(f"❌ ERROR: User Dashboard API Error: {str(e)}")
@@ -215,6 +232,37 @@ def test_user_dashboard_api():
         }
     except Exception as e:
         print(f"❌ ERROR: Test API failed: {str(e)}")
+        import traceback
+        print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        return {"error": str(e), "status": "error"}
+
+
+@frappe.whitelist()
+def get_available_users():
+    """Get list of available users for admin dashboard viewing"""
+    try:
+        print("🔍 DEBUG: get_available_users called")
+        
+        current_user = frappe.session.user
+        print(f"🔍 DEBUG: Current user: {current_user}")
+        
+        # Check if user is admin
+        if not frappe.has_permission("User", "read"):
+            print(f"❌ ERROR: User {current_user} doesn't have permission to read users")
+            return {"error": "Insufficient permissions"}
+        
+        # Get all enabled users
+        users = frappe.db.get_list("User",
+            filters={"enabled": 1},
+            fields=["name", "full_name", "email", "last_login", "creation"],
+            order_by="full_name asc"
+        )
+        
+        print(f"✅ SUCCESS: Found {len(users)} available users")
+        return {"message": users}
+        
+    except Exception as e:
+        print(f"❌ ERROR: get_available_users failed: {str(e)}")
         import traceback
         print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
         return {"error": str(e), "status": "error"}

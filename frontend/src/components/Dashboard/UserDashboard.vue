@@ -17,6 +17,13 @@
             <span>Member since {{ formatDate(userInfo.creation) }}</span>
             <span v-if="userInfo.last_login">Last login: {{ formatDate(userInfo.last_login) }}</span>
           </div>
+          <!-- Admin viewing indicator -->
+          <div v-if="isViewingOtherUser" class="mt-2">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <FeatherIcon name="eye" class="w-3 h-3 mr-1" />
+              Admin View
+            </span>
+          </div>
         </div>
         <div class="flex-shrink-0">
           <!-- Efficiency Score -->
@@ -368,17 +375,7 @@
               </div>
               <p class="text-sm text-gray-600 mb-3">{{ goal.description }}</p>
               
-              <!-- Enhanced goal details -->
-              <div v-if="goal.assigned_count !== undefined" class="mb-3 p-2 bg-gray-50 rounded text-xs">
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-600">Assigned:</span>
-                  <span class="font-medium text-gray-800">{{ goal.assigned_count }}</span>
-                </div>
-                <div class="flex justify-between items-center mt-1">
-                  <span class="text-gray-600">Goal Type:</span>
-                  <span class="font-medium text-gray-800 capitalize">{{ goal.goal_type }}</span>
-                </div>
-              </div>
+
               
               <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
                 <div 
@@ -508,6 +505,14 @@ const userPeakHours = computed(() => {
 const userInitials = computed(() => {
   const fullName = userInfo.value.full_name || userInfo.value.name || ''
   return fullName.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2)
+})
+
+// Check if admin is viewing another user's data
+const isViewingOtherUser = computed(() => {
+  // This will be true when the dashboard data is for a different user than the current session user
+  // We can determine this by checking if the user info in the dashboard data matches the current session
+  // For now, we'll use a simple check - if this component is being used in admin mode
+  return props.userDashboardData._debug?.requested_by !== props.userDashboardData._debug?.target_user
 })
 
 // Chart data

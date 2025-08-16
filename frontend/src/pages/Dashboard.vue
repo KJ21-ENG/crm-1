@@ -352,6 +352,42 @@
           role="tabpanel"
           :aria-labelledby="`tab-user`"
         >
+          <!-- User Selector Header (Admin Only) -->
+          <div v-if="isAdminUser" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                <span class="text-sm font-medium text-gray-700">View User Dashboard:</span>
+                <select
+                  v-model="selectedUserId"
+                  @change="handleUserChange"
+                  class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="">Current User</option>
+                  <option v-for="user in availableUsers" :key="user.name" :value="user.name">
+                    {{ user.full_name || user.name }}
+                  </option>
+                </select>
+                <span class="text-xs text-gray-500">
+                  {{ availableUsers.length }} users available
+                </span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span v-if="selectedUserId" class="text-sm text-blue-600 font-medium">
+                  Viewing: {{ getSelectedUserName() }}
+                </span>
+                <button
+                  v-if="selectedUserId"
+                  @click="resetUserSelection"
+                  class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 rounded-md transition-colors transition-colors"
+                  title="Reset to Current User"
+                >
+                  <FeatherIcon name="refresh-cw" class="w-4 h-4 mr-1" />
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+          
           <UserDashboard
             :loading="loading"
             :error="error"
@@ -501,6 +537,11 @@ const showCustomDatePicker = ref(false)
 const customStartDate = ref('')
 const customEndDate = ref('')
 
+// User selection state (Admin only)
+const selectedUserId = ref('')
+const availableUsers = ref([])
+const isUserSelectorVisible = computed(() => isAdminUser.value && activeTab.value === 'user')
+
 // View options
 const viewOptions = [
   { label: 'Daily', value: 'daily' },
@@ -649,32 +690,91 @@ const openCustomDatePicker = () => {
   showCustomDatePicker.value = true
 }
 
+// User management functions
+const fetchAvailableUsers = async () => {
+  try {
+    const response = await fetch('/api/method/crm.api.dashboard.get_available_users')
+    
+    if (response.ok) {
+      const data = await response.json()
+      
+      if (data.message && Array.isArray(data.message)) {
+        // Direct array format
+        availableUsers.value = data.message
+      } else if (data.message && typeof data.message === 'object' && data.message.users) {
+        // Nested object format with users property
+        availableUsers.value = data.message.users
+      } else if (data.message && typeof data.message === 'object') {
+        // Try to extract users from the message object
+        const users = Object.values(data.message).find(val => Array.isArray(val))
+        if (users) {
+          availableUsers.value = users
+        } else {
+          availableUsers.value = []
+        }
+      } else {
+        availableUsers.value = []
+      }
+    } else {
+      availableUsers.value = []
+    }
+  } catch (error) {
+    console.error('Error fetching available users:', error)
+    availableUsers.value = []
+  }
+}
+
+const handleUserChange = async () => {
+  if (!selectedUserId.value) {
+    // If no user selected, fetch current user's data
+    await fetchUserDashboardData(currentView.value)
+    return
+  }
+  
+  // Fetch data for selected user
+  if (currentView.value === 'custom' && customStartDate.value && customEndDate.value) {
+    await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value, selectedUserId.value)
+  } else {
+    await fetchUserDashboardData(currentView.value, null, null, selectedUserId.value)
+  }
+}
+
+const getSelectedUserName = () => {
+  if (!selectedUserId.value) return 'Current User'
+  const user = availableUsers.value.find(u => u.name === selectedUserId.value)
+  return user ? (user.full_name || user.name) : selectedUserId.value
+}
+
+const resetUserSelection = () => {
+  selectedUserId.value = ''
+  // Fetch current user's data
+  fetchUserDashboardData(currentView.value)
+}
+
 const getActiveTabLabel = () => {
   const tab = availableTabs.value.find(t => t.id === activeTab.value)
   return tab ? tab.label : 'Dashboard'
 }
 
 onMounted(async () => {
-  console.log('🔍 DEBUG: Dashboard.vue mounted')
-  
   // Initialize user role information first
   await initializeUserRole()
   
-  console.log('🔍 DEBUG: Is admin user:', isAdminUser.value)
-  console.log('🔍 DEBUG: Current user role:', currentUserRole.value)
-  
   // Set default view to monthly BEFORE initializing tabs
   currentView.value = 'monthly'
-  console.log('🔍 DEBUG: Set currentView to monthly:', currentView.value)
   
   // Force the view change to propagate
   await changeView('monthly')
   
   initializeTabFromURL()
-  console.log('🔍 DEBUG: Initializing dashboard data with monthly view')
   fetchDashboardData()
-  console.log('🔍 DEBUG: Initializing user dashboard data with monthly view')
   fetchUserDashboardData()
+  
+  // Fetch available users if admin
+  if (isAdminUser.value) {
+    await fetchAvailableUsers()
+  }
+  
   // Auto-refresh disabled - removed startAutoRefresh() call
 })
 

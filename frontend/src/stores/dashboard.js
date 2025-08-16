@@ -63,8 +63,8 @@ export function useDashboard() {
     }
   }
 
-  const fetchUserDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null) => {
-    console.log('🔍 DEBUG: fetchUserDashboardData called with view:', view, 'customStartDate:', customStartDate, 'customEndDate:', customEndDate)
+  const fetchUserDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null, targetUserId = null) => {
+    console.log('🔍 DEBUG: fetchUserDashboardData called with view:', view, 'customStartDate:', customStartDate, 'customEndDate:', customEndDate, 'targetUserId:', targetUserId)
     loading.value = true
     error.value = null
     
@@ -85,6 +85,11 @@ export function useDashboard() {
         requestParams.custom_end_date = customEndDate
         // Store custom date range for tooltip display
         customDateRange.value = { start: customStartDate, end: customEndDate }
+      }
+      
+      // Add target user ID if provided (for admin viewing other users)
+      if (targetUserId) {
+        requestParams.target_user_id = targetUserId
       }
       
       console.log('🔍 DEBUG: Request params:', requestParams)
