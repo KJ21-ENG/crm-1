@@ -189,44 +189,118 @@
       />
     </div>
 
-    <!-- Achievements & Goals -->
+    <!-- Activity Pattern & Goals -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Achievements -->
+      <!-- Your Daily Activity Pattern -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <FeatherIcon name="award" class="h-5 w-5 text-yellow-500 mr-2" />
-          Your Achievements
+          <FeatherIcon name="clock" class="h-5 w-5 text-indigo-500 mr-2" />
+          Your Daily Activity Pattern
         </h3>
         
-        <div v-if="loading" class="space-y-3">
-          <div v-for="i in 3" :key="i" class="animate-pulse">
-            <div class="h-16 bg-gray-200 rounded-lg"></div>
+        <div v-if="loading" class="space-y-4">
+          <div class="animate-pulse">
+            <div class="h-48 bg-gray-200 rounded-lg"></div>
           </div>
         </div>
         
-        <div v-else-if="!userAchievements || userAchievements.length === 0" class="text-center py-8 text-gray-500">
-          <FeatherIcon name="target" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p>No achievements yet this period</p>
-          <p class="text-sm">Keep up the great work to earn achievements!</p>
+        <div v-else-if="!userPeakHours || !userPeakHours.hourly_data" class="text-center py-8 text-gray-500">
+          <FeatherIcon name="clock" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <p>No activity data available for this period</p>
+          <p class="text-sm">Start working to see your activity patterns!</p>
         </div>
         
-        <div v-else class="space-y-3">
-          <div 
-            v-for="achievement in userAchievements" 
-            :key="achievement.title"
-            class="flex items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
-          >
-            <div class="flex-shrink-0 mr-3">
-              <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                <FeatherIcon :name="achievement.icon" class="h-5 w-5 text-green-600" />
+        <div v-else class="space-y-4">
+          <!-- Activity Summary Cards -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-lg font-bold text-blue-700">{{ userPeakHours.total_calls || 0 }}</div>
+                  <div class="text-xs text-blue-600 font-medium">Calls</div>
+                </div>
+                <div class="h-8 w-8 bg-blue-200 rounded-full flex items-center justify-center">
+                  <FeatherIcon name="phone" class="h-4 w-4 text-blue-700" />
+                </div>
               </div>
             </div>
-            <div class="flex-1">
-              <p class="font-medium text-gray-900">{{ achievement.title }}</p>
-              <p class="text-sm text-gray-600">{{ achievement.description }}</p>
+            
+            <div class="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-lg font-bold text-green-700">{{ formatDuration(userPeakHours.total_duration || 0) }}</div>
+                  <div class="text-xs text-green-600 font-medium">Duration</div>
+                </div>
+                <div class="h-8 w-8 bg-green-200 rounded-full flex items-center justify-center">
+                  <FeatherIcon name="clock" class="h-4 w-4 text-green-700" />
+                </div>
+              </div>
             </div>
-            <div class="flex-shrink-0">
-              <Badge variant="green" size="sm">{{ achievement.value }}</Badge>
+          </div>
+          
+          <!-- Compact Activity Timeline -->
+          <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">24-Hour Activity</h4>
+            
+            <!-- Timeline Chart -->
+            <div class="relative">
+              <!-- Time Labels -->
+              <div class="flex justify-between text-xs text-gray-500 mb-2 px-1">
+                <span>6AM</span>
+                <span>12PM</span>
+                <span>6PM</span>
+                <span>12AM</span>
+              </div>
+              
+              <!-- Activity Bars -->
+              <div class="grid grid-cols-24 gap-0.5 items-end">
+                <div 
+                  v-for="(hourData, index) in userPeakHours.hourly_data" 
+                  :key="hourData.hour"
+                  class="relative group flex items-end"
+                >
+                  <!-- Activity Bar -->
+                  <div 
+                    class="w-full bg-gray-200 rounded-sm transition-all duration-300 hover:scale-105 cursor-pointer"
+                    :style="{ 
+                      height: `${Math.max(6, (hourData.total_activity / Math.max(userPeakHours.max_activity, 1)) * 40)}px`,
+                      backgroundColor: hourData.total_activity > 0 ? getActivityBarColor(hourData.total_activity, userPeakHours.max_activity) : '#e5e7eb'
+                    }"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                    <div class="text-center">
+                      <div class="font-semibold">{{ hourData.hour }}</div>
+                      <div class="text-gray-300">{{ hourData.total_activity }} activities</div>
+                    </div>
+                    <!-- Arrow -->
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Peak Hours Highlight -->
+              <div v-if="userPeakHours.peak_hours && userPeakHours.peak_hours.length > 0" class="mt-3 text-center">
+                <div class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                  <FeatherIcon name="star" class="h-3 w-3 mr-1 text-indigo-600" />
+                  Peak: {{ formatPeakHours(userPeakHours.peak_hours) }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Quick Insights -->
+          <div class="grid grid-cols-1 gap-2">
+            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <div class="flex items-center">
+                <div class="h-6 w-6 bg-blue-200 rounded-full flex items-center justify-center mr-2">
+                  <FeatherIcon name="phone" class="h-3 w-3 text-blue-700" />
+                </div>
+                <div class="text-xs text-blue-700">
+                  <span class="font-medium">Best Time:</span> {{ getBestCallTime(userPeakHours.hourly_data) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -236,12 +310,12 @@
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <FeatherIcon name="target" class="h-5 w-5 text-blue-500 mr-2" />
-          Your Goals
+          Your Goals & Progress
         </h3>
         
         <div v-if="loading" class="space-y-3">
-          <div v-for="i in 3" :key="i" class="animate-pulse">
-            <div class="h-16 bg-gray-200 rounded-lg"></div>
+          <div v-for="i in 4" :key="i" class="animate-pulse">
+            <div class="h-20 bg-gray-200 rounded-lg"></div>
           </div>
         </div>
         
@@ -251,30 +325,41 @@
           <p class="text-sm">Set goals to track your progress!</p>
         </div>
         
-        <div v-else class="space-y-3">
+        <div v-else class="space-y-4">
           <div 
             v-for="goal in userGoals" 
             :key="goal.title"
-            class="p-3 rounded-lg border border-gray-100"
+            class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-3">
               <div class="flex items-center">
-                <FeatherIcon :name="goal.icon" class="h-4 w-4 text-blue-500 mr-2" />
+                <FeatherIcon :name="goal.icon" class="h-5 w-5 text-blue-500 mr-2" />
                 <span class="font-medium text-gray-900">{{ goal.title }}</span>
               </div>
-              <span class="text-sm text-gray-600">{{ goal.current }}/{{ goal.target }}</span>
+              <div class="text-right">
+                <span class="text-lg font-bold text-blue-600">{{ goal.current }}/{{ goal.target }}</span>
+                <div class="text-sm text-gray-500">{{ goal.progress_percentage }}%</div>
+              </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">{{ goal.description }}</p>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <p class="text-sm text-gray-600 mb-3">{{ goal.description }}</p>
+            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
               <div 
-                class="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                :style="{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }"
+                class="h-3 rounded-full transition-all duration-500"
+                :class="getGoalProgressColor(goal.progress_percentage)"
+                :style="{ width: `${Math.min(goal.progress_percentage, 100)}%` }"
               ></div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>Progress</span>
+              <span>{{ goal.progress_percentage }}% Complete</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+
+
 
     <!-- Recent Activities -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -419,6 +504,12 @@ const userGoals = computed(() => {
   return goals
 })
 
+const userPeakHours = computed(() => {
+  const peakHours = props.userDashboardData.peak_hours || {}
+  console.log('🔍 DEBUG: UserDashboard - userPeakHours computed:', peakHours)
+  return peakHours
+})
+
 // User initials for avatar
 const userInitials = computed(() => {
   const fullName = userInfo.value.full_name || userInfo.value.name || ''
@@ -526,6 +617,109 @@ const getActivityBadgeVariant = (type) => {
   return variants[type] || 'gray'
 }
 
+const getGoalProgressColor = (percentage) => {
+  if (percentage >= 80) return 'bg-green-500'
+  if (percentage >= 60) return 'bg-blue-500'
+  if (percentage >= 40) return 'bg-yellow-500'
+  if (percentage >= 20) return 'bg-orange-500'
+  return 'bg-red-500'
+}
+
+
+
+const formatPeakHours = (peakHours) => {
+  if (!peakHours || peakHours.length === 0) return 'None'
+  
+  const formattedHours = peakHours.map(hour => {
+    const hourStr = hour.toString().padStart(2, '0')
+    return `${hourStr}:00`
+  })
+  
+  if (formattedHours.length === 1) {
+    return formattedHours[0]
+  } else if (formattedHours.length === 2) {
+    return `${formattedHours[0]} and ${formattedHours[1]}`
+  } else {
+    const last = formattedHours.pop()
+    return `${formattedHours.join(', ')}, and ${last}`
+  }
+}
+
+const getActivityBarColor = (activity, maxActivity) => {
+  if (maxActivity === 0) return '#e5e7eb'
+  const ratio = activity / maxActivity
+  
+  if (ratio >= 0.8) return '#7c3aed' // Purple for peak
+  if (ratio >= 0.6) return '#3b82f6' // Blue for high
+  if (ratio >= 0.4) return '#10b981' // Green for medium
+  if (ratio >= 0.2) return '#f59e0b' // Yellow for low
+  return '#6b7280' // Gray for minimal
+}
+
+const getBestCallTime = (hourlyData) => {
+  if (!hourlyData || hourlyData.length === 0) return 'No data available'
+  
+  let bestHour = 0
+  let maxCalls = 0
+  
+  hourlyData.forEach(hourData => {
+    if (hourData.calls > maxCalls) {
+      maxCalls = hourData.calls
+      bestHour = parseInt(hourData.hour.split(':')[0])
+    }
+  })
+  
+  if (maxCalls === 0) return 'No calls made yet'
+  
+  const timeLabel = bestHour < 12 ? `${bestHour}:00 AM` : 
+                   bestHour === 12 ? '12:00 PM' : 
+                   `${bestHour - 12}:00 PM`
+  
+  return `${timeLabel} (${maxCalls} calls)`
+}
+
+const getMostProductivePeriod = (hourlyData) => {
+  if (!hourlyData || hourlyData.length === 0) return 'No data available'
+  
+  // Group hours into periods
+  const periods = {
+    'Early Morning (6-9 AM)': 0,
+    'Morning (9 AM-12 PM)': 0,
+    'Afternoon (12-3 PM)': 0,
+    'Late Afternoon (3-6 PM)': 0,
+    'Evening (6-9 PM)': 0,
+    'Night (9 PM-12 AM)': 0,
+    'Late Night (12-6 AM)': 0
+  }
+  
+  hourlyData.forEach(hourData => {
+    const hour = parseInt(hourData.hour.split(':')[0])
+    const activity = hourData.total_activity
+    
+    if (hour >= 6 && hour < 9) periods['Early Morning (6-9 AM)'] += activity
+    else if (hour >= 9 && hour < 12) periods['Morning (9 AM-12 PM)'] += activity
+    else if (hour >= 12 && hour < 15) periods['Afternoon (12-3 PM)'] += activity
+    else if (hour >= 15 && hour < 18) periods['Late Afternoon (3-6 PM)'] += activity
+    else if (hour >= 18 && hour < 21) periods['Evening (6-9 PM)'] += activity
+    else if (hour >= 21 && hour < 24) periods['Night (9 PM-12 AM)'] += activity
+    else periods['Late Night (12-6 AM)'] += activity
+  })
+  
+  let bestPeriod = 'No data'
+  let maxActivity = 0
+  
+  Object.entries(periods).forEach(([period, activity]) => {
+    if (activity > maxActivity) {
+      maxActivity = activity
+      bestPeriod = period
+    }
+  })
+  
+  if (maxActivity === 0) return 'No activity recorded'
+  
+  return `${bestPeriod} (${maxActivity} activities)`
+}
+
 onMounted(() => {
   console.log('🔍 DEBUG: UserDashboard component mounted')
   console.log('🔍 DEBUG: Props received:', props)
@@ -548,6 +742,24 @@ onMounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* 24-column grid for timeline */
+.grid-cols-24 {
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-cols-24 {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-cols-24 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 </style>

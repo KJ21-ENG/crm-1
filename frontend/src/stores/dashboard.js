@@ -197,6 +197,7 @@ export function useDashboard() {
   const userTrends = computed(() => userDashboardData.value?.trends || {})
   const userAchievements = computed(() => userDashboardData.value?.achievements || [])
   const userGoals = computed(() => userDashboardData.value?.goals || [])
+  const userPeakHours = computed(() => userDashboardData.value?.peak_hours || {})
 
   // Stats cards data - removed specified cards
   const statsCards = computed(() => {
@@ -333,6 +334,9 @@ export function useDashboard() {
     
     // User dashboard chart data
     userTrendsChart,
-    userLeadStatusChart
+    userLeadStatusChart,
+    
+    // User dashboard additional data
+    userPeakHours
   }
 } 

@@ -149,6 +149,7 @@ def get_user_dashboard_data(view='daily', _refresh=None):
                 "trends": get_user_trends_data(current_user, view),
                 "achievements": get_user_achievements(current_user, view),
                 "goals": get_user_goals(current_user, view),
+                "peak_hours": get_user_peak_hours(current_user, view),
                 "date_range": {
                     "view": view,
                     "start_date": str(start_date),
@@ -161,6 +162,7 @@ def get_user_dashboard_data(view='daily', _refresh=None):
                     "start_date": str(start_date),
                     "end_date": str(end_date),
                     "function": "get_user_dashboard_data",
+                    "debug": "get_user_dashboard_data",
                     "timestamp": str(frappe.utils.now()),
                     "session_id": frappe.session.sid if hasattr(frappe.session, 'sid') else 'N/A'
                 }
@@ -701,6 +703,7 @@ def get_user_overview_stats(user, view='daily'):
         "calls_made": frappe.db.count("CRM Call Log", filters={
             **date_filter, "employee": user
         }),
+        "total_duration": get_user_total_call_duration(user, view),
         "avg_response_time": get_user_avg_response_time(user, view)
     }
 
@@ -1062,35 +1065,157 @@ def get_user_achievements(user, view='daily'):
 
 
 def get_user_goals(user, view='daily'):
-    """Get user goals and targets"""
-    # This could be extended to integrate with a goal-setting system
-    # For now, return some encouraging default goals
+    """Get user goals and targets with actual progress data"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    # Calculate actual progress from database
+    leads_assigned = frappe.db.count("CRM Lead", filters={
+        **date_filter, "lead_owner": user
+    })
+    leads_converted = frappe.db.count("CRM Lead", filters={
+        **date_filter, "lead_owner": user, "status": "Account Opened"
+    })
+    
+    tickets_assigned = frappe.db.count("CRM Ticket", filters={
+        **date_filter, "assigned_to": user
+    })
+    tickets_resolved = frappe.db.count("CRM Ticket", filters={
+        **date_filter, "assigned_to": user, "status": "Resolved"
+    })
+    
+    tasks_assigned = frappe.db.count("CRM Task", filters={
+        **date_filter, "assigned_to": user
+    })
+    tasks_completed = frappe.db.count("CRM Task", filters={
+        **date_filter, "assigned_to": user, "status": "Done"
+    })
+    
+    calls_made = frappe.db.count("CRM Call Log", filters={
+        **date_filter, "employee": user
+    })
+    
     return [
         {
             "title": "Lead Conversion Goal",
-            "target": 5,
-            "current": 0,  # This would be calculated from actual data
-            "description": "Convert at least 5 leads this period",
+            "target": max(5, leads_assigned),  # Dynamic target based on assigned leads
+            "current": leads_converted,
+            "description": f"Convert leads to customers (Currently {leads_converted}/{leads_assigned})",
             "icon": "target",
-            "type": "leads"
+            "type": "leads",
+            "progress_percentage": round((leads_converted / max(leads_assigned, 1)) * 100, 1)
         },
         {
             "title": "Ticket Resolution Goal",
-            "target": 10,
-            "current": 0,  # This would be calculated from actual data
-            "description": "Resolve at least 10 tickets this period",
+            "target": max(10, tickets_assigned),  # Dynamic target based on assigned tickets
+            "current": tickets_resolved,
+            "description": f"Resolve support tickets (Currently {tickets_resolved}/{tickets_assigned})",
             "icon": "check-circle",
-            "type": "tickets"
+            "type": "tickets",
+            "progress_percentage": round((tickets_resolved / max(tickets_assigned, 1)) * 100, 1)
         },
         {
             "title": "Task Completion Goal",
-            "target": 15,
-            "current": 0,  # This would be calculated from actual data
-            "description": "Complete at least 15 tasks this period",
+            "target": max(15, tasks_assigned),  # Dynamic target based on assigned tasks
+            "current": tasks_completed,
+            "description": f"Complete assigned tasks (Currently {tasks_completed}/{tasks_assigned})",
             "icon": "list",
-            "type": "tasks"
+            "type": "tasks",
+            "progress_percentage": round((tasks_completed / max(tasks_assigned, 1)) * 100, 1)
+        },
+        {
+            "title": "Communication Goal",
+            "target": max(20, calls_made),  # Dynamic target based on current activity
+            "current": calls_made,
+            "description": f"Make customer calls (Currently {calls_made} calls)",
+            "icon": "phone",
+            "type": "calls",
+            "progress_percentage": round((calls_made / max(calls_made, 1)) * 100, 1)
         }
     ]
+
+
+def get_user_peak_hours(user, view='daily'):
+    """Get user's peak activity hours based on call logs and activities"""
+    start_date, end_date = get_date_range(view)
+    date_filter = {"creation": ["between", [start_date, end_date]]}
+    
+    # Get call log data for peak hours analysis
+    call_logs = frappe.db.get_list("CRM Call Log",
+        fields=["start_time", "duration", "type", "status"],
+        filters={**date_filter, "employee": user, "status": "Completed"}
+    )
+    
+    # Initialize hourly data
+    hourly_data = {i: {"calls": 0, "total_duration": 0, "activities": 0} for i in range(24)}
+    
+    # Process call logs
+    for call in call_logs:
+        if call.start_time:
+            try:
+                hour = int(str(call.start_time).split(' ')[1].split(':')[0])
+                hourly_data[hour]["calls"] += 1
+                hourly_data[hour]["total_duration"] += call.duration or 0
+            except:
+                continue
+    
+    # Get other activities for comprehensive analysis
+    leads_created = frappe.db.get_list("CRM Lead",
+        fields=["creation"],
+        filters={**date_filter, "owner": user}
+    )
+    
+    tickets_created = frappe.db.get_list("CRM Ticket",
+        fields=["creation"],
+        filters={**date_filter, "owner": user}
+    )
+    
+    tasks_created = frappe.db.get_list("CRM Task",
+        fields=["creation"],
+        filters={**date_filter, "owner": user}
+    )
+    
+    # Process activity timestamps
+    for activity in leads_created + tickets_created + tasks_created:
+        if activity.creation:
+            try:
+                hour = int(str(activity.creation).split(' ')[1].split(':')[0])
+                hourly_data[hour]["activities"] += 1
+            except:
+                continue
+    
+    # Find peak hours
+    peak_hours = []
+    max_activity = 0
+    
+    for hour, data in hourly_data.items():
+        total_activity = data["calls"] + data["activities"]
+        if total_activity > max_activity:
+            max_activity = total_activity
+            peak_hours = [hour]
+        elif total_activity == max_activity and total_activity > 0:
+            peak_hours.append(hour)
+    
+    # Format hourly data for charts
+    hourly_chart_data = []
+    for hour in range(24):
+        data = hourly_data[hour]
+        hourly_chart_data.append({
+            "hour": f"{hour:02d}:00",
+            "calls": data["calls"],
+            "duration": round(data["total_duration"], 2),
+            "activities": data["activities"],
+            "total_activity": data["calls"] + data["activities"]
+        })
+    
+    return {
+        "peak_hours": peak_hours,
+        "max_activity": max_activity,
+        "hourly_data": hourly_chart_data,
+        "total_calls": sum(data["calls"] for data in hourly_data.values()),
+        "total_duration": sum(data["total_duration"] for data in hourly_data.values()),
+        "total_activities": sum(data["activities"] for data in hourly_data.values())
+    }
 
 
 # Helper functions
