@@ -17,6 +17,28 @@
       
       <!-- Content -->
       <div class="flex-1 overflow-auto">
+        <!-- Search Bar - Always Visible in White Area -->
+        <div class="p-5">
+          <div class="relative max-w-md">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FeatherIcon name="search" class="h-5 w-5 text-ink-gray-4" />
+            </div>
+            <TextInput
+              v-model="searchQuery"
+              :placeholder="__('Search by page name or description...')"
+              class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              v-if="searchQuery.trim()"
+              @click="clearSearch"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-ink-gray-4 hover:text-ink-gray-6"
+              :title="__('Clear search')"
+            >
+              <FeatherIcon name="x" class="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        
         <div v-if="supportPages.loading" class="flex items-center justify-center h-64">
           <div class="text-center">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
@@ -27,9 +49,18 @@
         <div v-else-if="!paginatedData.length" class="flex items-center justify-center h-64">
           <div class="text-center">
             <SupportPagesIcon class="h-12 w-12 text-ink-gray-4 mx-auto mb-4" />
-            <h3 class="text-lg font-medium text-ink-gray-9 mb-2">{{ __('No support pages found') }}</h3>
-            <p class="text-ink-gray-6 mb-4">{{ __('Create your first support page to get started') }}</p>
-            <Button variant="solid" :label="__('Create Support Page')" @click="showCreateModal = true">
+            <h3 class="text-lg font-medium text-ink-gray-9 mb-2">
+              {{ searchQuery.trim() ? __('No pages match your search') : __('No support pages found') }}
+            </h3>
+            <p class="text-ink-gray-6 mb-4">
+              {{ searchQuery.trim() ? __('Try adjusting your search terms') : __('Create your first support page to get started') }}
+            </p>
+            <Button 
+              v-if="!searchQuery.trim()"
+              variant="solid" 
+              :label="__('Create Support Page')" 
+              @click="showCreateModal = true"
+            >
               <template #prefix>
                 <FeatherIcon name="plus" class="h-4" />
               </template>
@@ -37,7 +68,7 @@
           </div>
         </div>
         
-        <div v-else class="p-5">
+        <div v-else class="px-5 pb-5">
           <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div 
               v-for="page in paginatedData" 
@@ -194,6 +225,9 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const totalCount = ref(0)
 
+// Search state
+const searchQuery = ref('')
+
 // Form data
 const formData = reactive({
   page_name: '',
@@ -228,10 +262,25 @@ const supportPages = createResource({
 const paginatedData = computed(() => {
   if (!supportPages.data) return []
   
+  // Filter data based on search query
+  let filteredData = supportPages.data
+  
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    filteredData = supportPages.data.filter(page => 
+      page.page_name?.toLowerCase().includes(query) ||
+      page.description?.toLowerCase().includes(query)
+    )
+  }
+  
+  // Update total count for pagination
+  totalCount.value = filteredData.length
+  
+  // Apply pagination to filtered data
   const startIndex = (currentPage.value - 1) * pageSize.value
   const endIndex = startIndex + pageSize.value
   
-  return supportPages.data.slice(startIndex, endIndex)
+  return filteredData.slice(startIndex, endIndex)
 })
 
 // Methods
@@ -333,14 +382,24 @@ function handlePageSizeChange(size) {
   // No need to reload for client-side pagination
 }
 
+function clearSearch() {
+  searchQuery.value = ''
+  supportPages.reload() // Reload data to show all items
+}
+
 // Watch for data changes to update total count
 watch(() => supportPages.data, (newData) => {
   if (newData && newData.length > 0) {
-    totalCount.value = newData.length
+    // Don't set totalCount here as it's now handled in paginatedData computed
   } else {
     totalCount.value = 0
   }
 }, { immediate: true })
+
+// Watch for search query changes to reset pagination
+watch(searchQuery, () => {
+  currentPage.value = 1 // Reset to first page when searching
+})
 
 onMounted(() => {
   if (!supportPages.data) {
