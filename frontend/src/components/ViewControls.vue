@@ -1,3 +1,20 @@
+<!--
+  ViewControls Component
+  
+  This component handles the view controls for list views including:
+  - Filters, sorting, and pagination
+  - View switching (list, kanban, group by)
+  - Load more functionality
+  
+  Load More Button Fix:
+  - Ensures page length resets to 20 records when:
+    * Page is refreshed
+    * Navigating between modules
+    * Component is mounted fresh
+    * Manual reload is triggered
+  - This prevents the issue where load more would continue from a previous state
+-->
+
 <template>
   <div
     v-if="isMobileView"
@@ -322,7 +339,7 @@ import {
   FeatherIcon,
   usePageMeta,
 } from 'frappe-ui'
-import { computed, ref, onMounted, watch, h, markRaw } from 'vue'
+import { computed, ref, onMounted, watch, h, markRaw, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { isMobileView } from '@/composables/settings'
@@ -357,6 +374,9 @@ const list = defineModel()
 const loadMore = defineModel('loadMore')
 const resizeColumn = defineModel('resizeColumn')
 const updatedPageCount = defineModel('updatedPageCount')
+
+// Add pagination state
+const currentPage = ref(1)
 
 const route = useRoute()
 const router = useRouter()
@@ -434,6 +454,13 @@ const view = ref({
 const pageLength = computed(() => list.value?.data?.page_length)
 const pageLengthCount = computed(() => list.value?.data?.page_length_count)
 
+// Add computed property to track current page from API response
+const currentPageFromData = computed(() => {
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  return Math.floor(start / list.value.data.page_length) + 1
+})
+
 watch(loadMore, (value) => {
   if (!value) return
   updatePageLength(value, true)
@@ -488,6 +515,16 @@ function getParams() {
     public: _view?.public || false,
   }
 
+  // Reset page length to default 20 if this is a fresh load or navigation
+  // Check if we should reset page length (fresh load or navigation)
+  const shouldResetPageLength = !list.value?.data || 
+                               !list.value.params || 
+                               list.value.params.page_length === undefined ||
+                               (pageLength.value && pageLength.value > 20 && !defaultParams.value)
+
+  const page_length = shouldResetPageLength ? 20 : (pageLength.value || 20)
+  const page_length_count = shouldResetPageLength ? 20 : (pageLengthCount.value || 20)
+
   const params = {
     doctype: props.doctype,
     filters: filters,
@@ -504,13 +541,16 @@ function getParams() {
     kanban_fields: kanban_fields,
     columns: columns,
     rows: rows,
-    page_length: pageLength.value,
-    page_length_count: pageLengthCount.value,
+    page_length: page_length,
+    page_length_count: page_length_count,
+    start: (currentPage.value - 1) * page_length, // Add start parameter for pagination
   }
 
   // Debug final parameters
   console.log('🔍 ViewControls Debug - Final API params:', params)
   console.log('🔍 ViewControls Debug - default_filters being sent:', params.default_filters)
+  console.log('🔍 ViewControls Debug - Page length reset check:', { shouldResetPageLength, page_length, page_length_count })
+  console.log('🔍 ViewControls Debug - Pagination:', { currentPage: currentPage.value, start: params.start })
 
   return params
 }
@@ -544,12 +584,54 @@ list.value = createResource({
   },
 })
 
-onMounted(() => useDebounceFn(reload, 100)())
+onMounted(() => {
+  // Reset page length to default 20 on component mount
+  resetPageLengthToDefault()
+  useDebounceFn(reload, 100)()
+})
+
+onUnmounted(() => {
+  // Reset page length when component is unmounted to ensure clean state
+  if (list.value?.data?.page_length > 20) {
+    console.log('🔍 ViewControls Debug - Resetting page length to 20 on unmount')
+    list.value.data.page_length = 20
+    list.value.data.page_length_count = 20
+  }
+})
 
 const isLoading = computed(() => list.value?.loading)
 
+// Add pagination methods
+function goToPage(page) {
+  if (page >= 1 && page !== currentPage.value) {
+    currentPage.value = page
+    reload()
+  }
+}
+
+function handlePageSizeChange(newPageSize) {
+  currentPage.value = 1 // Reset to first page when changing page size
+  updatePageLength(newPageSize)
+}
+
+function resetPageLengthToDefault() {
+  if (list.value?.data?.page_length > 20) {
+    console.log('🔍 ViewControls Debug - Resetting page length to 20')
+    updatePageLength(20)
+    currentPage.value = 1 // Reset to first page
+    return true
+  }
+  return false
+}
+
 function reload() {
   if (isLoading.value) return
+  
+  // Reset page length to 20 if it's greater than 20 (indicating previous load more usage)
+  if (resetPageLengthToDefault()) {
+    return // The updatePageLength function will call reload again
+  }
+  
   list.value.params = getParams()
   list.value.reload()
 }
@@ -903,6 +985,7 @@ function applyQuickFilter(filter, value) {
 }
 
 function updateFilter(filters) {
+  if (list.value.loading) return
   viewUpdated.value = true
   if (!defaultParams.value) {
     defaultParams.value = getParams()
@@ -910,14 +993,12 @@ function updateFilter(filters) {
   list.value.params = defaultParams.value
   list.value.params.filters = filters
   view.value.filters = filters
+  currentPage.value = 1 // Reset to first page when filters change
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateSort(order_by) {
+  if (list.value.loading) return
   viewUpdated.value = true
   if (!defaultParams.value) {
     defaultParams.value = getParams()
@@ -925,14 +1006,12 @@ function updateSort(order_by) {
   list.value.params = defaultParams.value
   list.value.params.order_by = order_by
   view.value.order_by = order_by
+  currentPage.value = 1 // Reset to first page when sort changes
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateGroupBy(group_by_field) {
+  if (list.value.loading) return
   viewUpdated.value = true
   if (!defaultParams.value) {
     defaultParams.value = getParams()
@@ -940,11 +1019,8 @@ function updateGroupBy(group_by_field) {
   list.value.params = defaultParams.value
   list.value.params.view.group_by_field = group_by_field
   view.value.group_by_field = group_by_field
+  currentPage.value = 1 // Reset to first page when group by changes
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateColumns(obj) {
@@ -1402,6 +1478,12 @@ defineExpose({
   updateFilter,
   // Expose to allow pages to programmatically set/reset page length
   updatePageLength,
+  resetPageLengthToDefault,
+  // Expose pagination methods
+  goToPage,
+  handlePageSizeChange,
+  currentPage,
+  currentPageFromData, // Expose the computed current page
 })
 
 // Watchers
@@ -1409,6 +1491,9 @@ watch(
   () => getView(route.query.view, route.params.viewType, props.doctype),
   (value, old_value) => {
     if (_.isEqual(value, old_value)) return
+    // Reset page length when view changes
+    resetPageLengthToDefault()
+    currentPage.value = 1 // Reset to first page when view changes
     reload()
   },
   { deep: true },
@@ -1416,6 +1501,9 @@ watch(
 
 watch([() => route, () => route.params.viewType], (value, old_value) => {
   if (value[0] === old_value[0] && value[1] === value[0]) return
+  // Reset page length when route changes (navigation between modules)
+  resetPageLengthToDefault()
+  currentPage.value = 1 // Reset to first page when route changes
   reload()
 })
 </script>

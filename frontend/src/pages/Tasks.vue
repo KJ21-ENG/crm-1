@@ -176,6 +176,8 @@
     @loadMore="() => loadMore++"
     @columnWidthUpdated="() => triggerResize++"
     @updatePageCount="(count) => (updatedPageCount = count)"
+    @pageChange="(page) => viewControls.goToPage(page)"
+    @pageSizeChange="(pageSize) => viewControls.handlePageSizeChange(pageSize)"
     @showTask="showTask"
     @applyFilter="(data) => viewControls.applyFilter(data)"
     @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"

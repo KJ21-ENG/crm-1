@@ -248,15 +248,14 @@
       </template>
     </ListSelectBanner>
     </ListView>
-  <ListFooter
-    v-if="pageLengthCount"
+  <Pagination
+    v-if="pageLengthCount && options.totalCount > 0"
     class="border-t sm:px-5 px-3 py-2"
-    v-model="pageLengthCount"
-    :options="{
-      rowCount: options.rowCount,
-      totalCount: options.totalCount,
-    }"
-    @loadMore="emit('loadMore')"
+    :current-page="currentPage"
+    :page-size="pageLengthCount"
+    :total-count="options.totalCount"
+    @page-change="handlePageChange"
+    @page-size-change="handlePageSizeChange"
   />
   <ListBulkActions ref="listBulkActionsRef" v-model="list" doctype="CRM Ticket" />
 </template>
@@ -269,6 +268,7 @@ import EmailIcon from '@/components/Icons/EmailIcon.vue'
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
 import ListRows from '@/components/ListViews/ListRows.vue'
+import Pagination from '@/components/Pagination.vue'
 import {
   Avatar,
   ListView,
@@ -276,7 +276,6 @@ import {
   ListHeaderItem,
   ListSelectBanner,
   ListRowItem,
-  ListFooter,
   Dropdown,
   Tooltip,
   Badge,
@@ -316,6 +315,8 @@ const emit = defineEmits([
   'applyLikeFilter',
   'likeDoc',
   'selectionsChanged',
+  'pageChange',
+  'pageSizeChange',
 ])
 
 const route = useRoute()
@@ -348,4 +349,36 @@ defineExpose({
     () => listBulkActionsRef.value?.customListActions,
   ),
 })
+
+// Add pagination computed properties
+const currentPage = computed(() => {
+  // Use the current page from the list data if available, otherwise fallback to 1
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  const pageLength = list.value.data.page_length
+  const calculatedPage = Math.floor(start / pageLength) + 1
+  
+  console.log('🔍 TicketsListView Debug - Current page calculation:', {
+    start,
+    pageLength,
+    calculatedPage,
+    listData: list.value?.data
+  })
+  
+  return calculatedPage
+})
+
+const totalPages = computed(() => {
+  if (!list.value?.data?.total_count || !list.value?.data?.page_length) return 1
+  return Math.ceil(list.value.data.total_count / list.value.data.page_length)
+})
+
+// Add pagination methods
+function handlePageChange(page) {
+  emit('pageChange', page)
+}
+
+function handlePageSizeChange(pageSize) {
+  emit('pageSizeChange', pageSize)
+}
 </script> 

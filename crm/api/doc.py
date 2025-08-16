@@ -280,6 +280,7 @@ def get_data(
 	order_by: str,
 	page_length=20,
 	page_length_count=20,
+	start=0,  # Add start parameter for pagination
 	column_field=None,
 	title_field=None,
 	columns=[],
@@ -295,6 +296,7 @@ def get_data(
 	frappe.logger().info(f"🔍 Backend Debug - Default filters: {default_filters}")
 	frappe.logger().info(f"🔍 Backend Debug - Current user: {frappe.session.user}")
 	frappe.logger().info(f"🔍 Backend Debug - Original order_by: {order_by}")
+	frappe.logger().info(f"🔍 Backend Debug - Pagination: start={start}, page_length={page_length}")
 	
 	custom_view = False
 	filters = frappe._dict(filters)
@@ -416,12 +418,12 @@ def get_data(
 			# Ensure image field is included for customer avatar display
 			if "image" not in rows:
 				rows.append("image")
-			data = get_ticket_list_with_customer_data(rows, filters, order_by, page_length)
+			data = get_ticket_list_with_customer_data(rows, filters, order_by, page_length, start)
 		elif doctype == "CRM Lead" and "lead_name" in rows:
 			# Ensure image field is included for customer avatar display
 			if "image" not in rows:
 				rows.append("image")
-			data = get_lead_list_with_customer_data(rows, filters, order_by, page_length)
+			data = get_lead_list_with_customer_data(rows, filters, order_by, page_length, start)
 		else:
 			data = (
 				frappe.get_list(
@@ -430,6 +432,7 @@ def get_data(
 					filters=filters,
 					order_by=order_by,
 					page_length=page_length,
+					start=start,  # Add start parameter for pagination
 				)
 				or []
 			)
@@ -592,7 +595,6 @@ def get_data(
 		"data": data,
 		"columns": columns,
 		"rows": rows,
-		"fields": fields,
 		"column_field": column_field,
 		"title_field": title_field,
 		"kanban_columns": kanban_columns,
@@ -600,6 +602,7 @@ def get_data(
 		"group_by_field": group_by_field,
 		"page_length": page_length,
 		"page_length_count": page_length_count,
+		"start": start,  # Add start parameter to response
 		"is_default": is_default,
 		"views": get_views(doctype),
 		"total_count": frappe.get_list(doctype, filters=filters, fields="count(*) as total_count")[
@@ -892,7 +895,7 @@ def delete_bulk_docs(doctype, items, delete_linked=False):
 	return "success"
 
 
-def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
+def get_ticket_list_with_customer_data(rows, filters, order_by, page_length, start):
 	"""
 	Get ticket list data with customer information joined from customer table.
 	Prioritizes customer_name from customer table over ticket table.
@@ -981,6 +984,7 @@ def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
 		WHERE {where_clause}
 		ORDER BY {order_clause}
 		LIMIT {page_length}
+		OFFSET {start}
 	"""
 	
 	try:
@@ -995,10 +999,11 @@ def get_ticket_list_with_customer_data(rows, filters, order_by, page_length):
 			filters=filters,
 			order_by=order_by,
 			page_length=page_length,
+			start=start,
 		) or []
 
 
-def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
+def get_lead_list_with_customer_data(rows, filters, order_by, page_length, start):
 	"""
 	Get lead list data with customer information joined from customer table.
 	Prioritizes customer_name from customer table over lead_name in lead table.
@@ -1086,6 +1091,7 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
 		WHERE {where_clause}
 		ORDER BY {order_clause}
 		LIMIT {page_length}
+		OFFSET {start}
 	"""
 	
 	try:
@@ -1100,4 +1106,5 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length):
 			filters=filters,
 			order_by=order_by,
 			page_length=page_length,
+			start=start,
 		) or []
