@@ -437,7 +437,7 @@ const trendsChartTitle = computed(() => {
     case 'weekly':
       return '7-Day Trends'
     case 'monthly':
-      return '30-Day Trends'
+      return 'Current Month Trends'
     default:
       return 'Trends'
   }
@@ -491,8 +491,12 @@ const getViewTooltip = (viewType) => {
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
       return `${formatDate(weekAgo)} - ${formatDate(today)}`
     case 'monthly':
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-      return `${formatDate(monthAgo)} - ${formatDate(today)}`
+      // Show current month instead of past 30 days
+      const currentMonth = today.getMonth()
+      const currentYear = today.getFullYear()
+      const firstDay = new Date(currentYear, currentMonth, 1)
+      const lastDay = new Date(currentYear, currentMonth + 1, 0)
+      return `${formatDate(firstDay)} - ${formatDate(lastDay)}`
     default:
       return 'Date range'
   }
@@ -512,10 +516,17 @@ onMounted(async () => {
   console.log('🔍 DEBUG: Is admin user:', isAdminUser.value)
   console.log('🔍 DEBUG: Current user role:', currentUserRole.value)
   
+  // Set default view to monthly BEFORE initializing tabs
+  currentView.value = 'monthly'
+  console.log('🔍 DEBUG: Set currentView to monthly:', currentView.value)
+  
+  // Force the view change to propagate
+  await changeView('monthly')
+  
   initializeTabFromURL()
-  console.log('🔍 DEBUG: Initializing dashboard data')
+  console.log('🔍 DEBUG: Initializing dashboard data with monthly view')
   fetchDashboardData()
-  console.log('🔍 DEBUG: Initializing user dashboard data')
+  console.log('🔍 DEBUG: Initializing user dashboard data with monthly view')
   fetchUserDashboardData()
   // Auto-refresh disabled - removed startAutoRefresh() call
 })

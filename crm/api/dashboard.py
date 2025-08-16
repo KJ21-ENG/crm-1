@@ -291,8 +291,17 @@ def get_date_range(view):
         start_date = get_datetime(add_days(today, -7))
         end_date = now
     elif view == 'monthly':
-        start_date = get_datetime(add_days(today, -30))
-        end_date = now
+        # For monthly view, show current month (1st day to last day of current month)
+        current_month = today.month
+        current_year = today.year
+        start_date = datetime(current_year, current_month, 1)  # First day of current month
+        # Get last day of current month
+        if current_month == 12:
+            end_date = datetime(current_year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = datetime(current_year, current_month + 1, 1) - timedelta(days=1)
+        # Set end time to end of day
+        end_date = datetime.combine(end_date.date(), datetime.max.time())
     else:
         start_date = get_datetime(today)
         end_date = now

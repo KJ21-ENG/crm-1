@@ -7,7 +7,7 @@ export function useDashboard() {
   const dashboardData = ref(null)
   const userDashboardData = ref(null)
   const lastUpdated = ref(null)
-  const currentView = ref('daily') // 'daily', 'weekly', 'monthly'
+  const currentView = ref('monthly') // 'daily', 'weekly', 'monthly'
   const autoRefreshInterval = ref(null)
 
   const fetchDashboardData = async (view = 'daily') => {
@@ -153,7 +153,10 @@ export function useDashboard() {
   }
 
   const changeView = (view) => {
+    console.log('🔍 DEBUG: changeView called with:', view)
+    console.log('🔍 DEBUG: Previous currentView:', currentView.value)
     currentView.value = view
+    console.log('🔍 DEBUG: New currentView:', currentView.value)
     Promise.all([
       fetchDashboardData(view),
       fetchUserDashboardData(view)
