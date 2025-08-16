@@ -19,10 +19,9 @@
           </div>
         </div>
         <div class="flex-shrink-0">
-          <div class="text-right">
-            <div class="text-2xl font-bold text-blue-600">{{ performanceMetrics.efficiency_score || 0 }}</div>
-            <div class="text-sm text-gray-600">Efficiency Score</div>
-          </div>
+          <!-- Efficiency Score -->
+          <!-- <div class="text-2xl font-bold text-blue-600">{{ performanceMetrics.efficiency_score || 0 }}</div>
+          <div class="text-sm text-gray-600">Efficiency Score</div> -->
         </div>
       </div>
     </div>

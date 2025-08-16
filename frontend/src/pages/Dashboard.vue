@@ -59,12 +59,12 @@
       </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="bg-white border-b border-gray-200">
+    <!-- Tab Navigation - Only show if user has access to multiple tabs -->
+    <div v-if="availableTabs.length > 1" class="bg-white border-b border-gray-200">
       <div class="px-4">
         <nav class="flex space-x-8" role="tablist">
           <button
-            v-for="(tab, index) in tabs"
+            v-for="(tab, index) in availableTabs"
             :key="tab.id"
             @click="activeTab = tab.id"
             @keydown.enter="activeTab = tab.id"
@@ -99,179 +99,200 @@
 
     <!-- Main Content -->
     <div class="p-4">
+      <!-- Loading State for User Role -->
+      <div v-if="userRoleLoading" class="mb-4">
+        <div class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span class="ml-3 text-gray-600">Loading user permissions...</span>
+        </div>
+      </div>
+
       <!-- Error State -->
-      <div v-if="error" class="mb-4">
+      <div v-else-if="userRoleError" class="mb-4">
         <Alert variant="error">
           <div class="flex items-center">
             <FeatherIcon name="alert-circle" class="w-5 h-5 mr-2" />
-            {{ error }}
+            {{ userRoleError }}
           </div>
         </Alert>
       </div>
 
-      <!-- Tab Content Header -->
-      <div class="mb-4">
-        <div class="flex items-center space-x-2 text-sm text-gray-600">
-          <FeatherIcon name="home" class="w-4 h-4" />
-          <span>/</span>
-          <span class="font-medium text-gray-900">{{ getActiveTabLabel() }}</span>
-        </div>
-      </div>
-
-      <!-- Analytics Tab Content -->
-      <div 
-        v-if="activeTab === 'analytics'"
-        :id="`tab-panel-analytics`"
-        role="tabpanel"
-        :aria-labelledby="`tab-analytics`"
-      >
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <StatsCard
-            v-for="card in statsCards"
-            :key="card.title"
-            :title="card.title"
-            :value="card.value"
-            :subtitle="card.subtitle"
-            :icon="card.icon"
-            :color="card.color"
-            :change="card.change"
-          />
+      <!-- Dashboard Content -->
+      <div v-else>
+        <!-- Error State -->
+        <div v-if="error" class="mb-4">
+          <Alert variant="error">
+            <div class="flex items-center">
+              <FeatherIcon name="alert-circle" class="w-5 h-5 mr-2" />
+              {{ error }}
+            </div>
+          </Alert>
         </div>
 
-        <!-- Charts and Analytics -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <!-- Lead Status Distribution -->
-          <ChartCard
-            :title="`Lead Status Distribution (${getViewContext()})`"
-            :data="leadStatusChart"
-            type="doughnut"
-            :loading="loading"
-            :error="error"
-            @refresh="refreshDashboard"
-          />
-
-          <!-- Ticket Status Distribution -->
-          <ChartCard
-            :title="`Ticket Status Distribution (${getViewContext()})`"
-            :data="ticketStatusChart"
-            type="doughnut"
-            :loading="loading"
-            :error="error"
-            @refresh="refreshDashboard"
-          />
+        <!-- Tab Content Header -->
+        <div class="mb-4">
+          <div class="flex items-center space-x-2 text-sm text-gray-600">
+            <FeatherIcon name="home" class="w-4 h-4" />
+            <span>/</span>
+            <span class="font-medium text-gray-900">{{ getActiveTabLabel() }}</span>
+          </div>
         </div>
 
-        <!-- Trends Chart -->
-        <div class="mb-6">
-          <ChartCard
-            :title="trendsChartTitle"
-            :data="trendsChart"
-            type="line"
-            :loading="loading"
-            :error="error"
-            @refresh="refreshDashboard"
-          />
-        </div>
+        <!-- Analytics Tab Content - Only show for admin users -->
+        <div 
+          v-if="activeTab === 'analytics' && isAdminUser"
+          :id="`tab-panel-analytics`"
+          role="tabpanel"
+          :aria-labelledby="`tab-analytics`"
+        >
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <StatsCard
+              v-for="card in statsCards"
+              :key="card.title"
+              :title="card.title"
+              :value="card.value"
+              :subtitle="card.subtitle"
+              :icon="card.icon"
+              :color="card.color"
+              :change="card.change"
+            />
+          </div>
 
-        <!-- Bottom Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Recent Activities -->
-          <div class="lg:col-span-2">
-            <ActivityFeed
-              :activities="recentActivities"
+          <!-- Charts and Analytics -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Lead Status Distribution -->
+            <ChartCard
+              :title="`Lead Status Distribution (${getViewContext()})`"
+              :data="leadStatusChart"
+              type="doughnut"
+              :loading="loading"
+              :error="error"
+              @refresh="refreshDashboard"
+            />
+
+            <!-- Ticket Status Distribution -->
+            <ChartCard
+              :title="`Ticket Status Distribution (${getViewContext()})`"
+              :data="ticketStatusChart"
+              type="doughnut"
               :loading="loading"
               :error="error"
               @refresh="refreshDashboard"
             />
           </div>
 
-          <!-- Top Performers -->
-          <div class="space-y-4">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-3">Top Performers</h3>
-              
-              <div v-if="loading" class="space-y-3">
-                <div v-for="i in 5" :key="i" class="animate-pulse">
-                  <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
-                    <div class="flex-1">
-                      <div class="h-4 bg-gray-200 rounded w-1/2"></div>
-                      <div class="h-3 bg-gray-200 rounded w-1/3 mt-1"></div>
+          <!-- Trends Chart -->
+          <div class="mb-6">
+            <ChartCard
+              :title="trendsChartTitle"
+              :data="trendsChart"
+              type="line"
+              :loading="loading"
+              :error="error"
+              @refresh="refreshDashboard"
+            />
+          </div>
+
+          <!-- Bottom Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Recent Activities -->
+            <div class="lg:col-span-2">
+              <ActivityFeed
+                :activities="recentActivities"
+                :loading="loading"
+                :error="error"
+                @refresh="refreshDashboard"
+              />
+            </div>
+
+            <!-- Top Performers -->
+            <div class="space-y-4">
+              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Top Performers</h3>
+                
+                <div v-if="loading" class="space-y-3">
+                  <div v-for="i in 5" :key="i" class="animate-pulse">
+                    <div class="flex items-center space-x-3">
+                      <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
+                      <div class="flex-1">
+                        <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                        <div class="h-3 bg-gray-200 rounded w-1/3 mt-1"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div v-else-if="error" class="text-center py-6 text-red-600">
-                <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
-                <p>{{ error }}</p>
-              </div>
-              
-              <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-6 text-gray-500">
-                <FeatherIcon name="users" class="w-8 h-8 mx-auto mb-2" />
-                <p>No performance data available</p>
-              </div>
-              
-              <div v-else class="space-y-3">
-                <div 
-                  v-for="(performer, index) in topPerformers" 
-                  :key="performer.user.name"
-                  class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span class="text-sm font-medium text-blue-600">
-                        {{ performer.user.full_name?.charAt(0) || performer.user.name?.charAt(0) }}
-                      </span>
+                
+                <div v-else-if="error" class="text-center py-6 text-red-600">
+                  <FeatherIcon name="alert-circle" class="w-8 h-8 mx-auto mb-2" />
+                  <p>{{ error }}</p>
+                </div>
+                
+                <div v-else-if="!topPerformers || topPerformers.length === 0" class="text-center py-6 text-gray-500">
+                  <FeatherIcon name="users" class="w-8 h-8 mx-auto mb-2" />
+                  <p>No performance data available</p>
+                </div>
+                
+                <div v-else class="space-y-3">
+                  <div 
+                    v-for="(performer, index) in topPerformers" 
+                    :key="performer.user.name"
+                    class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div class="flex-shrink-0">
+                      <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span class="text-sm font-medium text-blue-600">
+                          {{ performer.user.full_name?.charAt(0) || performer.user.name?.charAt(0) }}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900">
-                      {{ performer.user.full_name || performer.user.name }}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                      {{ performer.leads_assigned }} leads • {{ performer.tickets_assigned }} tickets
-                    </p>
-                  </div>
-                  
-                  <div class="flex-shrink-0">
-                    <Badge variant="blue" size="sm">
-                      #{{ index + 1 }}
-                    </Badge>
+                    
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-900">
+                        {{ performer.user.full_name || performer.user.name }}
+                      </p>
+                      <p class="text-sm text-gray-600">
+                        {{ performer.leads_assigned }} leads • {{ performer.tickets_assigned }} tickets
+                      </p>
+                    </div>
+                    
+                    <div class="flex-shrink-0">
+                      <Badge variant="blue" size="sm">
+                        #{{ index + 1 }}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Referral Analytics Tab Content -->
-      <div 
-        v-if="activeTab === 'referral'"
-        :id="`tab-panel-referral`"
-        role="tabpanel"
-        :aria-labelledby="`tab-referral`"
-      >
-        <ReferralAnalyticsDashboard />
-      </div>
+        <!-- Referral Analytics Tab Content - Only show for admin users -->
+        <div 
+          v-if="activeTab === 'referral' && isAdminUser"
+          :id="`tab-panel-referral`"
+          role="tabpanel"
+          :aria-labelledby="`tab-referral`"
+        >
+          <ReferralAnalyticsDashboard />
+        </div>
 
-      <!-- User Dashboard Tab Content -->
-      <div 
-        v-if="activeTab === 'user'"
-        :id="`tab-panel-user`"
-        role="tabpanel"
-        :aria-labelledby="`tab-user`"
-      >
-        <UserDashboard
-          :loading="loading"
-          :error="error"
-          :user-dashboard-data="userDashboardData"
-          :current-view="currentView"
-          @refresh="refreshDashboard"
-        />
+        <!-- User Dashboard Tab Content - Show for all users -->
+        <div 
+          v-if="activeTab === 'user'"
+          :id="`tab-panel-user`"
+          role="tabpanel"
+          :aria-labelledby="`tab-user`"
+        >
+          <UserDashboard
+            :loading="loading"
+            :error="error"
+            :user-dashboard-data="userDashboardData"
+            :current-view="currentView"
+            @refresh="refreshDashboard"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -287,6 +308,7 @@ import UserDashboard from '@/components/Dashboard/UserDashboard.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import { useDashboard } from '@/stores/dashboard'
+import { useUserRole } from '@/stores/userRole'
 
 const route = useRoute()
 const router = useRouter()
@@ -314,14 +336,62 @@ const {
   stopAutoRefresh
 } = useDashboard()
 
-// Tab system with URL routing
-const activeTab = ref('analytics')
+// User role management
+const { isAdminUser, currentUserRole, initializeUserRole, userRoleLoading, userRoleError } = useUserRole()
 
-// Initialize tab from URL query parameter
+// Tab system with role-based access control
+const activeTab = ref('user') // Default to user dashboard for non-admin users
+
+// Define all available tabs
+const allTabs = [
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: 'bar-chart-2',
+    badge: null,
+    adminOnly: true
+  },
+  {
+    id: 'referral',
+    label: 'Referral Analytics',
+    icon: 'users',
+    badge: {
+      text: 'New',
+      variant: 'green'
+    },
+    adminOnly: true
+  },
+  {
+    id: 'user',
+    label: 'User Dashboard',
+    icon: 'user',
+    badge: null,
+    adminOnly: false
+  }
+]
+
+// Computed property for available tabs based on user role
+const availableTabs = computed(() => {
+  if (isAdminUser.value) {
+    return allTabs
+  } else {
+    return allTabs.filter(tab => !tab.adminOnly)
+  }
+})
+
+// Initialize tab from URL query parameter or default based on role
 const initializeTabFromURL = () => {
   const tabFromURL = route.query.tab
-  if (tabFromURL && ['analytics', 'referral', 'user'].includes(tabFromURL)) {
+  
+  if (tabFromURL && availableTabs.value.some(tab => tab.id === tabFromURL)) {
     activeTab.value = tabFromURL
+  } else {
+    // Set default tab based on user role
+    if (isAdminUser.value) {
+      activeTab.value = 'analytics'
+    } else {
+      activeTab.value = 'user'
+    }
   }
 }
 
@@ -351,30 +421,6 @@ watch(activeTab, (newTab) => {
     }
   }
 })
-
-const tabs = [
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: 'bar-chart-2',
-    badge: null
-  },
-  {
-    id: 'referral',
-    label: 'Referral Analytics',
-    icon: 'users',
-    badge: {
-      text: 'New',
-      variant: 'green'
-    }
-  },
-  {
-    id: 'user',
-    label: 'User Dashboard',
-    icon: 'user',
-    badge: null
-  }
-]
 
 // View options
 const viewOptions = [
@@ -453,12 +499,19 @@ const getViewTooltip = (viewType) => {
 }
 
 const getActiveTabLabel = () => {
-  const tab = tabs.find(t => t.id === activeTab.value)
+  const tab = availableTabs.value.find(t => t.id === activeTab.value)
   return tab ? tab.label : 'Dashboard'
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log('🔍 DEBUG: Dashboard.vue mounted')
+  
+  // Initialize user role information first
+  await initializeUserRole()
+  
+  console.log('🔍 DEBUG: Is admin user:', isAdminUser.value)
+  console.log('🔍 DEBUG: Current user role:', currentUserRole.value)
+  
   initializeTabFromURL()
   console.log('🔍 DEBUG: Initializing dashboard data')
   fetchDashboardData()

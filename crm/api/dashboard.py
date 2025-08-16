@@ -220,6 +220,60 @@ def test_user_dashboard_api():
         return {"error": str(e), "status": "error"}
 
 
+@frappe.whitelist()
+def get_user_roles():
+    """Get current user's roles for frontend role-based access control"""
+    try:
+        print(f"🔍 DEBUG: get_user_roles called")
+        
+        # Get current user
+        current_user = frappe.session.user
+        print(f"🔍 DEBUG: Current user: {current_user}")
+        
+        # Check if user is authenticated
+        if not current_user or current_user == 'Guest':
+            print(f"❌ ERROR: User not authenticated: {current_user}")
+            return {"error": "User not authenticated", "debug": {"user": current_user}}
+        
+        try:
+            # Get user roles
+            user_roles = frappe.get_roles(current_user)
+            print(f"🔍 DEBUG: User roles: {user_roles}")
+            
+            # Get primary role (first non-system role)
+            primary_role = get_user_role(current_user)
+            print(f"🔍 DEBUG: Primary role: {primary_role}")
+            
+            result = {
+                "user": current_user,
+                "roles": user_roles,
+                "primary_role": primary_role,
+                "is_admin": any(role in ['Administrator', 'System Manager', 'CRM Manager', 'Dashboard Manager'] for role in user_roles),
+                "timestamp": str(frappe.utils.now())
+            }
+            
+            print(f"✅ SUCCESS: User roles fetched successfully")
+            print(f"🔍 DEBUG: Result: {result}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ ERROR: Error getting user roles: {str(e)}")
+            print(f"🔍 DEBUG: Exception type: {type(e).__name__}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+            frappe.log_error(f"Error getting user roles: {str(e)}")
+            return {"error": str(e), "debug": {"user": current_user}}
+            
+    except Exception as e:
+        print(f"❌ ERROR: get_user_roles API Error: {str(e)}")
+        print(f"🔍 DEBUG: Exception type: {type(e).__name__}")
+        import traceback
+        print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        frappe.log_error(f"get_user_roles API Error: {str(e)}")
+        return {"error": str(e), "debug": {"exception_type": type(e).__name__}}
+
+
 def get_date_range(view):
     """Get date range based on view type"""
     from frappe.utils import getdate, now_datetime, add_days, add_to_date, get_datetime
