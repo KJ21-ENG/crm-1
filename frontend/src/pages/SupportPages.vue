@@ -14,11 +14,6 @@
   
   <div class="flex h-full overflow-hidden">
     <div class="flex-1 flex flex-col">
-      <!-- Header -->
-      <div class="border-b px-5 py-4">
-        <h1 class="text-xl font-semibold text-ink-gray-9">{{ __('Support Pages') }}</h1>
-        <p class="text-sm text-ink-gray-6 mt-1">{{ __('Manage support page links for WhatsApp integration') }}</p>
-      </div>
       
       <!-- Content -->
       <div class="flex-1 overflow-auto">
