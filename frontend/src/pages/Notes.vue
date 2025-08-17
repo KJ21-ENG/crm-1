@@ -16,7 +16,6 @@
     v-model:updatedPageCount="updatedPageCount"
     doctype="FCRM Note"
     :options="{
-      hideColumnsButton: true,
       defaultViewName: __('Notes View'),
     }"
   />
