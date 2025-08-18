@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-white">
     <!-- Header -->
     <div class="bg-white border-b border-gray-200 px-4 py-3">
       <div class="flex items-center justify-between">
@@ -353,7 +353,7 @@
           :aria-labelledby="`tab-user`"
         >
           <!-- User Selector Header (Admin Only) -->
-          <div v-if="isAdminUser" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div v-if="isAdminUser" class="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-4">
                 <span class="text-sm font-medium text-gray-700">View User Dashboard:</span>
