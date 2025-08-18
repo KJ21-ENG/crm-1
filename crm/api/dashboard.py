@@ -43,14 +43,14 @@ def get_dashboard_data(view='daily', custom_start_date=None, custom_end_date=Non
         
         try:
             result = {
-                "overview": get_overview_stats(view),
-                "lead_analytics": get_lead_analytics(view),
-                "ticket_analytics": get_ticket_analytics(view),
-                "task_analytics": get_task_analytics(view),
-                "call_log_analytics": get_call_log_analytics(view),
-                "user_performance": get_user_performance(view),
-                "recent_activities": get_recent_activities(view),
-                "trends": get_trends_data(view),
+                "overview": get_overview_stats(view, custom_start_date, custom_end_date),
+                "lead_analytics": get_lead_analytics(view, custom_start_date, custom_end_date),
+                "ticket_analytics": get_ticket_analytics(view, custom_start_date, custom_end_date),
+                "task_analytics": get_task_analytics(view, custom_start_date, custom_end_date),
+                "call_log_analytics": get_call_log_analytics(view, custom_start_date, custom_end_date),
+                "user_performance": get_user_performance(view, custom_start_date, custom_end_date),
+                "recent_activities": get_recent_activities(view, custom_start_date, custom_end_date),
+                "trends": get_trends_data(view, custom_start_date, custom_end_date),
                 "quick_actions": get_quick_actions(),
                 "date_range": {
                     "view": view,
@@ -155,17 +155,17 @@ def get_user_dashboard_data(view='daily', custom_start_date=None, custom_end_dat
         try:
             result = {
                 "user_info": get_user_info(target_user),
-                "overview": get_user_overview_stats(target_user, view),
-                "lead_analytics": get_user_lead_analytics(target_user, view),
-                "ticket_analytics": get_user_ticket_analytics(target_user, view),
-                "task_analytics": get_user_task_analytics(target_user, view),
-                "call_log_analytics": get_user_call_log_analytics(target_user, view),
-                "performance_metrics": get_user_performance_metrics(target_user, view),
-                "recent_activities": get_user_recent_activities(target_user, view),
-                "trends": get_user_trends_data(target_user, view),
-                "achievements": get_user_achievements(target_user, view),
-                "goals": get_user_goals(target_user, view),
-                "peak_hours": get_user_peak_hours(target_user, view),
+                "overview": get_user_overview_stats(target_user, view, custom_start_date, custom_end_date),
+                "lead_analytics": get_user_lead_analytics(target_user, view, custom_start_date, custom_end_date),
+                "ticket_analytics": get_user_ticket_analytics(target_user, view, custom_start_date, custom_end_date),
+                "task_analytics": get_user_task_analytics(target_user, view, custom_start_date, custom_end_date),
+                "call_log_analytics": get_user_call_log_analytics(target_user, view, custom_start_date, custom_end_date),
+                "performance_metrics": get_user_performance_metrics(target_user, view, custom_start_date, custom_end_date),
+                "recent_activities": get_user_recent_activities(target_user, view, custom_start_date, custom_end_date),
+                "trends": get_user_trends_data(target_user, view, custom_start_date, custom_end_date),
+                "achievements": get_user_achievements(target_user, view, custom_start_date, custom_end_date),
+                "goals": get_user_goals(target_user, view, custom_start_date, custom_end_date),
+                "peak_hours": get_user_peak_hours(target_user, view, custom_start_date, custom_end_date),
                 "date_range": {
                     "view": view,
                     "start_date": str(start_date),
@@ -378,9 +378,9 @@ def get_date_range(view, custom_start_date=None, custom_end_date=None):
     return start_date, end_date
 
 
-def get_overview_stats(view='daily'):
+def get_overview_stats(view='daily', custom_start_date=None, custom_end_date=None):
     """Get high-level overview statistics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     # Get total call logs
@@ -407,13 +407,13 @@ def get_overview_stats(view='daily'):
         }),
         "total_call_logs": total_call_logs,
         "missed_calls": missed_calls,
-        "avg_response_time": get_avg_response_time(view)
+        "avg_response_time": get_avg_response_time(view, custom_start_date, custom_end_date)
     }
 
 
-def get_lead_analytics(view='daily'):
+def get_lead_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get lead-related analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -439,9 +439,9 @@ def get_lead_analytics(view='daily'):
     }
 
 
-def get_ticket_analytics(view='daily'):
+def get_ticket_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get ticket-related analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -472,9 +472,9 @@ def get_ticket_analytics(view='daily'):
     }
 
 
-def get_task_analytics(view='daily'):
+def get_task_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get task-related analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -493,9 +493,9 @@ def get_task_analytics(view='daily'):
     }
 
 
-def get_call_log_analytics(view='daily'):
+def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get call log analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -520,9 +520,9 @@ def get_call_log_analytics(view='daily'):
     }
 
 
-def get_user_performance(view='daily'):
+def get_user_performance(view='daily', custom_start_date=None, custom_end_date=None):
     """Get user performance metrics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     users = frappe.db.get_list("User", 
@@ -543,16 +543,16 @@ def get_user_performance(view='daily'):
             "tasks_assigned": frappe.db.count("CRM Task", filters={
                 **date_filter, "assigned_to": user.name
             }),
-            "recent_activity": get_user_recent_activity(user.name, view)
+            "recent_activity": get_user_recent_activity(user.name, view, custom_start_date, custom_end_date)
         }
         performance_data.append(user_data)
     
     return performance_data
 
 
-def get_user_recent_activity(user, view='daily'):
+def get_user_recent_activity(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get recent activity for a specific user"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     activities = []
@@ -578,9 +578,9 @@ def get_user_recent_activity(user, view='daily'):
     return sorted(activities, key=lambda x: x["data"]["creation"], reverse=True)[:5]
 
 
-def get_recent_activities(view='daily'):
+def get_recent_activities(view='daily', custom_start_date=None, custom_end_date=None):
     """Get recent activities across all modules"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     activities = []
@@ -631,7 +631,7 @@ def get_recent_activities(view='daily'):
     return sorted(activities, key=lambda x: x["data"]["creation"], reverse=True)[:10]
 
 
-def get_trends_data(view='daily'):
+def get_trends_data(view='daily', custom_start_date=None, custom_end_date=None):
     """Get trends data for charts"""
     from frappe.utils import getdate, now_datetime, add_days
     from datetime import datetime, timedelta
@@ -698,9 +698,9 @@ def get_trends_data(view='daily'):
     }
 
 
-def get_avg_response_time(view='daily'):
+def get_avg_response_time(view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate average response time for tickets"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     tickets_with_response = frappe.db.get_list("CRM Ticket",
@@ -824,9 +824,9 @@ def get_user_role(user):
         return "User"
 
 
-def get_user_overview_stats(user, view='daily'):
+def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific overview statistics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -851,14 +851,14 @@ def get_user_overview_stats(user, view='daily'):
         "calls_made": frappe.db.count("CRM Call Log", filters={
             **date_filter, "employee": user
         }),
-        "total_duration": get_user_total_call_duration(user, view),
-        "avg_response_time": get_user_avg_response_time(user, view)
+        "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
+        "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
     }
 
 
-def get_user_lead_analytics(user, view='daily'):
+def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific lead analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -868,7 +868,7 @@ def get_user_lead_analytics(user, view='daily'):
             group_by="status",
             order_by="count desc"
         ),
-        "conversion_rate": get_user_lead_conversion_rate(user, view),
+        "conversion_rate": get_user_lead_conversion_rate(user, view, custom_start_date, custom_end_date),
         "recent_leads": frappe.db.get_list("CRM Lead",
             fields=["name", "lead_name", "status", "creation", "follow_up_date"],
             filters={**date_filter, "lead_owner": user},
@@ -884,9 +884,9 @@ def get_user_lead_analytics(user, view='daily'):
     }
 
 
-def get_user_ticket_analytics(user, view='daily'):
+def get_user_ticket_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific ticket analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -908,13 +908,13 @@ def get_user_ticket_analytics(user, view='daily'):
             order_by="creation desc",
             limit=5
         ),
-        "resolution_rate": get_user_ticket_resolution_rate(user, view)
+        "resolution_rate": get_user_ticket_resolution_rate(user, view, custom_start_date, custom_end_date)
     }
 
 
-def get_user_task_analytics(user, view='daily'):
+def get_user_task_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific task analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -936,13 +936,13 @@ def get_user_task_analytics(user, view='daily'):
             order_by="creation desc",
             limit=5
         ),
-        "completion_rate": get_user_task_completion_rate(user, view)
+        "completion_rate": get_user_task_completion_rate(user, view, custom_start_date, custom_end_date)
     }
 
 
-def get_user_call_log_analytics(user, view='daily'):
+def get_user_call_log_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific call log analytics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     return {
@@ -958,7 +958,7 @@ def get_user_call_log_analytics(user, view='daily'):
             group_by="status",
             order_by="count desc"
         ),
-        "total_duration": get_user_total_call_duration(user, view),
+        "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
         "recent_calls": frappe.db.get_list("CRM Call Log",
             fields=["name", "from", "to", "type", "status", "duration", "start_time"],
             filters={**date_filter, "employee": user},
@@ -968,9 +968,9 @@ def get_user_call_log_analytics(user, view='daily'):
     }
 
 
-def get_user_performance_metrics(user, view='daily'):
+def get_user_performance_metrics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get comprehensive user performance metrics"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     # Get previous period for comparison
@@ -1017,13 +1017,13 @@ def get_user_performance_metrics(user, view='daily'):
             "tickets": ticket_improvement,
             "tasks": task_improvement
         },
-        "efficiency_score": calculate_efficiency_score(user, view)
+        "efficiency_score": calculate_efficiency_score(user, view, custom_start_date, custom_end_date)
     }
 
 
-def get_user_recent_activities(user, view='daily'):
+def get_user_recent_activities(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific recent activities"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     activities = []
@@ -1067,7 +1067,7 @@ def get_user_recent_activities(user, view='daily'):
     return sorted(activities, key=lambda x: x["data"]["creation"], reverse=True)[:10]
 
 
-def get_user_trends_data(user, view='daily'):
+def get_user_trends_data(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific trends data"""
     from frappe.utils import getdate, now_datetime, add_days
     from datetime import datetime, timedelta
@@ -1159,9 +1159,9 @@ def get_user_trends_data(user, view='daily'):
     }
 
 
-def get_user_achievements(user, view='daily'):
+def get_user_achievements(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user achievements and milestones"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     achievements = []
@@ -1221,9 +1221,9 @@ def get_user_achievements(user, view='daily'):
     return achievements
 
 
-def get_user_goals(user, view='daily'):
+def get_user_goals(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user goals and targets with actual progress data"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     # Calculate actual progress from database
@@ -1312,9 +1312,9 @@ def get_user_goals(user, view='daily'):
     ]
 
 
-def get_user_peak_hours(user, view='daily'):
+def get_user_peak_hours(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user's peak activity hours based on call logs and activities"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     # Get call log data for peak hours analysis
@@ -1396,9 +1396,9 @@ def get_user_peak_hours(user, view='daily'):
 
 
 # Helper functions
-def get_user_avg_response_time(user, view='daily'):
+def get_user_avg_response_time(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate average response time for user's tickets"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     tickets_with_response = frappe.db.get_list("CRM Ticket",
@@ -1412,9 +1412,9 @@ def get_user_avg_response_time(user, view='daily'):
     return 0
 
 
-def get_user_lead_conversion_rate(user, view='daily'):
+def get_user_lead_conversion_rate(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate user's lead conversion rate"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     total_leads = frappe.db.count("CRM Lead", filters={**date_filter, "lead_owner": user})
@@ -1427,9 +1427,9 @@ def get_user_lead_conversion_rate(user, view='daily'):
     return 0
 
 
-def get_user_ticket_resolution_rate(user, view='daily'):
+def get_user_ticket_resolution_rate(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate user's ticket resolution rate"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     total_tickets = frappe.db.count("CRM Ticket", filters={**date_filter, "assigned_to": user})
@@ -1442,9 +1442,9 @@ def get_user_ticket_resolution_rate(user, view='daily'):
     return 0
 
 
-def get_user_task_completion_rate(user, view='daily'):
+def get_user_task_completion_rate(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate user's task completion rate"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     total_tasks = frappe.db.count("CRM Task", filters={**date_filter, "assigned_to": user})
@@ -1457,9 +1457,9 @@ def get_user_task_completion_rate(user, view='daily'):
     return 0
 
 
-def get_user_total_call_duration(user, view='daily'):
+def get_user_total_call_duration(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate total call duration for user"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     call_logs = frappe.db.get_list("CRM Call Log",
@@ -1478,16 +1478,16 @@ def calculate_improvement(current, previous):
     return round(((current - previous) / previous) * 100, 1)
 
 
-def calculate_efficiency_score(user, view='daily'):
+def calculate_efficiency_score(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate overall efficiency score for user"""
-    start_date, end_date = get_date_range(view)
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
     # Get various metrics
-    lead_conversion_rate = get_user_lead_conversion_rate(user, view)
-    ticket_resolution_rate = get_user_ticket_resolution_rate(user, view)
-    task_completion_rate = get_user_task_completion_rate(user, view)
-    avg_response_time = get_user_avg_response_time(user, view)
+    lead_conversion_rate = get_user_lead_conversion_rate(user, view, custom_start_date, custom_end_date)
+    ticket_resolution_rate = get_user_ticket_resolution_rate(user, view, custom_start_date, custom_end_date)
+    task_completion_rate = get_user_task_completion_rate(user, view, custom_start_date, custom_end_date)
+    avg_response_time = get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
     
     # Calculate efficiency score (0-100)
     # Higher conversion rates and completion rates = higher score
