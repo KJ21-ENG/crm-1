@@ -643,23 +643,23 @@ def get_trends_data(view='daily', custom_start_date=None, custom_end_date=None):
     ticket_counts = []
     
     if view == 'daily':
-        # Show last 24 hours (hourly data points)
+        # Show 24 hours (hourly data points) from 00:00 to 23:00
         for i in range(24):
-            # Fix: Use proper datetime objects for hourly calculations
+            # Use proper datetime objects for hourly calculations
             hour_start = datetime.combine(today, datetime.min.time()) + timedelta(hours=i)
             hour_end = hour_start + timedelta(hours=1) if i < 23 else datetime.combine(today, datetime.max.time())
             
-            dates.insert(0, hour_start.strftime("%H:00"))
+            dates.append(hour_start.strftime("%H:00"))
             
             lead_count = frappe.db.count("CRM Lead", filters={
                 "creation": ["between", [hour_start, hour_end]]
             })
-            lead_counts.insert(0, lead_count)
+            lead_counts.append(lead_count)
             
             ticket_count = frappe.db.count("CRM Ticket", filters={
                 "creation": ["between", [hour_start, hour_end]]
             })
-            ticket_counts.insert(0, ticket_count)
+            ticket_counts.append(ticket_count)
     elif view == 'weekly':
         # Show last 7 days (daily data points)
         for i in range(7):
@@ -1080,30 +1080,30 @@ def get_user_trends_data(user, view='daily', custom_start_date=None, custom_end_
     task_counts = []
     
     if view == 'daily':
-        # Show last 24 hours (hourly data points)
+        # Show 24 hours (hourly data points) from 00:00 to 23:00
         for i in range(24):
             hour_start = datetime.combine(today, datetime.min.time()) + timedelta(hours=i)
             hour_end = hour_start + timedelta(hours=1) if i < 23 else datetime.combine(today, datetime.max.time())
             
-            dates.insert(0, hour_start.strftime("%H:00"))
+            dates.append(hour_start.strftime("%H:00"))
             
             lead_count = frappe.db.count("CRM Lead", filters={
                 "creation": ["between", [hour_start, hour_end]],
                 "lead_owner": user
             })
-            lead_counts.insert(0, lead_count)
+            lead_counts.append(lead_count)
             
             ticket_count = frappe.db.count("CRM Ticket", filters={
                 "creation": ["between", [hour_start, hour_end]],
                 "assigned_to": user
             })
-            ticket_counts.insert(0, ticket_count)
+            ticket_counts.append(ticket_count)
             
             task_count = frappe.db.count("CRM Task", filters={
                 "creation": ["between", [hour_start, hour_end]],
                 "assigned_to": user
             })
-            task_counts.insert(0, task_count)
+            task_counts.append(task_count)
     elif view == 'weekly':
         # Show last 7 days (daily data points)
         for i in range(7):
