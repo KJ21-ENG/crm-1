@@ -68,6 +68,11 @@ const routes = [
     name: 'Tasks',
     component: () => import('@/pages/Tasks.vue'),
   },
+  {
+    path: '/requests',
+    name: 'Requests',
+    component: () => import('@/pages/Requests.vue'),
+  },
   // Commented out - Contacts module not in use
   // {
   //   alias: '/contacts',

@@ -1,28 +1,7 @@
 <template>
   <Dialog
     v-model="show"
-    :options="{
-      title: __('Assign to Role') + (props.doctype === 'CRM Ticket' ? ' (Ticket)' : ' (Lead)'),
-      size: 'xl',
-      actions: [
-        {
-          label: __('Cancel'),
-          variant: 'subtle',
-          onClick: () => {
-            selectedRole = ''
-            selectedUser = ''
-            assignmentType = 'role'
-            show = false
-          },
-        },
-        {
-          label: __('Assign'),
-          variant: 'solid',
-          loading: isAssigning,
-          onClick: () => assignToRole(),
-        },
-      ],
-    }"
+    :options="dialogOptions"
     @close="
       () => {
         selectedRole = ''
@@ -63,12 +42,12 @@
           </div>
         </div>
 
-        <!-- Assignment Type Selection (Admin Only) -->
-        <div v-if="isAdmin" class="mb-4">
+        <!-- Assignment Type Selection -->
+        <div class="mb-4">
           <label class="block text-sm font-medium text-ink-gray-9 mb-2">
             {{ __('Assignment Type') }}
           </label>
-          <div class="flex gap-4">
+          <div class="flex gap-4 flex-wrap">
             <label class="flex items-center gap-2 cursor-pointer">
               <input 
                 type="radio" 
@@ -106,9 +85,19 @@
                 v-model="assignmentType" 
                 value="user" 
                 class="form-radio"
-                :disabled="isAssigning"
+                :disabled="isAssigning || !isAdmin"
               />
               <span class="text-sm">{{ __('Direct Employee Assignment') }}</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                v-model="assignmentType" 
+                value="request" 
+                class="form-radio"
+                :disabled="isAssigning"
+              />
+              <span class="text-sm">{{ __('Request specific employee (admin approval)') }}</span>
             </label>
           </div>
         </div>
@@ -161,10 +150,10 @@
           </div>
         </div>
 
-        <!-- Direct User Selection (Admin Only) -->
-        <div v-if="assignmentType === 'user' && isAdmin">
+        <!-- Direct User Selection / Request Selection -->
+        <div v-if="assignmentType === 'user' || assignmentType === 'request'">
           <label class="block text-sm font-medium text-ink-gray-9 mb-2">
-            {{ __('Select Employee for Direct Assignment') }}
+            {{ assignmentType === 'user' ? __('Select Employee for Direct Assignment') : __('Select Employee to Request') }}
           </label>
           <select 
             v-model="selectedUser"
@@ -173,7 +162,7 @@
           >
             <option value="">{{ __('Choose an employee...') }}</option>
             <option 
-              v-for="user in availableUsersForDirectAssignment" 
+              v-for="user in availableUsersRequestList" 
               :key="user.name" 
               :value="user.name"
               :disabled="!user.enabled"
@@ -181,6 +170,13 @@
               {{ user.full_name }} ({{ user.name }}) - {{ user.role }}
             </option>
           </select>
+          <div v-if="assignmentType === 'request'" class="mt-2">
+            <label class="block text-sm font-medium text-ink-gray-9 mb-1">{{ __('Reason (optional)') }}</label>
+            <textarea v-model="requestReason" class="form-control w-full" rows="3" :placeholder="__('Add a note for admin...')" />
+            <div class="text-xs text-amber-600 mt-1">
+              {{ __('This will send a request to admins. It will be assigned only after approval.') }}
+            </div>
+          </div>
           
           <!-- Message when no available users for direct assignment -->
           <div v-if="availableUsersForDirectAssignment.length === 0" class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -235,6 +231,36 @@ const assignmentType = ref('role')
 const isAssigning = ref(false)
 const error = ref('')
 const successMessage = ref('')
+const requestReason = ref('')
+const dialogOptions = computed(() => ({
+  title: __('Assign to Role') + (props.doctype === 'CRM Ticket' ? ' (Ticket)' : ' (Lead)'),
+  size: 'xl',
+  actions: [
+    {
+      label: __('Cancel'),
+      variant: 'subtle',
+      onClick: () => {
+        selectedRole.value = ''
+        selectedUser.value = ''
+        assignmentType.value = 'role'
+        show.value = false
+      },
+    },
+    assignmentType.value === 'request'
+      ? {
+          label: __('Request'),
+          variant: 'solid',
+          loading: isAssigning.value,
+          onClick: () => assignToRole(),
+        }
+      : {
+          label: __('Assign'),
+          variant: 'solid',
+          loading: isAssigning.value,
+          onClick: () => assignToRole(),
+        },
+  ],
+}))
 
 // Get available roles for assignment (now includes user_names for debugging)
 const availableRoles = createResource({
@@ -305,6 +331,18 @@ const availableUsersForDirectAssignment = computed(() => {
     .filter(user => !currentIdentifiers.has(user.name) && !currentIdentifiers.has(user.email))
 })
 
+// Public list for request flow (no admin restriction)
+const publicAssignableUsers = createResource({
+  url: 'crm.api.assignment_requests.get_assignable_users_public',
+  auto: true,
+})
+const availableUsersRequestList = computed(() => {
+  if (assignmentType.value === 'user') return availableUsersForDirectAssignment.value
+  const data = publicAssignableUsers.data || []
+  const currentAssignedUsers = currentAssignments.data?.map(a => a.allocated_to) || []
+  return data.filter(u => !currentAssignedUsers.includes(u.name))
+})
+
 // Computed property to check if all eligible employees for the selected role are already assigned
 const allEligibleEmployeesAssigned = computed(() => {
   if (!selectedRole.value || !roleAssignmentStatus.data) return false
@@ -320,6 +358,9 @@ watch(assignmentType, (newType) => {
   
   if (newType === 'user' && isAdmin) {
     availableUsers.fetch()
+  }
+  if (newType === 'request') {
+    publicAssignableUsers.fetch()
   }
 })
 
@@ -392,7 +433,7 @@ async function assignToRole() {
           assigned_by: null // Will use current user
         })
       }
-    } else {
+    } else if (assignmentType.value === 'user') {
       // Direct user assignment
       if (props.doctype === 'CRM Ticket') {
         result = await call('crm.api.ticket.assign_ticket_to_user', {
@@ -407,6 +448,22 @@ async function assignToRole() {
           user_name: selectedUser.value,
           assigned_by: null // Will use current user
         })
+      }
+    } else if (assignmentType.value === 'request') {
+      // Request admin approval for assignment
+      result = await call('crm.api.assignment_requests.create_assignment_request', {
+        reference_doctype: props.doctype,
+        reference_name: props.doc.name,
+        requested_user: selectedUser.value,
+        reason: requestReason.value,
+      })
+      if (result?.success) {
+        successMessage.value = __('Request submitted to admins for approval')
+        setTimeout(() => {
+          show.value = false
+          emit('close')
+        }, 800)
+        return
       }
     }
 

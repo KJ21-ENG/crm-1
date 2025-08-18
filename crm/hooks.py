@@ -164,6 +164,9 @@ doc_events = {
 	},
 }
 
+# Assignment Requests APIs (create/approve/reject) are whitelisted in crm.api.assignment_requests
+
+
 # Scheduled Tasks
 # ---------------
 

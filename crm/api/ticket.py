@@ -1260,8 +1260,11 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_cr
         from frappe.utils import get_fullname
         from crm.api.activities import emit_activity_update
 
-        # Update the ticket assigned_role directly in database to avoid timestamp conflicts
-        frappe.db.set_value("CRM Ticket", ticket_name, "assigned_role", "Direct Assignment")
+        # Update the ticket assigned_role and assigned_to directly in database to avoid timestamp conflicts
+        frappe.db.set_value("CRM Ticket", ticket_name, {
+            "assigned_role": "Direct Assignment",
+            "assigned_to": user_name,
+        })
         
         # Use Frappe's standard assignment system
         frappe.desk.form.assign_to.add({
