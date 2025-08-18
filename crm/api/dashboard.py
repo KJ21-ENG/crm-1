@@ -676,20 +676,33 @@ def get_trends_data(view='daily', custom_start_date=None, custom_end_date=None):
             })
             ticket_counts.insert(0, ticket_count)
     else:  # monthly
-        # Show last 30 days (daily data points)
-        for i in range(30):
-            date = add_days(today, -i)
-            dates.insert(0, date.strftime("%Y-%m-%d"))
+        # Show current month (daily data points from 1st to last day of current month)
+        current_month = today.month
+        current_year = today.year
+        
+        # Get first and last day of current month
+        first_day = datetime(current_year, current_month, 1).date()
+        if current_month == 12:
+            last_day = (datetime(current_year + 1, 1, 1) - timedelta(days=1)).date()
+        else:
+            last_day = (datetime(current_year, current_month + 1, 1) - timedelta(days=1)).date()
+        
+        # Generate dates for each day of the current month
+        current_date = first_day
+        while current_date <= last_day:
+            dates.append(current_date.strftime("%Y-%m-%d"))
             
             lead_count = frappe.db.count("CRM Lead", filters={
-                "creation": ["between", [date, add_days(date, 1)]]
+                "creation": ["between", [current_date, add_days(current_date, 1)]]
             })
-            lead_counts.insert(0, lead_count)
+            lead_counts.append(lead_count)
             
             ticket_count = frappe.db.count("CRM Ticket", filters={
-                "creation": ["between", [date, add_days(date, 1)]]
+                "creation": ["between", [current_date, add_days(current_date, 1)]]
             })
-            ticket_counts.insert(0, ticket_count)
+            ticket_counts.append(ticket_count)
+            
+            current_date = add_days(current_date, 1)
     
     return {
         "dates": dates,
@@ -1128,28 +1141,41 @@ def get_user_trends_data(user, view='daily', custom_start_date=None, custom_end_
             })
             task_counts.insert(0, task_count)
     else:  # monthly
-        # Show last 30 days (daily data points)
-        for i in range(30):
-            date = add_days(today, -i)
-            dates.insert(0, date.strftime("%Y-%m-%d"))
+        # Show current month (daily data points from 1st to last day of current month)
+        current_month = today.month
+        current_year = today.year
+        
+        # Get first and last day of current month
+        first_day = datetime(current_year, current_month, 1).date()
+        if current_month == 12:
+            last_day = (datetime(current_year + 1, 1, 1) - timedelta(days=1)).date()
+        else:
+            last_day = (datetime(current_year, current_month + 1, 1) - timedelta(days=1)).date()
+        
+        # Generate dates for each day of the current month
+        current_date = first_day
+        while current_date <= last_day:
+            dates.append(current_date.strftime("%Y-%m-%d"))
             
             lead_count = frappe.db.count("CRM Lead", filters={
-                "creation": ["between", [date, add_days(date, 1)]],
+                "creation": ["between", [current_date, add_days(current_date, 1)]],
                 "lead_owner": user
             })
-            lead_counts.insert(0, lead_count)
+            lead_counts.append(lead_count)
             
             ticket_count = frappe.db.count("CRM Ticket", filters={
-                "creation": ["between", [date, add_days(date, 1)]],
+                "creation": ["between", [current_date, add_days(current_date, 1)]],
                 "assigned_to": user
             })
-            ticket_counts.insert(0, ticket_count)
+            ticket_counts.append(ticket_count)
             
             task_count = frappe.db.count("CRM Task", filters={
-                "creation": ["between", [date, add_days(date, 1)]],
+                "creation": ["between", [current_date, add_days(current_date, 1)]],
                 "assigned_to": user
             })
-            task_counts.insert(0, task_count)
+            task_counts.append(task_count)
+            
+            current_date = add_days(current_date, 1)
     
     return {
         "dates": dates,
