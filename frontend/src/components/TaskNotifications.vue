@@ -239,28 +239,15 @@ function openReference(notification) {
 
 function openAssignmentRequest(notification) {
   console.log('Opening assignment request:', notification.reference_doctype, notification.reference_docname)
-  
-  // Redirect to the assignment requests page for the specific document
-  if (notification.reference_doctype === 'CRM Lead') {
-    router.push({
-      name: 'Lead',
-      params: { leadId: notification.reference_docname },
-      hash: '#assignment-requests'
-    })
-  } else if (notification.reference_doctype === 'CRM Deal') {
-    router.push({
-      name: 'Deal',
-      params: { dealId: notification.reference_docname },
-      hash: '#assignment-requests'
-    })
-  } else if (notification.reference_doctype === 'CRM Ticket') {
-    console.log('Navigating to ticket assignment requests:', notification.reference_docname)
-    router.push({
-      name: 'Ticket',
-      params: { ticketId: notification.reference_docname },
-      hash: '#assignment-requests'
-    })
-  }
+
+  // Redirect to the Requests page and pass reference filters so admin sees the relevant request
+  router.push({
+    name: 'Requests',
+    query: {
+      reference_doctype: notification.reference_doctype,
+      reference_docname: notification.reference_docname
+    }
+  })
 }
 
 onBeforeUnmount(() => {
