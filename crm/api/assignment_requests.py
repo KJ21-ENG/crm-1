@@ -155,26 +155,23 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
     try:
         # create a CRM Task Notification for admins so it appears in admin task reminders
         from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+        admin_task_notifications = []
         for admin in admin_users:
             tn = create_task_notification(
-                task_name=doc.name,
+                task_name=None,  # No specific task for assignment requests
                 notification_type='Assignment Request',
                 assigned_to=admin,
-                message=f'Assignment request for {reference_doctype} {reference_name} by {frappe.session.user}',
+                message=f'Assignment request for {reference_doctype} {reference_name} by {frappe.utils.get_fullname(frappe.session.user)}',
                 reference_doctype=reference_doctype,
                 reference_docname=reference_name,
             )
             if tn:
+                # Mark as sent so it appears in Task Reminder section
                 tn.mark_as_sent()
-                # collect created task notifications names
-                try:
-                    if 'admin_task_notifications' not in locals():
-                        admin_task_notifications = []
-                    admin_task_notifications.append(tn.name)
-                except Exception:
-                    pass
-    except Exception:
-        admin_task_notifications = locals().get('admin_task_notifications', [])
+                admin_task_notifications.append(tn.name)
+    except Exception as e:
+        frappe.logger().error(f"Error creating admin task notifications: {str(e)}")
+        admin_task_notifications = []
 
 
     # Notify requester (ack)
@@ -192,7 +189,7 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
     try:
         from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
         requester_tn = create_task_notification(
-            task_name=doc.name,
+            task_name=None,  # No specific task for assignment requests
             notification_type='Assignment Request Submitted',
             assigned_to=frappe.session.user,
             message=f'Your assignment request for {reference_doctype} {reference_name} has been submitted',
@@ -200,17 +197,19 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             reference_docname=reference_name,
         )
         if requester_tn:
+            # Mark as sent so it appears in Task Reminder section
             requester_tn.mark_as_sent()
             requester_task_notification = requester_tn.name
         else:
             requester_task_notification = None
-    except Exception:
+    except Exception as e:
+        frappe.logger().error(f"Error creating requester task notification: {str(e)}")
         requester_task_notification = None
 
     frappe.db.commit()
     debug = {
         "admin_users": admin_users,
-        "admin_task_notifications": locals().get('admin_task_notifications', []),
+        "admin_task_notifications": admin_task_notifications,
         "requester_task_notification": locals().get('requester_task_notification', None),
     }
     return {"success": True, "name": doc.name, "debug": debug}
@@ -316,17 +315,18 @@ def approve_assignment_request(name, note=None):
     try:
         from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
         tn = create_task_notification(
-            task_name=req.name,
+            task_name=None,  # No specific task for assignment requests
             notification_type='Assignment Request Approved',
             assigned_to=req.requested_by,
             message=f'Your assignment request for {req.reference_doctype} {req.reference_name} has been approved',
             reference_doctype=req.reference_doctype,
-            reference_docname=req.reference_name,
+            reference_docname=req.reference_docname,
         )
         if tn:
+            # Mark as sent so it appears in Task Reminder section
             tn.mark_as_sent()
-    except Exception:
-        pass
+    except Exception as e:
+        frappe.logger().error(f"Error creating approval task notification: {str(e)}")
 
     frappe.db.commit()
     return {"success": True}

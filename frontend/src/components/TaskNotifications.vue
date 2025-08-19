@@ -90,8 +90,21 @@
             </div>
           </div>
           <div class="flex items-center gap-1">
+            <!-- Arrow button for assignment requests - redirects to request page -->
             <Button
-              v-if="n.reference_doctype && n.reference_docname"
+              v-if="n.notification_type === 'Assignment Request' && n.reference_doctype && n.reference_docname"
+              variant="ghost"
+              size="sm"
+              @click.stop="openAssignmentRequest(n)"
+              class="text-blue-600 hover:text-blue-700"
+            >
+              <template #icon>
+                <ArrowUpRightIcon class="h-3 w-3" />
+              </template>
+            </Button>
+            <!-- Arrow button for other notifications - redirects to document -->
+            <Button
+              v-if="n.notification_type !== 'Assignment Request' && n.reference_doctype && n.reference_docname"
               variant="ghost"
               size="sm"
               @click.stop="openReference(n)"
@@ -220,6 +233,32 @@ function openReference(notification) {
       name: 'Ticket',
       params: { ticketId: notification.reference_docname },
       hash: '#tasks'
+    })
+  }
+}
+
+function openAssignmentRequest(notification) {
+  console.log('Opening assignment request:', notification.reference_doctype, notification.reference_docname)
+  
+  // Redirect to the assignment requests page for the specific document
+  if (notification.reference_doctype === 'CRM Lead') {
+    router.push({
+      name: 'Lead',
+      params: { leadId: notification.reference_docname },
+      hash: '#assignment-requests'
+    })
+  } else if (notification.reference_doctype === 'CRM Deal') {
+    router.push({
+      name: 'Deal',
+      params: { dealId: notification.reference_docname },
+      hash: '#assignment-requests'
+    })
+  } else if (notification.reference_doctype === 'CRM Ticket') {
+    console.log('Navigating to ticket assignment requests:', notification.reference_docname)
+    router.push({
+      name: 'Ticket',
+      params: { ticketId: notification.reference_docname },
+      hash: '#assignment-requests'
     })
   }
 }

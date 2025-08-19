@@ -24,6 +24,12 @@ class CRMTaskNotification(Document):
 				self.notification_text = self.get_lead_assignment_text()
 			elif self.notification_type == "Task Reassignment Limit":
 				self.notification_text = self.get_task_reassignment_limit_text()
+			elif self.notification_type == "Assignment Request":
+				self.notification_text = self.get_assignment_request_text()
+			elif self.notification_type == "Assignment Request Submitted":
+				self.notification_text = self.get_assignment_request_submitted_text()
+			elif self.notification_type == "Assignment Request Approved":
+				self.notification_text = self.get_assignment_request_approved_text()
 			elif self.task:
 				task_doc = frappe.get_doc("CRM Task", self.task)
 				
@@ -139,6 +145,51 @@ class CRMTaskNotification(Document):
 			</div>
 		"""
 	
+	def get_assignment_request_text(self):
+		"""Generate assignment request notification text for admins"""
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-blue-600">📩 New Assignment Request</span>
+				<div class="mt-1">
+					<span>{self.message}</span>
+				</div>
+			</div>
+		"""
+	
+	def get_assignment_request_submitted_text(self):
+		"""Generate assignment request submitted notification text for requester"""
+		reference_info = ""
+		if self.reference_doctype and self.reference_docname:
+			reference_info = f"<div class='text-sm text-ink-gray-6'>Reference: {self.reference_doctype} - {self.reference_docname}</div>"
+		
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-green-600">✅ Assignment Request Submitted</span>
+				<div class="mt-1">
+					<span>{self.message}</span>
+				</div>
+				{reference_info}
+				<div class="text-sm text-ink-gray-6">Status: Pending admin approval</div>
+			</div>
+		"""
+	
+	def get_assignment_request_approved_text(self):
+		"""Generate assignment request approved notification text for requester"""
+		reference_info = ""
+		if self.reference_doctype and self.reference_docname:
+			reference_info = f"<div class='text-sm text-ink-gray-6'>Reference: {self.reference_doctype} - {self.reference_docname}</div>"
+		
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-green-600">✅ Assignment Request Approved</span>
+				<div class="mt-1">
+					<span>{self.message}</span>
+				</div>
+				{reference_info}
+				<div class="text-sm text-ink-gray-6">Status: Approved and assigned</div>
+			</div>
+		"""
+	
 	def publish_realtime_notification(self):
 		"""Publish real-time notification to the assigned user"""
 		if self.assigned_to and self.status == "Sent":
@@ -198,11 +249,12 @@ def get_user_task_notifications(limit=20):
 			"CRM Task Notification",
 			filters={
 				"assigned_to": frappe.session.user,
-				"status": ["in", ["Sent", "Read"]]
+				"status": ["in", ["Pending", "Sent", "Read"]]  # Include Pending for immediate visibility
 			},
 			fields=[
 				"name", "task", "notification_type", "status", 
-				"message", "notification_text", "sent_at", "read_at"
+				"message", "notification_text", "sent_at", "read_at",
+				"reference_doctype", "reference_docname"  # Include reference fields for all notifications
 			],
 			order_by="sent_at desc",
 			limit=limit
@@ -227,9 +279,9 @@ def get_user_task_notifications(limit=20):
 def create_task_notification(task_name, notification_type, assigned_to, message=None, reference_doctype=None, reference_docname=None):
 	"""Helper function to create a task notification"""
 	try:
-		# For Lead Assignment notifications, don't check for existing task notifications
-		if notification_type == "Lead Assignment":
-			# Create new lead assignment notification
+		# For Lead Assignment and Assignment Request notifications, don't check for existing task notifications
+		if notification_type in ["Lead Assignment", "Assignment Request", "Assignment Request Submitted", "Assignment Request Approved"]:
+			# Create new notification
 			notification = frappe.get_doc({
 				"doctype": "CRM Task Notification",
 				"notification_type": notification_type,

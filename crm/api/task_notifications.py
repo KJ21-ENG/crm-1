@@ -12,11 +12,12 @@ def get_task_notifications():
             "CRM Task Notification",
             filters={
                 "assigned_to": frappe.session.user,
-                "status": ["in", ["Sent", "Read"]]
+                "status": ["in", ["Pending", "Sent", "Read"]]  # Include Pending for immediate visibility
             },
             fields=[
                 "name", "task", "notification_type", "status", 
-                "message", "notification_text", "sent_at", "read_at"
+                "message", "notification_text", "sent_at", "read_at",
+                "reference_doctype", "reference_docname"  # Include reference fields for all notifications
             ],
             order_by="sent_at desc",
             limit=20
