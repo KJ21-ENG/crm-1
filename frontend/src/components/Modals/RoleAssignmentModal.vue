@@ -457,6 +457,11 @@ async function assignToRole() {
         requested_user: selectedUser.value,
         reason: requestReason.value,
       })
+      // capture debug response if any
+      if (result?.debug) {
+        lastRequestDebug.value = result.debug
+        console.log('Request debug:', result.debug)
+      }
       if (result?.success) {
         successMessage.value = __('Request submitted to admins for approval')
         setTimeout(() => {
@@ -492,4 +497,8 @@ async function assignToRole() {
     isAssigning.value = false
   }
 }
+
+// Debug helper: expose lastRequestDebug when creating request
+const lastRequestDebug = ref(null)
+
 </script> 

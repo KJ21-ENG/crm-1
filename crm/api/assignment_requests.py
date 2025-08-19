@@ -166,8 +166,16 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             )
             if tn:
                 tn.mark_as_sent()
+                # collect created task notifications names
+                try:
+                    if 'admin_task_notifications' not in locals():
+                        admin_task_notifications = []
+                    admin_task_notifications.append(tn.name)
+                except Exception:
+                    pass
     except Exception:
-        pass
+        admin_task_notifications = locals().get('admin_task_notifications', [])
+
 
     # Notify requester (ack)
     _notify_user(
@@ -183,7 +191,7 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
     # Also create a task notification for requester so they receive realtime notification
     try:
         from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
-        tn = create_task_notification(
+        requester_tn = create_task_notification(
             task_name=doc.name,
             notification_type='Assignment Request Submitted',
             assigned_to=frappe.session.user,
@@ -191,13 +199,21 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             reference_doctype=reference_doctype,
             reference_docname=reference_name,
         )
-        if tn:
-            tn.mark_as_sent()
+        if requester_tn:
+            requester_tn.mark_as_sent()
+            requester_task_notification = requester_tn.name
+        else:
+            requester_task_notification = None
     except Exception:
-        pass
+        requester_task_notification = None
 
     frappe.db.commit()
-    return {"success": True, "name": doc.name}
+    debug = {
+        "admin_users": admin_users,
+        "admin_task_notifications": locals().get('admin_task_notifications', []),
+        "requester_task_notification": locals().get('requester_task_notification', None),
+    }
+    return {"success": True, "name": doc.name, "debug": debug}
 
 
 @frappe.whitelist()

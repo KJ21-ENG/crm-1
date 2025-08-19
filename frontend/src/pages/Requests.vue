@@ -97,12 +97,22 @@ function linkFor(r) {
 
 async function approve(r) {
   const res = await call('crm.api.assignment_requests.approve_assignment_request', { name: r.name })
+  // For debugging, show returned debug data if any
+  if (res?.debug) {
+    console.log('Approve debug:', res.debug)
+    // show small toast instead of alert
+    toast.info(__('Approve debug: {0}', [JSON.stringify(res.debug)]))
+  }
   if (res?.success) reload()
 }
 
 async function reject(r) {
   const reason = window.prompt('Enter rejection reason (optional)')
   const res = await call('crm.api.assignment_requests.reject_assignment_request', { name: r.name, reason })
+  if (res?.debug) {
+    console.log('Reject debug:', res.debug)
+    alert('Reject debug: ' + JSON.stringify(res.debug))
+  }
   if (res?.success) reload()
 }
 </script>
