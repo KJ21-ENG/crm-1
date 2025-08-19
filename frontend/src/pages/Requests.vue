@@ -57,6 +57,13 @@ import { formatDate } from '@/utils'
 
 const { isAdmin } = usersStore()
 
+// Protect page on mount: only admin users
+if (!isAdmin()) {
+  // redirect to dashboard
+  const r = useRouter()
+  r.replace({ name: 'Dashboard' })
+}
+
 const filterStatus = ref('Pending')
 
 const requests = createResource({

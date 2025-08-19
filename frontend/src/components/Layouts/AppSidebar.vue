@@ -71,6 +71,16 @@
           </nav>
         </Section>
       </div>
+      <!-- Admin-only Requests link -->
+      <div v-if="showRequestsLink" class="mt-2">
+        <SidebarLink
+          :icon="'users'"
+          :label="__('Requests')"
+          :to="{ name: 'Requests' }"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-0.5"
+        />
+      </div>
     </div>
     <div class="m-2 flex flex-col gap-1">
       <div class="flex flex-col gap-2 mb-1">
@@ -265,7 +275,18 @@ const links = [
     icon: PinIcon,
     to: 'Round Robin',
   },
+  // Admin-only Requests link will be inserted dynamically below
 ]
+
+// Insert Requests link only for admin users (computed so it reacts to user store)
+const showRequestsLink = computed(() => {
+  try {
+    const { isAdmin } = usersStore()
+    return isAdmin()
+  } catch (e) {
+    return false
+  }
+})
 
 const allViews = computed(() => {
   let _views = [

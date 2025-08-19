@@ -4,7 +4,8 @@ from frappe.utils import now_datetime
 
 
 ALLOWED_REFERENCE_DOCTYPES = {"CRM Lead", "CRM Ticket"}
-ADMIN_ROLES = {"System Manager", "Sales Manager", "Support Manager"}
+# Expand admin roles to include Administrator and CRM Manager
+ADMIN_ROLES = {"Administrator", "System Manager", "Sales Manager", "Support Manager", "CRM Manager"}
 
 
 def _get_admin_users():
@@ -22,13 +23,14 @@ def _get_admin_users():
     return [u.name for u in enabled]
 
 
-def _notify_user(assigned_to: str, message: str, ref_dt: str = None, ref_dn: str = None):
+def _notify_user(assigned_to: str, message: str, ref_dt: str = None, ref_dn: str = None, owner: str = None):
+    """Send a CRM Notification to a user. Provide `owner` to avoid notify_user skipping when owner == assigned_to."""
     try:
         from crm.fcrm.doctype.crm_notification.crm_notification import notify_user
 
         notify_user(
             {
-                "owner": frappe.session.user,
+                "owner": owner or frappe.session.user,
                 "assigned_to": assigned_to,
                 "notification_type": "Assignment Request",
                 "message": message,
@@ -137,7 +139,8 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
         pass
 
     # Notify admins
-    for admin_user in _get_admin_users():
+    admin_users = _get_admin_users()
+    for admin_user in admin_users:
         _notify_user(
             admin_user,
             _(
@@ -145,7 +148,26 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             ),
             reference_doctype,
             reference_name,
+            owner=frappe.session.user,
         )
+
+    # Mark admin notifications as sent if using task notification system
+    try:
+        # create a CRM Task Notification for admins so it appears in admin task reminders
+        from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+        for admin in admin_users:
+            tn = create_task_notification(
+                task_name=doc.name,
+                notification_type='Assignment Request',
+                assigned_to=admin,
+                message=f'Assignment request for {reference_doctype} {reference_name} by {frappe.session.user}',
+                reference_doctype=reference_doctype,
+                reference_docname=reference_name,
+            )
+            if tn:
+                tn.mark_as_sent()
+    except Exception:
+        pass
 
     # Notify requester (ack)
     _notify_user(
@@ -155,7 +177,24 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
         ),
         reference_doctype,
         reference_name,
+        owner=frappe.session.user,
     )
+
+    # Also create a task notification for requester so they receive realtime notification
+    try:
+        from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+        tn = create_task_notification(
+            task_name=doc.name,
+            notification_type='Assignment Request Submitted',
+            assigned_to=frappe.session.user,
+            message=f'Your assignment request for {reference_doctype} {reference_name} has been submitted',
+            reference_doctype=reference_doctype,
+            reference_docname=reference_name,
+        )
+        if tn:
+            tn.mark_as_sent()
+    except Exception:
+        pass
 
     frappe.db.commit()
     return {"success": True, "name": doc.name}
@@ -245,6 +284,33 @@ def approve_assignment_request(name, note=None):
         req.reference_doctype,
         req.reference_name,
     )
+
+    # Notify assigned user as well
+    try:
+        _notify_user(
+            req.requested_user,
+            _(f"You have been assigned to {req.reference_doctype} {req.reference_name} by admin approval."),
+            req.reference_doctype,
+            req.reference_name,
+        )
+    except Exception:
+        pass
+
+    # Also create task notification for requester
+    try:
+        from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+        tn = create_task_notification(
+            task_name=req.name,
+            notification_type='Assignment Request Approved',
+            assigned_to=req.requested_by,
+            message=f'Your assignment request for {req.reference_doctype} {req.reference_name} has been approved',
+            reference_doctype=req.reference_doctype,
+            reference_docname=req.reference_name,
+        )
+        if tn:
+            tn.mark_as_sent()
+    except Exception:
+        pass
 
     frappe.db.commit()
     return {"success": True}

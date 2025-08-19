@@ -6,3 +6,4 @@ class CRMAssignmentRequest(Document):
     pass
 
 
+
