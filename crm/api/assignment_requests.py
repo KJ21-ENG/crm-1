@@ -320,11 +320,13 @@ def approve_assignment_request(name, note=None):
             assigned_to=req.requested_by,
             message=f'Your assignment request for {req.reference_doctype} {req.reference_name} has been approved',
             reference_doctype=req.reference_doctype,
-            reference_docname=req.reference_docname,
+            reference_docname=req.reference_name,
         )
         if tn:
             # Mark as sent so it appears in Task Reminder section
             tn.mark_as_sent()
+        else:
+            frappe.logger().info(f"No task notification created for requester {req.requested_by} on approval of {req.name}")
     except Exception as e:
         frappe.logger().error(f"Error creating approval task notification: {str(e)}")
 
