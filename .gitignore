@@ -33,6 +33,7 @@ components.d.ts
 dev-dist/
 tags/
 build/
+app_old_versions/
 
 # CRM Specific  
 crm/public/frontend/
