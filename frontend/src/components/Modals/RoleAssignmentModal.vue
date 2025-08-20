@@ -79,17 +79,17 @@
                 </template>
               </Popover>
             </label>
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label v-if="isAdmin()" class="flex items-center gap-2 cursor-pointer">
               <input 
                 type="radio" 
                 v-model="assignmentType" 
                 value="user" 
                 class="form-radio"
-                :disabled="isAssigning || !isAdmin"
+                :disabled="isAssigning || !isAdmin()"
               />
               <span class="text-sm">{{ __('Direct Employee Assignment') }}</span>
             </label>
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label v-if="!isAdmin()" class="flex items-center gap-2 cursor-pointer">
               <input 
                 type="radio" 
                 v-model="assignmentType" 
@@ -355,7 +355,7 @@ watch(assignmentType, (newType) => {
   // Clear selected data when switching types
   selectedRole.value = ''
   selectedUser.value = ''
-  
+  // Fetch appropriate data based on new type
   if (newType === 'user' && isAdmin) {
     availableUsers.fetch()
   }
