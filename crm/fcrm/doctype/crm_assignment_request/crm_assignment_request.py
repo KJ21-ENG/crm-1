@@ -27,23 +27,8 @@ class CRMAssignmentRequest(Document):
 					except Exception:
 						frappe.log_error(f"Failed to send notify_user for assignment request approval: {self.name}", "Assignment Request Notification")
 
-					# Create CRM Task Notification
-					try:
-						from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
-						tn = create_task_notification(
-							task_name=None,
-							notification_type='Assignment Request Approved',
-							assigned_to=self.requested_by,
-							message=f'Your assignment request for {self.reference_doctype} {self.reference_name} has been approved',
-							reference_doctype=self.reference_doctype,
-							reference_docname=self.reference_name,
-						)
-						if tn:
-							tn.mark_as_sent()
-						else:
-							frappe.logger().info(f"No task notification created for requester {self.requested_by} on approval of {self.name}")
-					except Exception as e:
-						frappe.log_error(f"Error creating approval task notification: {str(e)}", "Assignment Request Notification")
+					# REMOVED: Duplicate CRM Task Notification creation - now handled in approve_assignment_request API
+					# This prevents duplicate notifications for the requester
 
 				# Notify requester when rejected
 				elif self.status == "Rejected":
@@ -63,23 +48,8 @@ class CRMAssignmentRequest(Document):
 					except Exception:
 						frappe.log_error(f"Failed to send notify_user for assignment request rejection: {self.name}", "Assignment Request Notification")
 
-					# Create CRM Task Notification for rejection
-					try:
-						from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
-						tn = create_task_notification(
-							task_name=None,
-							notification_type='Assignment Request Rejected',
-							assigned_to=self.requested_by,
-							message=f'Your assignment request for {self.reference_doctype} {self.reference_name} has been rejected',
-							reference_doctype=self.reference_doctype,
-							reference_docname=self.reference_name,
-						)
-						if tn:
-							tn.mark_as_sent()
-						else:
-							frappe.logger().info(f"No task notification created for requester {self.requested_by} on rejection of {self.name}")
-					except Exception as e:
-						frappe.log_error(f"Error creating rejection task notification: {str(e)}", "Assignment Request Notification")
+					# REMOVED: Duplicate CRM Task Notification creation - now handled in reject_assignment_request API
+					# This prevents duplicate notifications for the requester
 		except Exception as e:
 			frappe.log_error(f"Error in CRMAssignmentRequest.on_update: {str(e)}", "Assignment Request Notification")
 
