@@ -4,8 +4,8 @@ from frappe.utils import now_datetime
 
 
 ALLOWED_REFERENCE_DOCTYPES = {"CRM Lead", "CRM Ticket"}
-# Expand admin roles to include Administrator and CRM Manager
-ADMIN_ROLES = {"Administrator", "System Manager", "Sales Manager", "Support Manager", "CRM Manager"}
+# Admin roles: only true admin/system roles (exclude manager roles)
+ADMIN_ROLES = {"Administrator", "System Manager"}
 
 
 def _get_admin_users():
