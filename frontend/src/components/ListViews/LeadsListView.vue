@@ -159,6 +159,18 @@
             />
           </div>
           <div
+            v-else-if="column.key === 'status'"
+            class="truncate text-base"
+          >
+            <!-- Support both shapes: item can be { value, color } or a plain string. Prefer label when provided by ListRowItem -->
+            <StatusBadge
+              v-if="item || label"
+              :status="item?.value || label || item || ''"
+              :color="resolveStatusColor(item, label)"
+              @click.native.stop="(event) => emit('applyFilter', { event, idx, column, item, firstColumn: columns[0] })"
+            />
+          </div>
+          <div
             v-else
             class="truncate text-base"
             @click="
@@ -202,6 +214,7 @@
 <script setup>
 import HeartIcon from '@/components/Icons/HeartIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+import StatusBadge from '@/components/Badges/StatusBadge.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
@@ -218,6 +231,7 @@ import {
   Tooltip,
 } from 'frappe-ui'
 import { sessionStore } from '@/stores/session'
+import { statusesStore } from '@/stores/statuses'
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -306,6 +320,16 @@ const totalPages = computed(() => {
   if (!list.value?.data?.total_count || !list.value?.data?.page_length) return 1
   return Math.ceil(list.value.data.total_count / list.value.data.page_length)
 })
+
+// Helper to resolve status color when item doesn't include color
+function resolveStatusColor(item, label) {
+  // If item has color token stored like '!text-blue-700', return stripped
+  if (item && item.color) return item.color.replace('!text-', '')
+  const { getLeadStatus } = statusesStore()
+  const statusName = (item && (item.value || item)) || label
+  const status = getLeadStatus(statusName)
+  return status && status.color ? status.color.replace('!text-', '') : 'gray-700'
+}
 
 // Add pagination methods
 function handlePageChange(page) {

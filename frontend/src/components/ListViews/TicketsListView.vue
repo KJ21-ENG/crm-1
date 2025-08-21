@@ -193,22 +193,12 @@
             v-else-if="column.key === 'status'"
             class="truncate text-base"
           >
-            <Badge
+            <!-- Use custom StatusBadge for better color control -->
+            <StatusBadge
               v-if="item && item.value"
-              :variant="'subtle'"
-              :theme="item.color || 'gray'"
-              size="md"
-              :label="item.value"
-              @click="
-                (event) =>
-                  emit('applyFilter', {
-                    event,
-                    idx,
-                    column,
-                    item,
-                    firstColumn: columns[0],
-                  })
-              "
+              :status="item.value"
+              :color="item.color ? item.color.replace('!text-', '') : 'gray-700'"
+              @click.native.stop="(event) => emit('applyFilter', { event, idx, column, item, firstColumn: columns[0] })"
             />
           </div>
           <div v-else-if="column.type === 'Check'">
@@ -263,6 +253,7 @@
 <script setup>
 import HeartIcon from '@/components/Icons/HeartIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+import StatusBadge from '@/components/Badges/StatusBadge.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import EmailIcon from '@/components/Icons/EmailIcon.vue'
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
