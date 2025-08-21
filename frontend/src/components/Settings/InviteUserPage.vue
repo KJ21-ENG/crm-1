@@ -79,7 +79,11 @@
                   ({{ roleMap[user.role] }})
                 </span>
               </div>
-              <div>
+              <div class="flex items-center gap-2">
+                <ReloadInviteStatus 
+                  @reload="reloadInvitation(user)"
+                  :loading="loadingInvitations.has(user.email)"
+                />
                 <Tooltip text="Delete Invitation">
                   <div>
                     <Button
@@ -112,8 +116,10 @@ import {
   FormControl,
   Tooltip,
 } from 'frappe-ui'
+import ReloadInviteStatus from './ReloadInviteStatus.vue'
 import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, computed } from 'vue'
+import { call, toast } from 'frappe-ui'
 
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 const { users, isAdmin, isManager } = usersStore()
@@ -185,6 +191,21 @@ const roleMap = {
   'Support Manager': __('Support Manager'),
   'System Manager': __('Admin'),
   'Support User': __('Support User'),
+}
+
+const loadingInvitations = ref(new Set())
+
+const reloadInvitation = (user) => {
+  loadingInvitations.value.add(user.email)
+  call('crm.api.invite.resend_invitation', {
+    email: user.email
+  }).then(() => {
+    toast.success(__('Invitation resent to {0}', [user.email]))
+  }).catch((err) => {
+    toast.error(err.messages?.[0] || __('Failed to resend invitation'))
+  }).finally(() => {
+    loadingInvitations.value.delete(user.email)
+  })
 }
 
 const inviteByEmail = createResource({
