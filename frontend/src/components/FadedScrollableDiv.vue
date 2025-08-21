@@ -3,7 +3,7 @@
     :is="props.as || 'div'"
     ref="scrollableDiv"
     :style="`maskImage: ${maskStyle}`"
-    @scroll="updateMaskStyle"
+    @scroll="(e) => { updateMaskStyle(); emitScroll(e) }"
   >
     <slot></slot>
   </component>
@@ -77,4 +77,12 @@ function updateMaskStyle() {
 }
 
 onMounted(() => setTimeout(() => updateMaskStyle(), 300))
+
+const emit = defineEmits(['scroll'])
+
+function emitScroll(e) {
+  try {
+    emit('scroll', e)
+  } catch (err) {}
+}
 </script>

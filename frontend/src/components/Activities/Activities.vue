@@ -11,10 +11,13 @@
     :modalRef="modalRef"
     :whatsappStatus="whatsappStatus"
   />
-  <FadedScrollableDiv
-    :maskHeight="30"
-    class="flex flex-col flex-1 overflow-y-auto"
-  >
+  <div class="relative flex flex-1">
+    <FadedScrollableDiv
+      ref="scroller"
+      :maskHeight="30"
+      class="flex flex-col flex-1 overflow-y-auto"
+      @scroll="onScrollEvent"
+    >
     <div
       v-if="all_activities?.loading"
       class="flex flex-1 flex-col items-center justify-center gap-3 text-xl font-medium text-ink-gray-4"
@@ -107,7 +110,7 @@
       </div>
       <div
         v-else
-        v-for="(activity, i) in activities"
+        v-for="(activity, i) in (title == 'Activity' ? visibleActivities : activities)"
         class="activity px-3 sm:px-10"
         :class="
           ['Activity', 'Emails'].includes(title)
@@ -462,7 +465,22 @@
         @click="showFilesUploader = true"
       />
     </div>
-  </FadedScrollableDiv>
+    <div v-if="title == 'Activity' && activities.length > visibleActivities.length" class="px-3 sm:px-10 py-2">
+      <Button variant="ghost" class="w-full" @click="loadMore">{{ __('Load more') }}</Button>
+    </div>
+    </FadedScrollableDiv>
+
+    <!-- Scroll to top button shown when user scrolls down -->
+    <Button
+      v-show="showScrollTop"
+      class="absolute right-4 bottom-4 z-20 !rounded-full"
+      variant="solid"
+      size="sm"
+      @click="scrollToTop"
+    >
+      <FeatherIcon name="chevron-up" class="w-4 h-4" />
+    </Button>
+  </div>
   <div>
     <CommunicationArea
       ref="emailBox"
@@ -561,7 +579,7 @@ import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
 import { whatsappEnabled, callEnabled } from '@/composables/settings'
 import { capture } from '@/telemetry'
-import { Button, Tooltip, createResource } from 'frappe-ui'
+import { Button, Tooltip, createResource, FeatherIcon } from 'frappe-ui'
 import { useElementVisibility } from '@vueuse/core'
 import {
   ref,
@@ -647,13 +665,88 @@ const whatsappMessages = createResource({
   },
   auto: true,
   transform: (data) => sortByCreation(data),
-  onSuccess: () => nextTick(() => scroll()),
+  onSuccess: () => nextTick(() => scroll(route.hash.slice(1) || null)),
 })
 
 onBeforeUnmount(() => {
   $socket.off('whatsapp_message')
   $socket.off('activity_update')
+  window.removeEventListener('scroll', onWindowScroll)
 })
+
+const scroller = ref(null)
+const showScrollTop = ref(false)
+const SCROLL_ACTIVITIES_THRESHOLD = 15
+
+function getScrolledActivitiesCount(el) {
+  try {
+    if (!el) return 0
+    const activitiesEls = el.querySelectorAll ? el.querySelectorAll('.activity') : []
+    if (!activitiesEls.length) return 0
+    const containerRect = el.getBoundingClientRect()
+    let count = 0
+    for (let i = 0; i < activitiesEls.length; i++) {
+      const a = activitiesEls[i]
+      const aRect = a.getBoundingClientRect()
+      // count activity if it's fully above the top of container
+      if (aRect.bottom <= containerRect.top + 1) count++
+      else break
+    }
+    return count
+  } catch (err) {
+    return 0
+  }
+}
+
+function onScrollEvent(e) {
+  try {
+    // Prefer the native scroll event target when available (emitted from FadedScrollableDiv)
+    const el = e?.target || scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+    if (!el) return
+    const scrolledCount = getScrolledActivitiesCount(el)
+    const totalRendered = title.value === 'Activity' ? visibleActivities.value.length : (activities.value?.length || 0)
+    const dynamicThreshold = Math.min(
+      SCROLL_ACTIVITIES_THRESHOLD,
+      Math.max(5, totalRendered - 2),
+    )
+    showScrollTop.value = scrolledCount >= dynamicThreshold
+  } catch (err) {
+    // ignore
+  }
+}
+
+function onWindowScroll() {
+  try {
+    // If inner scroller exists and is scrollable, let its handler manage state
+    const el = scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+    if (!el) return
+
+    // If the inner scroller can scroll, ignore window scroll
+    if ((el.scrollHeight || 0) > (el.clientHeight || 0)) return
+
+    // Otherwise, count activities that are above the viewport top
+    const activitiesEls = el.querySelectorAll ? el.querySelectorAll('.activity') : []
+    let count = 0
+    for (let i = 0; i < activitiesEls.length; i++) {
+      const a = activitiesEls[i]
+      const r = a.getBoundingClientRect()
+      if (r.bottom < 0) count++
+      else break
+    }
+    const totalRendered = title.value === 'Activity' ? visibleActivities.value.length : (activities.value?.length || 0)
+    const dynamicThreshold = Math.min(
+      SCROLL_ACTIVITIES_THRESHOLD,
+      Math.max(5, totalRendered - 2),
+    )
+    showScrollTop.value = count >= dynamicThreshold
+  } catch (err) {}
+}
+
+function scrollToTop() {
+  const el = scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+  if (!el) return
+  el.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 onMounted(() => {
   $socket.on('whatsapp_message', (data) => {
@@ -681,6 +774,8 @@ onMounted(() => {
       scroll(hash)
     }
   })
+  // Listen to window scroll as a fallback for cases where inner scroller isn't used
+  window.addEventListener('scroll', onWindowScroll)
 })
 
 function sendTemplate(template) {
@@ -806,6 +901,20 @@ const activities = computed(() => {
   })
   return sortByCreation(_activities)
 })
+
+// For Activity tab we want newest-first and paginated view
+const visibleCount = ref(10)
+const visibleActivities = computed(() => {
+  // Only apply pagination for Activity tab
+  if (title.value !== 'Activity') return activities.value
+  // Show newest first
+  const newestFirst = (activities.value || []).slice().reverse()
+  return newestFirst.slice(0, visibleCount.value)
+})
+
+function loadMore() {
+  visibleCount.value += 10
+}
 
 function sortByCreation(list) {
   return list.sort((a, b) => new Date(a.creation) - new Date(b.creation))
@@ -970,6 +1079,9 @@ watch([reload, reload_email], ([reload_value, reload_email_value]) => {
 })
 
 function scroll(hash) {
+  // Do not auto-scroll for Activity tab since it is newest-first now.
+  // Allow explicit hash scrolling when a hash is provided.
+  if (title.value === 'Activity' && !hash) return
   if (['tasks', 'notes'].includes(route.hash?.slice(1))) return
   setTimeout(() => {
     let el
