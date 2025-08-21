@@ -81,7 +81,18 @@ def get_deal_activities(name, limit=20, offset=0):
 		if not data.get("changed"):
 			continue
 
-		if change := data.get("changed")[0]:
+		# Prefer a status change if multiple fields changed in the same version
+		changes = data.get("changed") or []
+		change = None
+		if changes:
+			for ch in changes:
+				if ch and ch[0] == 'status':
+					change = ch
+					break
+			if not change:
+				change = changes[0]
+
+		if change:
 			field = deal_fields.get(change[0], None)
 
 			if not field or change[0] in avoid_fields or (not change[1] and not change[2]):
@@ -112,6 +123,19 @@ def get_deal_activities(name, limit=20, offset=0):
 					"field_label": field_label,
 					"value": change[1],
 				}
+
+			# If this was a status change, include extra fields from the lead record
+			if change[0] == 'status':
+				try:
+					lead_vals = frappe.db.get_value('CRM Lead', name, ['client_id', 'rejection_reason'], as_dict=True)
+					if lead_vals:
+						if lead_vals.get('client_id'):
+							data['client_id'] = lead_vals.get('client_id')
+						if lead_vals.get('rejection_reason'):
+							data['rejection_reason'] = lead_vals.get('rejection_reason')
+				except Exception:
+					# ignore errors; extra data is optional
+					pass
 
 		activity = {
 			"activity_type": activity_type,
@@ -220,7 +244,18 @@ def get_lead_activities(name, limit=20, offset=0):
 		if not data.get("changed"):
 			continue
 
-		if change := data.get("changed")[0]:
+		# Prefer a status change if multiple fields changed in the same version
+		changes = data.get("changed") or []
+		change = None
+		if changes:
+			for ch in changes:
+				if ch and ch[0] == 'status':
+					change = ch
+					break
+			if not change:
+				change = changes[0]
+
+		if change:
 			field = lead_fields.get(change[0], None)
 
 			if not field or change[0] in avoid_fields or (not change[1] and not change[2]):
@@ -409,7 +444,18 @@ def get_ticket_activities(name, limit=20, offset=0):
 			if not data.get("changed"):
 				continue
 
-			if change := data.get("changed")[0]:
+			# Prefer a status change if multiple fields changed in the same version
+			changes = data.get("changed") or []
+			change = None
+			if changes:
+				for ch in changes:
+					if ch and ch[0] == 'status':
+						change = ch
+						break
+				if not change:
+					change = changes[0]
+
+			if change:
 				field = ticket_fields.get(change[0], None)
 
 				# Skip call log related changes and other irrelevant fields

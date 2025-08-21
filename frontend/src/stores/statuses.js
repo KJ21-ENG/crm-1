@@ -130,6 +130,19 @@ export const statusesStore = defineStore('crm-statuses', () => {
         value: statusesByName[status]?.name,
         icon: () => h(IndicatorIcon, { class: statusesByName[status]?.color }),
         onClick: async () => {
+          const selectedName = statusesByName[status]?.name
+
+          // Prevent applying the same status again for documents that already have it
+          if (document && document.doc && document.doc.status === selectedName) {
+            try {
+              const { toast } = await import('frappe-ui')
+              toast.error(`${selectedName} is already the current status`)
+            } catch (e) {
+              console.error('Failed to show toast for duplicate status', e)
+            }
+            return
+          }
+
           capture('status_changed', { doctype, status })
           if (document) {
             // Special handling for lead status changes to avoid validation issues

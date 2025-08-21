@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import escape_html
 
 @frappe.whitelist()
 def save_client_id_without_validation(lead_name, client_id):
@@ -83,7 +84,10 @@ def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
                 client_id,
                 update_modified=False
             )
-        
+
+        # Capture previous status for creating a Version entry
+        previous_status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+
         # Then update status
         frappe.db.set_value(
             'CRM Lead',
@@ -92,10 +96,65 @@ def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
             new_status,
             update_modified=False
         )
-        
+
         # Commit the transaction
         frappe.db.commit()
-        
+
+        # Create a Version entry so the status change appears in Activity
+        try:
+            # include meta so activities can surface client_id / rejection_reason
+            lead_vals = frappe.db.get_value('CRM Lead', lead_name, ['client_id', 'rejection_reason'], as_dict=True)
+            version_data = {
+                'changed': [["status", previous_status, new_status]],
+                'added': [],
+                'removed': [],
+                'row_changed': [],
+                'data_import': None,
+                'updater_reference': None,
+                'meta': {
+                    'client_id': lead_vals.get('client_id') if lead_vals else None,
+                    'rejection_reason': lead_vals.get('rejection_reason') if lead_vals else None,
+                },
+            }
+            v = frappe.get_doc({
+                'doctype': 'Version',
+                'ref_doctype': 'CRM Lead',
+                'docname': lead_name,
+                'data': frappe.as_json(version_data),
+            })
+            v.insert(ignore_permissions=True)
+            # Also create a comment so UI can prioritise comment-based activity messages
+            try:
+                comment_text = f"Status changed to {new_status}."
+                # Prepare escaped values
+                client_html = None
+                rejection_html = None
+                if lead_vals:
+                    if lead_vals.get('client_id'):
+                        client_html = escape_html(lead_vals.get('client_id'))
+                    if lead_vals.get('rejection_reason'):
+                        rejection_html = escape_html(lead_vals.get('rejection_reason'))
+
+                # Only include relevant information based on the target status
+                if new_status in ['Account Opened', 'Account Activated'] and client_html:
+                    comment_text += f" Client ID: <span style=\"color:#2563eb\">{client_html}</span>"
+                elif new_status == 'Rejected - Follow-up Required' and rejection_html:
+                    comment_text += f" Rejection Reason: <span style=\"color:#dc2626\">{rejection_html}</span>"
+
+                c = frappe.get_doc({
+                    'doctype': 'Comment',
+                    'comment_type': 'Comment',
+                    'reference_doctype': 'CRM Lead',
+                    'reference_name': lead_name,
+                    'content': comment_text,
+                })
+                c.insert(ignore_permissions=True)
+            except Exception:
+                pass
+        except Exception:
+            # Non-critical: if version insertion fails, continue
+            pass
+
         return {
             'success': True,
             'message': f'Lead status updated to {new_status} successfully'
@@ -157,7 +216,10 @@ def update_lead_status_with_rejection_reason(lead_name, new_status, rejection_re
                 rejection_reason,
                 update_modified=False
             )
-        
+
+        # Capture previous status for creating a Version entry
+        previous_status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+
         # Then update status
         frappe.db.set_value(
             'CRM Lead',
@@ -166,10 +228,65 @@ def update_lead_status_with_rejection_reason(lead_name, new_status, rejection_re
             new_status,
             update_modified=False
         )
-        
+
         # Commit the transaction
         frappe.db.commit()
-        
+
+        # Create a Version entry so the status change appears in Activity
+        try:
+            # include meta so activities can surface client_id / rejection_reason
+            lead_vals = frappe.db.get_value('CRM Lead', lead_name, ['client_id', 'rejection_reason'], as_dict=True)
+            version_data = {
+                'changed': [["status", previous_status, new_status]],
+                'added': [],
+                'removed': [],
+                'row_changed': [],
+                'data_import': None,
+                'updater_reference': None,
+                'meta': {
+                    'client_id': lead_vals.get('client_id') if lead_vals else None,
+                    'rejection_reason': lead_vals.get('rejection_reason') if lead_vals else None,
+                },
+            }
+            v = frappe.get_doc({
+                'doctype': 'Version',
+                'ref_doctype': 'CRM Lead',
+                'docname': lead_name,
+                'data': frappe.as_json(version_data),
+            })
+            v.insert(ignore_permissions=True)
+            # Also create a comment so UI can prioritise comment-based activity messages
+            try:
+                comment_text = f"Status changed to {new_status}."
+                # Prepare escaped values
+                client_html = None
+                rejection_html = None
+                if lead_vals:
+                    if lead_vals.get('client_id'):
+                        client_html = escape_html(lead_vals.get('client_id'))
+                    if lead_vals.get('rejection_reason'):
+                        rejection_html = escape_html(lead_vals.get('rejection_reason'))
+
+                # Only include relevant information based on the target status
+                if new_status in ['Account Opened', 'Account Activated'] and client_html:
+                    comment_text += f" Client ID: <span style=\"color:#2563eb\">{client_html}</span>"
+                elif new_status == 'Rejected - Follow-up Required' and rejection_html:
+                    comment_text += f" Rejection Reason: <span style=\"color:#dc2626\">{rejection_html}</span>"
+
+                c = frappe.get_doc({
+                    'doctype': 'Comment',
+                    'comment_type': 'Comment',
+                    'reference_doctype': 'CRM Lead',
+                    'reference_name': lead_name,
+                    'content': comment_text,
+                })
+                c.insert(ignore_permissions=True)
+            except Exception:
+                pass
+        except Exception:
+            # Non-critical: if version insertion fails, continue
+            pass
+
         return {
             'success': True,
             'message': f'Lead status updated to {new_status} successfully'
