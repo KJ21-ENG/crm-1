@@ -110,6 +110,80 @@ def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
         }
 
 @frappe.whitelist()
+def save_rejection_reason_without_validation(lead_name, rejection_reason):
+    """
+    Save rejection_reason to lead document without triggering full validation
+    This is used when rejecting a lead and we need to capture the reason
+    """
+    try:
+        # Use direct SQL to avoid validation
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'rejection_reason',
+            rejection_reason,
+            update_modified=False
+        )
+        
+        # Commit the transaction
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': 'Rejection reason saved successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error saving rejection_reason for lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to save rejection reason: {str(e)}'
+        }
+
+@frappe.whitelist()
+def update_lead_status_with_rejection_reason(lead_name, new_status, rejection_reason=None):
+    """
+    Update lead status and optionally save rejection_reason in a single operation
+    This handles the case where rejection_reason needs to be saved before status change
+    """
+    try:
+        # First save rejection_reason if provided
+        if rejection_reason:
+            frappe.db.set_value(
+                'CRM Lead',
+                lead_name,
+                'rejection_reason',
+                rejection_reason,
+                update_modified=False
+            )
+        
+        # Then update status
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'status',
+            new_status,
+            update_modified=False
+        )
+        
+        # Commit the transaction
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': f'Lead status updated to {new_status} successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to update lead: {str(e)}'
+        }
+
+@frappe.whitelist()
 def validate_lead_for_status_change(lead_name, target_status):
     """
     Validate if a lead can be moved to the target status
@@ -123,6 +197,11 @@ def validate_lead_for_status_change(lead_name, target_status):
         if target_status in ['Account Opened', 'Account Activated']:
             if not lead.client_id:
                 errors.append('Client ID is required for this status')
+        
+        # Check if status requires rejection_reason
+        if target_status in ['Rejected - Follow-up Required']:
+            if not lead.rejection_reason:
+                errors.append('Rejection reason is required for this status')
         
         # Check for other required fields based on status
         if target_status in ['Account Opened', 'Account Activated']:

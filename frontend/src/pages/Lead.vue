@@ -359,6 +359,13 @@
     :targetStatus="pendingStatusChange?.value"
     :onSuccess="handleClientIdSubmit"
   />
+  <RejectionReasonModal
+    v-if="showRejectionReasonModal"
+    v-model="showRejectionReasonModal"
+    :leadId="lead.data.name"
+    :targetStatus="pendingStatusChange?.value"
+    :onSuccess="handleRejectionReasonSubmit"
+  />
   
 
 </template>
@@ -432,6 +439,7 @@ import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
 import ClientIdModal from '@/components/Modals/ClientIdModal.vue'
+import RejectionReasonModal from '@/components/Modals/RejectionReasonModal.vue'
 
 
 const { brand } = getSettings()
@@ -781,9 +789,17 @@ const showClientIdModal = ref(false)
 const pendingStatusChange = ref(null)
 const isUpdating = ref(false)
 
+// Rejection Reason Modal state
+const showRejectionReasonModal = ref(false)
+
 // Check if status change requires Client ID
 function shouldRequireClientId(status) {
   return ['Account Opened', 'Account Active', 'Account Activated'].includes(status)
+}
+
+// Check if status change requires Rejection Reason
+function shouldRequireRejectionReason(status) {
+  return status === 'Rejected - Follow-up Required'
 }
 
 // Handle Client ID submission
@@ -824,7 +840,45 @@ function handleClientIdCancel() {
   pendingStatusChange.value = null
 }
 
-// Custom function to handle status changes with Client ID check
+// Handle Rejection Reason submission
+async function handleRejectionReasonSubmit() {
+  isUpdating.value = true
+  
+  try {
+    // Now proceed with the pending status change using custom API
+    if (pendingStatusChange.value) {
+      const result = await call('crm.api.lead_operations.update_lead_status_with_rejection_reason', {
+        lead_name: props.leadId,
+        new_status: pendingStatusChange.value.value,
+        rejection_reason: null // Rejection reason already saved by modal
+      })
+      
+      if (result.success) {
+        console.log('✅ Status updated successfully after Rejection Reason submission')
+        // Reload the document to reflect changes
+        await document.reload()
+        await lead.reload()
+        toast.success(__('Lead status updated successfully'))
+      } else {
+        throw new Error(result.message)
+      }
+    }
+  } catch (error) {
+    console.error('Error updating status after Rejection Reason submission:', error)
+    toast.error(error.message || __('Failed to update lead status'))
+  } finally {
+    isUpdating.value = false
+    pendingStatusChange.value = null
+  }
+}
+
+// Handle Rejection Reason modal cancellation
+function handleRejectionReasonCancel() {
+  showRejectionReasonModal.value = false
+  pendingStatusChange.value = null
+}
+
+// Custom function to handle status changes with Client ID and Rejection Reason checks
 async function handleStatusChange(fieldname, value) {
   if (fieldname === 'status' && !isUpdating.value) {
     const newStatus = value
@@ -838,7 +892,15 @@ async function handleStatusChange(fieldname, value) {
       return
     }
     
-    // For status changes that don't require Client ID, use custom API to avoid validation issues
+    // Check if the new status requires Rejection Reason
+    if (shouldRequireRejectionReason(newStatus) && !document.doc.rejection_reason) {
+      // Store the pending status change
+      pendingStatusChange.value = { fieldname, value }
+      showRejectionReasonModal.value = true
+      return
+    }
+    
+    // For status changes that require Client ID, use custom API to avoid validation issues
     if (shouldRequireClientId(newStatus)) {
       try {
         const result = await call('crm.api.lead_operations.update_lead_status_with_client_id', {
@@ -861,9 +923,33 @@ async function handleStatusChange(fieldname, value) {
         return
       }
     }
+    
+    // For status changes that require Rejection Reason, use custom API to avoid validation issues
+    if (shouldRequireRejectionReason(newStatus)) {
+      try {
+        const result = await call('crm.api.lead_operations.update_lead_status_with_rejection_reason', {
+          lead_name: props.leadId,
+          new_status: newStatus,
+          rejection_reason: document.doc.rejection_reason
+        })
+        
+        if (result.success) {
+          await document.reload()
+          await lead.reload()
+          toast.success(__('Lead status updated successfully'))
+        } else {
+          throw new Error(result.message)
+        }
+        return
+      } catch (error) {
+        console.error('Error updating status:', error)
+        toast.error(error.message || __('Failed to update lead status'))
+        return
+      }
+    }
   }
   
-  // Call the original triggerOnChange for non-Client ID status changes
+  // Call the original triggerOnChange for non-special status changes
   await triggerOnChange(fieldname, value)
 }
 

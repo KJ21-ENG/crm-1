@@ -147,11 +147,13 @@ export const statusesStore = defineStore('crm-statuses', () => {
     return options
   }
 
-  // Helper function to handle lead status changes with Client ID validation
+  // Helper function to handle lead status changes with Client ID and Rejection Reason validation
   async function handleLeadStatusChange(document, newStatus, triggerOnChange) {
     try {
       // Check if status requires Client ID
       const requiresClientId = ['Account Opened', 'Account Active', 'Account Activated'].includes(newStatus)
+      // Check if status requires Rejection Reason
+      const requiresRejectionReason = newStatus === 'Rejected - Follow-up Required'
       
       if (requiresClientId && !document.doc.client_id) {
         // This will trigger the Client ID modal in the Lead.vue component
@@ -160,7 +162,14 @@ export const statusesStore = defineStore('crm-statuses', () => {
         return
       }
       
-      // For status changes that don't require Client ID, use custom API to avoid validation issues
+      if (requiresRejectionReason && !document.doc.rejection_reason) {
+        // This will trigger the Rejection Reason modal in the Lead.vue component
+        // The modal will handle the status change after Rejection Reason is provided
+        await triggerOnChange?.('status', newStatus)
+        return
+      }
+      
+      // For status changes that require Client ID, use custom API to avoid validation issues
       if (requiresClientId) {
         const { call } = await import('frappe-ui')
         const result = await call('crm.api.lead_operations.update_lead_status_with_client_id', {
@@ -178,8 +187,26 @@ export const statusesStore = defineStore('crm-statuses', () => {
         } else {
           throw new Error(result.message)
         }
+      } else if (requiresRejectionReason) {
+        // For status changes that require Rejection Reason, use custom API to avoid validation issues
+        const { call } = await import('frappe-ui')
+        const result = await call('crm.api.lead_operations.update_lead_status_with_rejection_reason', {
+          lead_name: document.doc.name,
+          new_status: newStatus,
+          rejection_reason: document.doc.rejection_reason
+        })
+        
+        if (result.success) {
+          // Reload the document to reflect changes
+          await document.reload()
+          // Show success message
+          const { toast } = await import('frappe-ui')
+          toast.success('Lead status updated successfully')
+        } else {
+          throw new Error(result.message)
+        }
       } else {
-        // Use original method for non-Client ID status changes
+        // Use original method for non-special status changes
         await triggerOnChange?.('status', newStatus)
         document.save.submit()
       }
