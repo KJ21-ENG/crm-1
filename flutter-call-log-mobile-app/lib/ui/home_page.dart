@@ -32,11 +32,29 @@ class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   bool _isUserScrolling = false;
   Timer? _scrollIdleDebounce;
+  
+  // Pagination variables
+  int _currentPage = 1;
+  int _logsPerPage = 50;
+  bool _hasMoreLogs = true;
+  bool _loadingMore = false;
+  final List<Map<String, dynamic>> _allLogs = [];
 
   @override
   void initState() {
     super.initState();
     _init();
+    _setupScrollListener();
+  }
+
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= 
+          _scrollController.position.maxScrollExtent - 200) {
+        // Load more when user is 200 pixels from bottom
+        _loadMoreLogs();
+      }
+    });
   }
 
   String _formatRelative(int? ts) {
@@ -126,9 +144,56 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadRecent() async {
     try {
-      final list = await ApiService.instance.getUserCallLogs(limit: 30);
-      if (mounted) setState(() => _recent = list);
+      if (_currentPage == 1) {
+        // First page - load initial data
+        final list = await ApiService.instance.getUserCallLogs(limit: _logsPerPage);
+        if (mounted) {
+          setState(() {
+            _allLogs.clear();
+            _allLogs.addAll(list);
+            _recent = _allLogs.take(_logsPerPage).toList();
+            _hasMoreLogs = list.length >= _logsPerPage;
+            _currentPage = 1;
+          });
+        }
+      }
     } catch (_) {}
+  }
+
+  Future<void> _loadMoreLogs() async {
+    if (_loadingMore || !_hasMoreLogs) return;
+    
+    try {
+      setState(() => _loadingMore = true);
+      
+      final nextPage = _currentPage + 1;
+      final offset = _currentPage * _logsPerPage;
+      final list = await ApiService.instance.getUserCallLogs(limit: _logsPerPage, offset: offset);
+      
+      if (mounted && list.isNotEmpty) {
+        setState(() {
+          _allLogs.addAll(list);
+          _recent = _allLogs.take((_currentPage + 1) * _logsPerPage).toList();
+          _hasMoreLogs = list.length >= _logsPerPage;
+          _currentPage = nextPage;
+        });
+      } else {
+        setState(() => _hasMoreLogs = false);
+      }
+    } catch (_) {
+      // Handle error silently for now
+    } finally {
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      }
+    }
+  }
+
+  void _resetPagination() {
+    _currentPage = 1;
+    _hasMoreLogs = true;
+    _allLogs.clear();
+    _recent.clear();
   }
 
   Future<void> _requestPermissions() async {
@@ -249,6 +314,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _manualSync() async {
     final res = await CallLogSyncService.instance.syncOnce();
+    _resetPagination();
     await _refreshStats();
     await _loadRecent();
     if (!(res['success'] == true)) {
@@ -276,6 +342,7 @@ class _HomePageState extends State<HomePage> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
+                _resetPagination();
                 await _refreshStats();
                 await _loadRecent();
               },
@@ -429,11 +496,33 @@ class _HomePageState extends State<HomePage> {
                       ),
                     )
                   else
-                    SliverList.builder(
-                      itemCount: _recent.length,
-                      itemBuilder: (ctx, i) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _CallLogTile(item: _recent[i]),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index >= _recent.length) {
+                            // Show load more button or loading indicator
+                            if (_hasMoreLogs) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: _LoadMoreButton(
+                                  onLoadMore: _loadMoreLogs,
+                                  loading: _loadingMore,
+                                ),
+                              );
+                            } else {
+                              return const SizedBox.shrink();
+                            }
+                          }
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _CallLogTile(
+                              key: ValueKey(_recent[index]['name'] ?? index),
+                              item: _recent[index],
+                            ),
+                          );
+                        },
+                        childCount: _recent.length + (_hasMoreLogs ? 1 : 0),
                       ),
                     ),
                   const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -557,12 +646,51 @@ class _BackgroundControl extends StatelessWidget {
   }
 }
 
-class _CallLogTile extends StatelessWidget {
-  final Map<String, dynamic> item;
-  const _CallLogTile({required this.item});
+class _LoadMoreButton extends StatelessWidget {
+  final VoidCallback onLoadMore;
+  final bool loading;
+  
+  const _LoadMoreButton({
+    required this.onLoadMore,
+    required this.loading,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Center(
+        child: loading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : TextButton(
+                onPressed: onLoadMore,
+                child: const Text('Load More Logs'),
+              ),
+      ),
+    );
+  }
+}
+
+class _CallLogTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  
+  const _CallLogTile({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    // Extract values once to avoid repeated map lookups
     final from = (item['from'] ?? '').toString();
     final to = (item['to'] ?? '').toString();
     final type = (item['type'] ?? '').toString();
@@ -572,85 +700,72 @@ class _CallLogTile extends StatelessWidget {
     final startRaw = (item['start_time'] ?? '').toString();
     final startText = _HomePageState._formatListDate(startRaw);
 
-    Color chipBg = const Color(0xFFE5E7EB);
-    Color chipFg = const Color(0xFF374151);
-    switch (type.toLowerCase()) {
-      case 'incoming':
-        chipBg = const Color(0xFFD1FAE5);
-        chipFg = const Color(0xFF065F46);
-        break;
-      case 'outgoing':
-        chipBg = const Color(0xFFDBEAFE);
-        chipFg = const Color(0xFF1E40AF);
-        break;
-      case 'missed':
-        chipBg = const Color(0xFFFEE2E2);
-        chipFg = const Color(0xFF991B1B);
-        break;
-    }
+    // Pre-calculate colors to avoid switch statement in build
+    final (chipBg, chipFg) = _getChipColors(type);
 
-    return RepaintBoundary(
-      child: InkWell(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        boxShadow: const [
+          BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        final tl = type.toLowerCase();
-                        final showNumber = tl == 'outgoing' ? to : from; // incoming/missed -> from, outgoing -> to
-                        return Text(
-                          showNumber,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        );
-                      },
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: chipBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      type.toUpperCase(),
-                      style: TextStyle(color: chipFg, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: Text(
+                  type.toLowerCase() == 'outgoing' ? to : from,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(startText, style: const TextStyle(color: Color(0xFF6B7280))),
-                  Text('Duration: $durationText', style: const TextStyle(color: Color(0xFF6B7280))),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: chipBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  type.toUpperCase(),
+                  style: TextStyle(color: chipFg, fontWeight: FontWeight.w600),
+                ),
               ),
-              const SizedBox(height: 4),
-              Text('Status: ${status.isNotEmpty ? status : '—'}', style: const TextStyle(fontSize: 12)),
             ],
           ),
-        ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(startText, style: const TextStyle(color: Color(0xFF6B7280))),
+              Text('Duration: $durationText', style: const TextStyle(color: Color(0xFF6B7280))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Status: ${status.isNotEmpty ? status : '—'}', style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
+  }
+
+  (Color, Color) _getChipColors(String type) {
+    switch (type.toLowerCase()) {
+      case 'incoming':
+        return (const Color(0xFFD1FAE5), const Color(0xFF065F46));
+      case 'outgoing':
+        return (const Color(0xFFDBEAFE), const Color(0xFF1E40AF));
+      case 'missed':
+        return (const Color(0xFFFEE2E2), const Color(0xFF991B1B));
+      default:
+        return (const Color(0xFFE5E7EB), const Color(0xFF374151));
+    }
   }
 }
 

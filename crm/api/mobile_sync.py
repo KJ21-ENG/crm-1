@@ -464,12 +464,13 @@ def clean_phone_number(phone_number):
 
 
 @frappe.whitelist()
-def get_user_call_logs(limit=50, from_date=None, to_date=None):
+def get_user_call_logs(limit=50, offset=0, from_date=None, to_date=None):
     """
     Get call logs for the current user
     
     Args:
         limit: Number of records to return
+        offset: Number of records to skip (for pagination)
         from_date: Start date filter
         to_date: End date filter
         
@@ -502,7 +503,8 @@ def get_user_call_logs(limit=50, from_date=None, to_date=None):
             filters=filters,
             fields=fields,
             order_by='start_time desc',
-            limit=limit
+            limit=limit,
+            start=offset
         )
         
         return {

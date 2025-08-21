@@ -177,8 +177,8 @@ class ApiService {
     return Map<String, dynamic>.from(res.data ?? {});
   }
 
-  Future<List<Map<String, dynamic>>> getUserCallLogs({int limit = 20, String? fromDate, String? toDate}) async {
-    final data = <String, dynamic>{'limit': limit};
+  Future<List<Map<String, dynamic>>> getUserCallLogs({int limit = 20, int offset = 0, String? fromDate, String? toDate}) async {
+    final data = <String, dynamic>{'limit': limit, 'offset': offset};
     if (fromDate != null) data['from_date'] = fromDate;
     if (toDate != null) data['to_date'] = toDate;
     final res = await _dio.post('/api/method/crm.api.mobile_sync.get_user_call_logs', data: data);
