@@ -223,27 +223,49 @@ class RoleAssignmentTracker(Document):
 		"""Assign a document to the next user from a specific user list using round-robin"""
 		if not user_list:
 			frappe.throw(f"No users provided for role: {role_name}")
-		
+
 		# Get or create tracker for this role
 		tracker = RoleAssignmentTracker.get_or_create_tracker(role_name)
-		
-		# Find the current position in the provided user list
-		current_position = 0
-		if tracker.last_assigned_user in user_list:
+
+		# Parse the stored global user list from tracker
+		stored_user_list = []
+		if tracker.user_list:
 			try:
-				current_position = (user_list.index(tracker.last_assigned_user) + 1) % len(user_list)
+				stored_user_list = json.loads(tracker.user_list) if isinstance(tracker.user_list, str) else tracker.user_list
+			except json.JSONDecodeError:
+				stored_user_list = []
+
+		if not stored_user_list:
+			frappe.throw(f"No users found for role: {role_name}")
+
+		# Start searching from the tracker's current_position to preserve global round-robin order
+		start_pos = tracker.current_position if tracker.current_position < len(stored_user_list) else 0
+		selected_user = None
+		selected_index_in_global = None
+
+		for i in range(len(stored_user_list)):
+			idx = (start_pos + i) % len(stored_user_list)
+			candidate = stored_user_list[idx]
+			if candidate in user_list:
+				selected_user = candidate
+				selected_index_in_global = idx
+				break
+
+		if not selected_user:
+			# Fallback: pick first user from provided list
+			selected_user = user_list[0]
+			# try to find its index in global list
+			try:
+				selected_index_in_global = stored_user_list.index(selected_user)
 			except ValueError:
-				current_position = 0
-		
-		# Get next user from the provided list
-		next_user = user_list[current_position]
-		
-		# Update tracker
-		tracker.current_position = (current_position + 1) % len(user_list)
-		tracker.last_assigned_user = next_user
+				selected_index_in_global = 0
+
+		# Update tracker to point to the next position after the selected global index
+		tracker.current_position = (selected_index_in_global + 1) % len(stored_user_list)
+		tracker.last_assigned_user = selected_user
 		tracker.last_assigned_on = datetime.now()
 		tracker.assignment_count += 1
-		
+
 		# Parse and update assignment history
 		assignment_history = []
 		if tracker.assignment_history:
@@ -251,27 +273,27 @@ class RoleAssignmentTracker(Document):
 				assignment_history = json.loads(tracker.assignment_history) if isinstance(tracker.assignment_history, str) else tracker.assignment_history
 			except json.JSONDecodeError:
 				assignment_history = []
-		
+
 		history_entry = {
-			"user": next_user,
+			"user": selected_user,
 			"document_type": document_type,
 			"document_name": document_name,
 			"assigned_on": tracker.last_assigned_on.isoformat(),
 			"assigned_by": assigned_by or frappe.session.user,
-			"position": current_position,
-			"user_list": user_list  # Store the user list used for this assignment
+			"position": selected_index_in_global,
+			"user_list": stored_user_list  # Store the global user list used for this assignment
 		}
-		
+
 		assignment_history.append(history_entry)
-		
+
 		# Keep only last 100 assignments in history
 		if len(assignment_history) > 100:
 			assignment_history = assignment_history[-100:]
-		
+
 		tracker.assignment_history = json.dumps(assignment_history)
-		
+
 		tracker.save(ignore_permissions=True)
-		
-		frappe.logger().info(f"Assigned {document_type} {document_name} to {next_user} from user list: {user_list}")
-		
-		return next_user 
+
+		frappe.logger().info(f"Assigned {document_type} {document_name} to {selected_user} from user list: {user_list}")
+
+		return selected_user
