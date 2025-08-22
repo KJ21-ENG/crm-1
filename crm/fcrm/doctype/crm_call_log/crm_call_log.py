@@ -315,11 +315,24 @@ def parse_call_log(call):
 	customer_info = None
 	
 	if call.get("employee"):
-		employee_data = frappe.db.get_values("User", call.get("employee"), ["full_name", "user_image"])[0] if call.get("employee") else [None, None]
+		# Try to get a readable display name for the User. Prefer full_name, then first+last, then fallback to id/email
+		employee_data = frappe.db.get_values(
+			"User",
+			call.get("employee"),
+			["full_name", "first_name", "last_name", "user_image"],
+		)[0] if call.get("employee") else [None, None, None, None]
+		full_name, first_name, last_name, user_image = employee_data
+		display_name = full_name or ' '.join([n for n in [first_name, last_name] if n]) or call.get("employee")
 		employee_info = {
-			"label": employee_data[0] or "Unknown Employee",
-			"image": employee_data[1],
+			"label": display_name or "Unknown Employee",
+			"image": user_image,
 		}
+
+		# Expose employee display info for list views (show full name instead of id/email)
+		if employee_info:
+			call["_employee"] = employee_info
+			# Also include a lightweight display string to simplify front-end rendering
+			call["employee_display"] = display_name
 	
 	# For customer info, prioritize customer_name over contact lookup
 	customer_name = call.get("customer_name")

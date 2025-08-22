@@ -115,6 +115,26 @@ watch(() => session.user, (newUser) => {
   }
 }, { immediate: true })
 
+// Ensure employee column uses display name for header filters/search (map backend employee_display)
+watch(
+  () => callLogs.value?.data,
+  (data) => {
+    if (!data || !data.data) return
+    try {
+      data.data = data.data.map((row) => {
+        // If backend provided employee_display, use it for the employee column so header filters/search show names
+        if (row && row.employee_display) {
+          return { ...row, employee: row.employee_display }
+        }
+        return row
+      })
+    } catch (e) {
+      // swallow
+    }
+  },
+  { immediate: true },
+)
+
 // Watch for login state changes
 watch(() => session.isLoggedIn, (isLoggedIn) => {
   if (isLoggedIn && viewControls.value) {

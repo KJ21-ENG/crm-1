@@ -17,6 +17,15 @@ export function getCallLogDetail(row, log, columns = []) {
       label: log._caller?.label,
       image: log._caller?.image,
     }
+  } else if (row === 'employee') {
+    // Show employee display name + avatar instead of raw id/email
+    return {
+      // Prefer explicit _employee.label, then employee_display, then fallback to employee
+      label: log._employee?.label || log.employee_display || log.employee,
+      image: log._employee?.image || null,
+      // include underlying id so filters use the stored value (not the display label)
+      name: log.employee,
+    }
   } else if (row === 'receiver') {
     return {
       label: log._receiver?.label,
