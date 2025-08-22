@@ -35,7 +35,7 @@
 
     <!-- Performance Overview Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToLeads" @keydown.enter.prevent="navigateToLeads" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Leads Assigned</p>
@@ -58,7 +58,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTickets" @keydown.enter.prevent="navigateToTickets" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tickets Assigned</p>
@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTasks" @keydown.enter.prevent="navigateToTasks" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tasks Assigned</p>
@@ -404,6 +404,7 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { FeatherIcon, Badge } from 'frappe-ui'
 import ChartCard from './ChartCard.vue'
 
@@ -727,6 +728,20 @@ const getMostProductivePeriod = (hourlyData) => {
   if (maxActivity === 0) return 'No activity recorded'
   
   return `${bestPeriod} (${maxActivity} activities)`
+}
+
+const router = useRouter()
+
+const navigateToLeads = () => {
+  router.push({ name: 'Leads' })
+}
+
+const navigateToTickets = () => {
+  router.push({ name: 'Tickets' })
+}
+
+const navigateToTasks = () => {
+  router.push({ name: 'Tasks' })
 }
 
 onMounted(() => {
