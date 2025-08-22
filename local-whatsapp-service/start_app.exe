@@ -1,0 +1,7 @@
+@echo off
+cd /d "C:\Users\%USERNAME%\Documents\eshin_crm_whatsapp_ext\local-whatsapp-service"
+
+echo Starting the service...
+call npm start
+
+pause
