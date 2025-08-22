@@ -339,7 +339,7 @@ onMounted(async () => {
     status: '',
     assign_to_role: '', // New field for role-based assignment
     referral_through: '', // Client ID used during lead creation
-    client_id: '', // Client identification number assigned when account is opened
+    // client_id removed from Quick Entry defaults - field is managed server-side
     // ... other default values
   }
 
@@ -757,19 +757,18 @@ const tabs = createResource({
               }
             }
 
-            // Configure client_id field
+            // Remove client_id from Quick Entry: hide it
             if (field.fieldname == 'client_id') {
-              field.fieldtype = 'Data'
-              field.label = 'Client ID'
+              field.visible = 0
+              field.read_only = 1
               field.description = ''
-              field.read_only = 1 // Read-only in form
             }
             
 
 
             // Add custom assign_to_role field for role-based assignments
-            if (field.fieldname == 'lead_owner') {
-              // Insert assign_to_role field after lead_owner
+            // Place `assign_to_role` immediately after the `status` field for uniform layout
+            if (field.fieldname == 'status') {
               const assignToRoleField = {
                 fieldname: 'assign_to_role',
                 fieldtype: 'Select',
@@ -782,8 +781,8 @@ const tabs = createResource({
                   { label: 'Support Manager', value: 'Support Manager' }
                 ]
               }
-              
-              // Find the current field index and insert after it
+
+              // Insert assign_to_role after the status field in the same column
               const currentFieldIndex = column.fields.indexOf(field)
               if (currentFieldIndex !== -1) {
                 column.fields.splice(currentFieldIndex + 1, 0, assignToRoleField)
