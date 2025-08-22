@@ -371,24 +371,58 @@ const sendSupportPages = async () => {
   }
 }
 
-// Fetch customer mobile via server: ticket -> customer_id -> customer.mobile_no
+// Fetch customer mobile via server.
+// For tickets: ticket -> customer_id -> CRM Customer.mobile_no
+// For leads: lead -> customer_id -> CRM Customer.mobile_no (fall back to lead.mobile_no)
 async function fetchCustomerMobile() {
   try {
-    // 1) Load ticket to get customer_id
-    const ticket = await createResource({
-      url: 'frappe.client.get',
-      params: { doctype: 'CRM Ticket', name: props.docname, fields: ['customer_id'] },
-    }).fetch()
-    const customerId = ticket?.customer_id
-    if (!customerId) return null
+    // If this is a ticket, use ticket -> customer flow
+    if (props.doctype === 'CRM Ticket') {
+      const ticket = await createResource({
+        url: 'frappe.client.get',
+        params: { doctype: 'CRM Ticket', name: props.docname, fields: ['customer_id'] },
+      }).fetch()
+      const customerId = ticket?.customer_id
+      if (!customerId) return null
 
-    // 2) Get customer by name
-    const customer = await createResource({
+      const customer = await createResource({
+        url: 'frappe.client.get',
+        params: { doctype: 'CRM Customer', name: customerId, fields: ['mobile_no'] },
+      }).fetch()
+      return customer?.mobile_no || null
+    }
+
+    // If this is a lead, try lead -> customer flow, otherwise fall back to lead.mobile_no
+    if (props.doctype === 'CRM Lead') {
+      const lead = await createResource({
+        url: 'frappe.client.get',
+        params: { doctype: 'CRM Lead', name: props.docname, fields: ['customer_id', 'mobile_no'] },
+      }).fetch()
+
+      const customerId = lead?.customer_id
+      if (customerId) {
+        const customer = await createResource({
+          url: 'frappe.client.get',
+          params: { doctype: 'CRM Customer', name: customerId, fields: ['mobile_no'] },
+        }).fetch()
+        if (customer?.mobile_no) return customer.mobile_no
+      }
+
+      // Fallback to mobile_no present on the lead itself
+      return lead?.mobile_no || null
+    }
+
+    // Generic fallback: if parent passed a customer prop with mobile_no, use it
+    if (props.customer && props.customer.mobile_no) {
+      return props.customer.mobile_no
+    }
+
+    // Last resort: try to load the document by doctype and name and look for mobile_no
+    const doc = await createResource({
       url: 'frappe.client.get',
-      params: { doctype: 'CRM Customer', name: customerId, fields: ['mobile_no'] },
+      params: { doctype: props.doctype, name: props.docname, fields: ['mobile_no'] },
     }).fetch()
-    const mobile = customer?.mobile_no || ''
-    return mobile
+    return doc?.mobile_no || null
   } catch (e) {
     console.error('Failed to fetch customer mobile:', e)
     return null
