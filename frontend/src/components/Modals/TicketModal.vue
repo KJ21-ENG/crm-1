@@ -815,7 +815,7 @@ const tabs = createResource({
               // Make Ticket Owner editable only for admin
               if (!isAdmin()) {
                 field.read_only = 1
-                field.description = 'Only Administrator can change Ticket Owner'
+                field.description = ''
               }
             }
 

@@ -713,7 +713,7 @@ const tabs = createResource({
               field.fieldtype = 'Select'
               field.options = 'Direct\nIndirect'
               field.default = 'Direct'
-              field.description = 'Select whether this is a direct or indirect lead'
+              field.description = ''
             }
 
             // Configure referral_through field based on lead_category
@@ -725,9 +725,7 @@ const tabs = createResource({
               field.mandatory_depends_on = "eval:doc.lead_category=='Direct'"
               // Use depends_on for dynamic description
               field.depends_on = "eval:doc.lead_category"
-              field.description = lead.doc.lead_category === 'Direct' ? 
-                'Client ID used during lead creation (required for Direct leads)' : 
-                'Client ID used during lead creation (optional for Indirect leads)'
+              field.description = ''
               field.read_only = 0
             }
 
@@ -748,14 +746,14 @@ const tabs = createResource({
               field.label = 'Account Type'
               field.options = 'CRM Account Type'
               field.mandatory = 1
-              field.description = 'Account type is mandatory'
+              field.description = ''
             }
             
             // Make Lead Owner editable only for admin
             if (field.fieldname == 'lead_owner') {
               if (!isAdmin()) {
                 field.read_only = 1
-                field.description = 'Only Administrator can change Lead Owner'
+                field.description = ''
               }
             }
 
@@ -763,7 +761,7 @@ const tabs = createResource({
             if (field.fieldname == 'client_id') {
               field.fieldtype = 'Data'
               field.label = 'Client ID'
-              field.description = 'Client identification number assigned when account is opened'
+              field.description = ''
               field.read_only = 1 // Read-only in form
             }
             

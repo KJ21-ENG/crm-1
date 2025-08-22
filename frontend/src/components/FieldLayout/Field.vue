@@ -1,6 +1,6 @@
 <template>
   <div v-if="field.visible && shouldRenderField(field)" class="field w-full">
-    <div v-if="field.fieldtype != 'Check' && field.label" class="mb-2 text-sm text-ink-gray-5" style="min-height:20px">
+    <div v-if="field.fieldtype != 'Check' && field.label" class="mb-2 text-sm text-ink-gray-5 truncate" style="min-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
       {{ __(field.label) }}
       <span
         v-if="
