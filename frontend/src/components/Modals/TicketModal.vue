@@ -803,8 +803,7 @@ const tabs = createResource({
                   { label: 'Sales Manager', value: 'Sales Manager' },
                   { label: 'Support User', value: 'Support User' },
                     { label: 'Support Manager', value: 'Support Manager' }
-                ],
-                description: 'Select role for automatic user assignment'
+                ]
               }
               
               // Find the current field index and insert after it

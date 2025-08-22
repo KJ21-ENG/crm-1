@@ -9,7 +9,7 @@
     ]"
   >
     <Section
-      class="flex sm:flex-row flex-col gap-4 text-lg font-medium"
+      class="text-lg font-medium"
       :class="{ 'px-3 sm:px-5': hasTabs }"
       :labelClass="['text-lg font-medium', { 'px-3 sm:px-5': hasTabs }]"
       :label="section.label"
@@ -18,13 +18,19 @@
       :collapsible="section.collapsible"
       collapseIconPosition="right"
     >
-      <template v-for="column in section.columns" :key="column.name">
-        <Column
-          :class="{ 'mt-6': section.label && !section.hideLabel }"
-          :column="column"
-          :data-name="column.name"
-        />
-      </template>
+      <!-- Render fields in aligned rows across columns -->
+      <div
+        :style="{ display: 'grid', gridTemplateColumns: `repeat(${(section.columns || []).length}, minmax(0, 1fr))`, gap: '1rem' }"
+        class="mt-4"
+      >
+        <template v-for="rowIndex in rowCount" :key="rowIndex">
+          <template v-for="colIndex in (section.columns || []).length" :key="colIndex">
+            <div>
+              <Field v-if="getFieldAt(colIndex-1, rowIndex-1)" :field="getFieldAt(colIndex-1, rowIndex-1)" />
+            </div>
+          </template>
+        </template>
+      </div>
     </Section>
   </div>
 </template>
@@ -38,4 +44,24 @@ const props = defineProps({
 })
 
 const hasTabs = inject('hasTabs')
+// compute row count and helper to fetch fields by position
+import { computed } from 'vue'
+
+const rowCount = computed(() => {
+  const cols = props.section?.columns || []
+  let max = 0
+  cols.forEach((c) => {
+    const len = (c.fields || []).length
+    if (len > max) max = len
+  })
+  return max || 0
+})
+
+function getFieldAt(colIndex, rowIndex) {
+  const cols = props.section?.columns || []
+  const col = cols[colIndex]
+  if (!col) return null
+  const field = col.fields?.[rowIndex]
+  return field || null
+}
 </script>

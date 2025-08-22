@@ -34,6 +34,10 @@ crm.patches.v1_0.add_ticket_subjects_multiselect
 crm.patches.v1_0.update_ticket_layout_add_ticket_subjects
 crm.patches.v1_0.add_parent_columns_to_ticket_subject_item
 crm.patches.v1_0.remove_single_subject_from_ticket_layout
+crm.patches.v1_0.update_ticket_quick_entry_three_column_layout
+crm.patches.v1_0.update_ticket_quick_entry_layout_v2
+crm.patches.v1_0.remove_department_from_ticket_quick_entry_layout
+crm.patches.v1_0.update_ticket_quick_entry_layout_v3
 
 # Mobile sync alignment: add device_call_id field to CRM Call Log for duplicate detection
 crm.patches.v1_0.add_device_call_id_to_crm_call_log
