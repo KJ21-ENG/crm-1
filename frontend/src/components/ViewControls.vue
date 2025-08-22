@@ -631,8 +631,13 @@ function reload() {
   if (resetPageLengthToDefault()) {
     return // The updatePageLength function will call reload again
   }
-  
-  list.value.params = getParams()
+  // Preserve currently applied filters across reloads (e.g., when changing page)
+  const currentFilters = list.value?.params?.filters
+  const params = getParams()
+  if (currentFilters) {
+    params.filters = currentFilters
+  }
+  list.value.params = params
   list.value.reload()
 }
 
@@ -893,7 +898,12 @@ const quickFilterList = computed(() => {
 
       // derive fieldtype and options
       let fieldtype = meta?.fieldtype || col.type || 'Data'
-      const excludedTypes = ['Date', 'Datetime', 'Time', 'Duration']
+      // Special-case: for Call Logs, treat 'start_time' column as Date so quick filter shows date-only picker
+      if (props.doctype === 'CRM Call Log' && key === 'start_time') {
+        fieldtype = 'Date'
+      }
+      // Allow Date/Datetime fields to be used as quick filters (e.g., Attended On)
+      const excludedTypes = ['Time', 'Duration']
       if (excludedTypes.includes(String(fieldtype))) return null
       let options = meta?.options
 
@@ -918,7 +928,12 @@ const quickFilterList = computed(() => {
 
   // Initialize values and hydrate from current applied filters
   filters.forEach((filter) => {
-    filter.value = filter.fieldtype === 'Check' ? false : ''
+    // For date/datetime quick filters we want the picker to start empty (no default to now)
+    if (['Date', 'Datetime'].includes(filter.fieldtype)) {
+      filter.value = null
+    } else {
+      filter.value = filter.fieldtype === 'Check' ? false : ''
+    }
     const active = list.value?.params?.filters?.[filter.fieldname]
     if (active !== undefined) {
       if (Array.isArray(active)) {

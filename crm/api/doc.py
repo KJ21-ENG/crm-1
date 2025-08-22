@@ -344,6 +344,16 @@ def get_data(
 			
 		frappe.logger().info(f"🔍 Call Log Debug - FINAL filters after manual checks: {filters}")
 
+		# Normalize date filters for Call Log: if user provided a date (no time),
+		# convert to a between range for the full day so datetime equality works.
+		if 'start_time' in filters:
+			val = filters.get('start_time')
+			# If frontend passed a simple date string like '2025-08-15', convert to full-day range
+			if isinstance(val, str) and len(val) == 10 and val[4] == '-' and val[7] == '-':
+				start_of_day = f"{val} 00:00:00"
+				end_of_day = f"{val} 23:59:59"
+				filters['start_time'] = ['between', [start_of_day, end_of_day]]
+
 	is_default = True
 	data = []
 	_list = get_controller(doctype)
