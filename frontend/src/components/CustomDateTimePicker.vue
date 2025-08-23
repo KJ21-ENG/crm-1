@@ -147,6 +147,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  preventAutoFill: {
+    type: Boolean,
+    default: false,
+  },
   autoDefault: {
     type: Boolean,
     default: true,
@@ -538,7 +542,8 @@ onMounted(() => {
     initializeCurrentDateTime();
 
     // If no external value provided, default to current datetime and emit it
-    if (!props.modelValue && props.autoDefault) {
+    // But skip auto-fill if preventAutoFill is true (e.g., for quick filters)
+    if (!props.modelValue && props.autoDefault && !props.preventAutoFill) {
       const finalDate = new Date(selectedDate.value)
       let hour = selectedHour.value
       if (selectedPeriod.value === 'PM' && hour !== 12) {

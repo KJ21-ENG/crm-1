@@ -45,6 +45,8 @@
     class="border-none"
     :is="filter.fieldtype === 'Date' ? DatePicker : CustomDateTimePicker"
     :value="filter.value"
+    :modelValue="filter.value"
+    :preventAutoFill="true"
     @change="(v) => updateFilter(filter, v)"
     :placeholder="filter.label"
   />
