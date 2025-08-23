@@ -624,6 +624,13 @@ watch(currentDate, (d) => {
   monthIndex.value = d.getMonth()
   yearValue.value = d.getFullYear()
 })
+
+// If user modifies time selects while a date is present, treat that as an explicit selection
+watch([selectedHour, selectedMinute, selectedPeriod], () => {
+  if (selectedDate.value) {
+    hasUserSelectedDate.value = true
+  }
+})
 </script>
 
 <style scoped>

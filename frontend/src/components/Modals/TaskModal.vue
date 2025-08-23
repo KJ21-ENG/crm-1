@@ -84,7 +84,7 @@
           <CustomDateTimePicker
             class="datepicker"
             v-model="_task.due_date"
-            :placeholder="__('01/04/2024 11:30 PM')"
+            :placeholder="currentDateTimePlaceholder"
             :input-class="'border-none'"
           />
           <Dropdown :options="taskPriorityOptions(updateTaskPriority)">
@@ -121,7 +121,7 @@ import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
 import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import Link from '@/components/Controls/Link.vue'
-import { taskStatusOptions, taskPriorityOptions, getFormat } from '@/utils'
+import { taskStatusOptions, taskPriorityOptions, getFormat, formatDate } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { capture } from '@/telemetry'
 import { TextEditor, Dropdown, Tooltip, call, createResource } from 'frappe-ui'
@@ -129,6 +129,9 @@ import { useOnboarding } from 'frappe-ui/frappe'
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import CustomDateTimePicker from '../CustomDateTimePicker.vue'
+
+// Placeholder showing current date/time for the due date picker
+const currentDateTimePlaceholder = formatDate(new Date(), 'MM/DD/YYYY hh:mm A')
 
 const props = defineProps({
   task: {

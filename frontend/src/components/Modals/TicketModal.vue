@@ -471,6 +471,22 @@ const taskData = ref({
   reference_docname: '',
 })
 
+// Compute default due date (ISO 'YYYY-MM-DD HH:mm:ss') based on priority
+function computeDueDateFromPriority(priority) {
+  const now = new Date()
+  let hoursToAdd = 2 // default to 2 hours
+  if (!priority) priority = ''
+  const p = String(priority).trim().toLowerCase()
+  if (p === 'low') hoursToAdd = 24
+  else if (p === 'medium') hoursToAdd = 2
+  else if (p === 'high') hoursToAdd = 1
+  // fallback: keep default 2 hours for other priorities (e.g., High)
+
+  const due = new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())} ${pad(due.getHours())}:${pad(due.getMinutes())}:${pad(due.getSeconds())}`
+}
+
 const { document: ticket, triggerOnChange } = useDocument('CRM Ticket')
 
 // Customer search key for history lookup
@@ -667,7 +683,7 @@ function openTaskModalForAssignment() {
       `Task created for ticket handling - ${ticket.doc.subject || ''}`.trim(),
     assigned_to: '', // Will be set when ticket is created
     role_for_assignment: ticket.doc.assign_to_role || '', // Store role for later assignment (empty if no role)
-    due_date: '',
+    due_date: computeDueDateFromPriority(ticket.doc.priority || 'Medium'),
     status: 'Todo',
     priority: ticket.doc.priority || 'Medium',
     reference_doctype: 'CRM Ticket',
@@ -764,8 +780,7 @@ const tabs = createResource({
               field.options = [
                 { label: 'Low', value: 'Low' },
                 { label: 'Medium', value: 'Medium' },
-                { label: 'High', value: 'High' },
-                { label: 'Urgent', value: 'Urgent' }
+                { label: 'High', value: 'High' }
               ]
             }
 
