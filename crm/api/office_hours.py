@@ -77,7 +77,19 @@ def save_office_hours(days):
                 results.append({"name": name, "status": "error", "error": str(e)})
         else:
             try:
-                doc = frappe.get_doc({"doctype": "CRM Service Day", "workday": workday, "start_time": start_time, "end_time": end_time, "office_open": bool(d.get("office_open"))})
+                # CRM Service Day is a child table of the single doc 'FCRM Settings'
+                # When creating a new child row we must set parent/parenttype/parentfield
+                child = {
+                    "doctype": "CRM Service Day",
+                    "workday": workday,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "office_open": bool(d.get("office_open")),
+                    "parent": "FCRM Settings",
+                    "parenttype": "FCRM Settings",
+                    "parentfield": "office_hours",
+                }
+                doc = frappe.get_doc(child)
                 doc.insert(ignore_permissions=True)
                 results.append({"name": doc.name, "status": "created"})
             except Exception as e:
