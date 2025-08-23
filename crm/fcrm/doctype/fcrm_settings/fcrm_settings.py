@@ -14,6 +14,30 @@ class FCRMSettings(Document):
 	def restore_defaults(self, force=False):
 		after_install(force)
 
+	@frappe.whitelist()
+	def seed_office_hours(self):
+		"""Seed default office hours: Mon–Fri 10:00–18:00, Sat 10:00–15:00"""
+		# Clear existing rows
+		self.set("office_hours", [])
+		# Helper to add a row
+		def add_row(day, start, end):
+			self.append("office_hours", {
+				"workday": day,
+				"start_time": start,
+				"end_time": end,
+			})
+		# Weekdays
+		for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+			add_row(day, "10:00:00", "18:00:00")
+		# Saturday
+		add_row("Saturday", "10:00:00", "15:00:00")
+		# Intentionally skip Sunday
+		self.save()
+		return {
+			"success": True,
+			"message": "Seeded office hours: Mon–Fri 10:00–18:00, Sat 10:00–15:00"
+		}
+
 	def validate(self):
 		self.do_not_allow_to_delete_if_standard()
 		self.setup_forecasting()

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
 from crm.api.activities import emit_activity_update
+from crm.utils import assert_office_open
 
 def _get_assigned_users_for_document(doctype: str, docname: str):
     """Return a set of users already assigned to the given document.
@@ -225,6 +226,8 @@ def get_assignable_users():
 def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=False):
     """Assign a lead to a role using round-robin logic"""
     try:
+        # Respect office hours for automatic role-based assignment; allow manual outside hours
+        assert_office_open(allow_manual_outside_hours=True)
         if not assigned_by:
             assigned_by = frappe.session.user
 

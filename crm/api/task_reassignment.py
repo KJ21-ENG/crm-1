@@ -4,6 +4,7 @@ from frappe.utils import now, get_datetime, add_to_date, get_fullname
 from datetime import datetime, timedelta
 import json
 from crm.api.role_assignment import RoleAssignmentTracker
+from crm.utils import is_office_open_now
 from crm.api.activities import emit_activity_update
 
 # @frappe.whitelist()
@@ -283,7 +284,7 @@ def test_reassignment_for_task(task_name):
             print(f"Reset task status to Todo")
         
         # Run reassignment
-        auto_reassign_overdue_tasks()
+        process_overdue_task_reassignments()
         
         return {"success": True, "message": "Reassignment attempted"}
     except Exception as e:
@@ -298,7 +299,7 @@ def manually_trigger_reassignment():
         if not frappe.has_permission("CRM Task", "write"):
             frappe.throw("Insufficient permissions to trigger reassignment")
         
-        auto_reassign_overdue_tasks()
+        process_overdue_task_reassignments()
         
         return {
             "success": True,
@@ -354,6 +355,21 @@ def process_overdue_task_reassignments():
     This should be called by the scheduler.
     """
     try:
+        # Log start and office-hours check to help debugging
+        try:
+            current_check = is_office_open_now()
+            frappe.logger().info(f"process_overdue_task_reassignments: started. is_office_open_now={current_check}")
+        except Exception as e:
+            frappe.logger().warning(f"process_overdue_task_reassignments: office check failed: {str(e)}")
+
+        # Respect office hours: skip entirely when closed
+        if not is_office_open_now():
+            # Log skip so we can trace scheduler activity
+            try:
+                frappe.logger().info("process_overdue_task_reassignments: Office closed - skipping auto-reassignment run")
+            except Exception:
+                pass
+            return {"success": True, "message": "Office closed. Skipping auto-reassignment run."}
         current_time = get_datetime(now())
         
         # Calculate grace period: 30 minutes after due date

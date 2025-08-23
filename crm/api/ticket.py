@@ -1238,6 +1238,8 @@ def determine_ticket_for_call(call_creation_time, customer_tickets):
     
     return frappe.get_doc("CRM Ticket", active_ticket.name) if active_ticket else None 
 
+from crm.utils import assert_office_open
+
 @frappe.whitelist()
 def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket directly to a specific user (Admin Only)"""
@@ -1398,6 +1400,8 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_cr
 def assign_ticket_to_role(ticket_name, role_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket to a role using round-robin logic"""
     try:
+        # Respect office hours for role-based auto-assign; allow manual outside hours
+        assert_office_open(allow_manual_outside_hours=True)
         if not assigned_by:
             assigned_by = frappe.session.user
         
