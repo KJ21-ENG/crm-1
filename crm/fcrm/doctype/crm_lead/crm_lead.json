@@ -26,8 +26,8 @@
    "lead_category",
    "referral_through",
    "client_id",
+   "pod_id",
    "customer_id",
-   "person_tab",
   "salutation",
   "first_name",
   "last_name",
@@ -217,6 +217,14 @@
    "fieldtype": "Data",
    "label": "Client ID",
    "description": "Client identification number assigned when account is opened"
+  },
+  {
+   "fieldname": "pod_id",
+   "fieldtype": "Data",
+   "label": "POD ID",
+   "description": "Proof of Delivery ID - can be same for multiple leads",
+   "in_list_view": 1,
+   "search_index": 1
   },
   {
    "fieldname": "customer_id",

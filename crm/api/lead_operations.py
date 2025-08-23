@@ -342,3 +342,84 @@ def validate_lead_for_status_change(lead_name, target_status):
             'errors': [f'Validation error: {str(e)}'],
             'can_proceed': False
         } 
+
+@frappe.whitelist()
+def bulk_insert_pod_id(doctype, docnames, pod_id):
+    """
+    Bulk insert POD ID to multiple leads
+    """
+    try:
+        if not doctype or not docnames or not pod_id:
+            frappe.throw("Missing required parameters")
+        
+        if doctype != "CRM Lead":
+            frappe.throw("This function is only available for CRM Lead doctype")
+        
+        # Convert docnames to list if it's a string
+        if isinstance(docnames, str):
+            docnames = frappe.parse_json(docnames)
+        
+        if not isinstance(docnames, list):
+            frappe.throw("Invalid docnames format")
+        
+        # Validate POD ID
+        pod_id = str(pod_id).strip()
+        if not pod_id:
+            frappe.throw("POD ID cannot be empty")
+        
+        # Check permissions
+        if not frappe.has_permission("CRM Lead", "write"):
+            frappe.throw("Insufficient permissions to update leads")
+        
+        updated_count = 0
+        failed_leads = []
+        
+        for lead_name in docnames:
+            try:
+                # Check if lead exists
+                if not frappe.db.exists("CRM Lead", lead_name):
+                    failed_leads.append(f"{lead_name} (not found)")
+                    continue
+                
+                # Update POD ID
+                frappe.db.set_value(
+                    'CRM Lead',
+                    lead_name,
+                    'pod_id',
+                    pod_id,
+                    update_modified=False
+                )
+                updated_count += 1
+                
+            except Exception as e:
+                failed_leads.append(f"{lead_name} ({str(e)})")
+                frappe.log_error(f"Error updating POD ID for lead {lead_name}: {str(e)}")
+        
+        # Commit all changes
+        frappe.db.commit()
+        
+        # Prepare response
+        result = {
+            "success": True,
+            "message": f"POD ID '{pod_id}' inserted successfully for {updated_count} lead(s)",
+            "data": {
+                "pod_id": pod_id,
+                "total_leads": len(docnames),
+                "updated_count": updated_count,
+                "failed_count": len(failed_leads),
+                "failed_leads": failed_leads
+            }
+        }
+        
+        # Log the operation
+        frappe.logger().info(f"Bulk POD ID insertion: {result['message']}")
+        
+        return result
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error in bulk_insert_pod_id: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        } 

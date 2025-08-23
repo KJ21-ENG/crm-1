@@ -6,6 +6,13 @@
     :selectedValues="selectedValues"
     @reload="reload"
   />
+  <InsertPodIdModal
+    v-if="showPodIdModal"
+    v-model="showPodIdModal"
+    :doctype="doctype"
+    :selectedValues="selectedValues"
+    @reload="reload"
+  />
   <AssignmentModal
     v-if="showAssignmentModal"
     v-model="showAssignmentModal"
@@ -39,6 +46,7 @@ import { capture } from '@/telemetry'
 import { call, toast } from 'frappe-ui'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import InsertPodIdModal from '@/components/Modals/InsertPodIdModal.vue'
 
 const props = defineProps({
   doctype: {
@@ -62,6 +70,7 @@ const router = useRouter()
 const { $dialog, $socket } = globalStore()
 
 const showEditModal = ref(false)
+const showPodIdModal = ref(false)
 const selectedValues = ref([])
 const unselectAllAction = ref(() => {})
 const showDeleteDocModal = ref({
@@ -72,6 +81,12 @@ const showDeleteDocModal = ref({
 function editValues(selections, unselectAll) {
   selectedValues.value = selections
   showEditModal.value = true
+  unselectAllAction.value = unselectAll
+}
+
+function insertPodId(selections, unselectAll) {
+  selectedValues.value = selections
+  showPodIdModal.value = true
   unselectAllAction.value = unselectAll
 }
 
@@ -294,6 +309,13 @@ function bulkActions(selections, unselectAll) {
   //     onClick: () => convertToDeal(selections, unselectAll),
   //   })
   // }
+
+  if (props.doctype === 'CRM Lead') {
+    actions.push({
+      label: __('Insert POD ID'),
+      onClick: () => insertPodId(selections, unselectAll),
+    })
+  }
 
   if (props.doctype === 'CRM Ticket') {
     actions.push({
