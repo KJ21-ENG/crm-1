@@ -22,6 +22,14 @@
    "reqd": 1
   },
   {
+   "default": "1",
+   "fieldname": "office_open",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Office Open",
+   "description": "If unchecked, office is considered closed for this day and reassignments are skipped"
+  },
+  {
    "fieldname": "section_break_uegc",
    "fieldtype": "Section Break"
   },

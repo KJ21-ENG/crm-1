@@ -21,7 +21,7 @@ def get_office_hours():
     """Return list of CRM Service Day rows ordered by weekday"""
     rows = frappe.get_all(
         "CRM Service Day",
-        fields=["name", "workday", "start_time", "end_time"],
+        fields=["name", "workday", "start_time", "end_time", "office_open"],
         order_by="FIELD(workday, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')",
         ignore_permissions=True,
     )
@@ -70,14 +70,14 @@ def save_office_hours(days):
 
         if name:
             try:
-                frappe.db.set_value("CRM Service Day", name, {"start_time": start_time, "end_time": end_time})
+                frappe.db.set_value("CRM Service Day", name, {"start_time": start_time, "end_time": end_time, "office_open": bool(d.get("office_open"))})
                 results.append({"name": name, "status": "updated"})
             except Exception as e:
                 frappe.log_error(e)
                 results.append({"name": name, "status": "error", "error": str(e)})
         else:
             try:
-                doc = frappe.get_doc({"doctype": "CRM Service Day", "workday": workday, "start_time": start_time, "end_time": end_time})
+                doc = frappe.get_doc({"doctype": "CRM Service Day", "workday": workday, "start_time": start_time, "end_time": end_time, "office_open": bool(d.get("office_open"))})
                 doc.insert(ignore_permissions=True)
                 results.append({"name": doc.name, "status": "created"})
             except Exception as e:
@@ -107,7 +107,7 @@ def is_office_open(dt=None):
         rows = frappe.get_all(
             "CRM Service Day",
             filters={"workday": weekday},
-            fields=["start_time", "end_time"],
+            fields=["start_time", "end_time", "office_open"],
             limit=1,
             ignore_permissions=True,
         )
@@ -116,6 +116,10 @@ def is_office_open(dt=None):
             return False
 
         row = rows[0]
+        # Respect explicit office_open flag on the row
+        if row.get("office_open") in (0, "0", False, "False"):
+            return False
+
         start = row.get("start_time") or ""
         end = row.get("end_time") or ""
         if not start or not end:
@@ -180,23 +184,36 @@ def get_office_status(dt=None):
         rows = frappe.get_all(
             "CRM Service Day",
             filters={"workday": weekday},
-            fields=["name", "workday", "start_time", "end_time"],
+            fields=["name", "workday", "start_time", "end_time", "office_open"],
             limit=1,
             ignore_permissions=True,
         )
 
         row = rows[0] if rows else None
 
-        def to_seconds(tstr: str):
-            if not tstr:
+        # reuse robust conversion used above
+        def to_seconds(val):
+            from datetime import time, timedelta, datetime
+
+            if val is None:
                 return None
-            parts = tstr.split(":")
-            if len(parts) < 2:
+            if isinstance(val, timedelta):
+                return int(val.total_seconds()) % 86400
+            if isinstance(val, datetime):
+                t = val.time()
+                return t.hour * 3600 + t.minute * 60 + t.second
+            if isinstance(val, time):
+                return val.hour * 3600 + val.minute * 60 + val.second
+            try:
+                parts = str(val).split(":")
+                if len(parts) < 2:
+                    return None
+                h = int(parts[0])
+                m = int(parts[1])
+                s = int(parts[2]) if len(parts) > 2 else 0
+                return h * 3600 + m * 60 + s
+            except Exception:
                 return None
-            h = int(parts[0])
-            m = int(parts[1])
-            s = int(parts[2]) if len(parts) > 2 else 0
-            return h * 3600 + m * 60 + s
 
         now_secs = current.hour * 3600 + current.minute * 60 + current.second
         start_secs = to_seconds(row.get('start_time')) if row else None

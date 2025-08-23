@@ -11,6 +11,10 @@
         <input type="time" class="px-2 py-1 border rounded" v-model="row.start_time" />
         <span class="text-gray-400">to</span>
         <input type="time" class="px-2 py-1 border rounded" v-model="row.end_time" />
+        <label class="ml-4 flex items-center gap-2">
+          <input type="checkbox" v-model="row.office_open" />
+          <span class="text-sm text-gray-600">{{ __('Open') }}</span>
+        </label>
         <div class="ml-4 text-sm text-red-600" v-if="row.error">{{ row.error }}</div>
       </div>
     </div>
@@ -42,6 +46,7 @@ async function load() {
         workday: w,
         start_time: existing?.start_time ? existing.start_time.substr(0,5) : '',
         end_time: existing?.end_time ? existing.end_time.substr(0,5) : '',
+        office_open: existing?.office_open === 0 || existing?.office_open === '0' || existing?.office_open === false ? false : true,
         error: ''
       }
     })
@@ -52,7 +57,14 @@ async function load() {
 
 function validateRow(row) {
   row.error = ''
-  if (!row.start_time || !row.end_time) return true
+  row.error = ''
+  // If office is closed for that day, skip validation
+  if (row.office_open === false || row.office_open === '0') return true
+
+  if (!row.start_time || !row.end_time) {
+    row.error = __('Start and end times are required when office is open')
+    return false
+  }
   // start_time and end_time are HH:MM strings
   if (row.start_time >= row.end_time) {
     row.error = __('Start time must be before end time')
@@ -81,7 +93,7 @@ async function saveAll() {
       const end = r.end_time ? r.end_time + ':00' : ''
 
       // collect and send batched payload to server
-      payload.push({ name: r.name, workday: r.workday, start_time: start, end_time: end })
+      payload.push({ name: r.name, workday: r.workday, start_time: start, end_time: end, office_open: !!r.office_open })
     }
 
     // call backend batch save
