@@ -29,6 +29,84 @@ def get_office_hours():
 
 
 @frappe.whitelist()
+def get_holidays(holiday_list_name=None):
+    """Return holidays for given holiday list name (defaults to 'FCRM Holidays')."""
+    try:
+        if not holiday_list_name:
+            holiday_list_name = 'FCRM Holidays'
+
+        # Return list of dates and descriptions
+        rows = frappe.get_all(
+            'CRM Holiday',
+            filters={"parent": holiday_list_name},
+            fields=['name', 'date', 'description'],
+            order_by='date desc',
+            ignore_permissions=True,
+        )
+        return rows
+    except Exception as e:
+        frappe.log_error(e)
+        return []
+
+
+@frappe.whitelist()
+def save_holidays(days, holiday_list_name=None):
+    """Save holiday rows under the specified holiday list (create list if missing).
+
+    days: list of {name?, date, description}
+    """
+    _check_admin_role()
+    import json
+    if not holiday_list_name:
+        holiday_list_name = 'FCRM Holidays'
+
+    # Ensure parent Holiday List exists
+    if not frappe.db.exists('CRM Holiday List', holiday_list_name):
+        hl = frappe.get_doc({'doctype': 'CRM Holiday List', 'holiday_list_name': holiday_list_name, 'from_date': '1970-01-01', 'to_date': '2099-12-31'})
+        hl.insert(ignore_permissions=True)
+
+    if isinstance(days, str):
+        days = json.loads(days)
+
+    results = []
+    for d in days:
+        name = d.get('name')
+        date = d.get('date')
+        description = d.get('description') or ''
+
+        if not date:
+            results.append({'error': 'date required', 'input': d})
+            continue
+
+        if name:
+            try:
+                frappe.db.set_value('CRM Holiday', name, {'date': date, 'description': description})
+                results.append({'name': name, 'status': 'updated'})
+            except Exception as e:
+                frappe.log_error(e)
+                results.append({'name': name, 'status': 'error', 'error': str(e)})
+        else:
+            try:
+                child = {
+                    'doctype': 'CRM Holiday',
+                    'date': date,
+                    'description': description,
+                    'parent': holiday_list_name,
+                    'parenttype': 'CRM Holiday List',
+                    'parentfield': 'holidays'
+                }
+                doc = frappe.get_doc(child)
+                doc.insert(ignore_permissions=True)
+                results.append({'name': doc.name, 'status': 'created'})
+            except Exception as e:
+                frappe.log_error(e)
+                results.append({'date': date, 'status': 'error', 'error': str(e)})
+
+    frappe.db.commit()
+    return results
+
+
+@frappe.whitelist()
 def save_office_hours(days):
     """Save multiple CRM Service Day rows.
 
@@ -123,6 +201,30 @@ def is_office_open(dt=None):
             limit=1,
             ignore_permissions=True,
         )
+
+        # Check holidays first (use site/system timezone)
+        try:
+            # Use helpers from frappe.utils.data for timezone-aware datetime
+            from frappe.utils.data import get_system_timezone, get_datetime_in_timezone, getdate
+
+            site_tz = get_system_timezone()
+            site_now_dt = get_datetime_in_timezone(site_tz)
+            today_date = getdate(site_now_dt)
+
+            # Look for a CRM Holiday under the central Holiday List
+            holiday_list_name = 'FCRM Holidays'
+            hl_exists = frappe.db.exists('CRM Holiday List', holiday_list_name)
+            if hl_exists:
+                # Compare using string ISO date to avoid type issues
+                today_str = today_date.strftime('%Y-%m-%d')
+                holidays = frappe.get_all('CRM Holiday', filters={"parent": holiday_list_name, "date": today_str}, fields=["name","date"], ignore_permissions=True)
+                if holidays:
+                    frappe.logger().info(f"OfficeHours: holiday match for {today_str}: {holidays}")
+                    return False
+        except Exception as e:
+            frappe.log_error(e)
+            # don't block reassignment if holiday check fails
+            pass
 
         if not rows:
             return False
@@ -243,5 +345,31 @@ def get_office_status(dt=None):
     except Exception as e:
         frappe.log_error(f"get_office_status failed: {str(e)}", "Office Hours Error")
         return {"error": str(e)}
+
+
+@frappe.whitelist()
+def get_holiday_debug():
+    """Debug helper: return site_now, today, and matching CRM Holiday rows for debugging."""
+    try:
+        from frappe.utils import get_site_timezone, now_datetime
+        import pytz
+        site_tz = pytz.timezone(get_site_timezone())
+        site_now = now_datetime().astimezone(site_tz)
+        today = site_now.date()
+        holiday_list_name = 'FCRM Holidays'
+        hl_exists = frappe.db.exists('CRM Holiday List', holiday_list_name)
+        holidays = []
+        if hl_exists:
+            holidays = frappe.get_all('CRM Holiday', filters={"parent": holiday_list_name, "date": today}, fields=["name", "date", "description"], ignore_permissions=True)
+
+        return {
+            'site_now': str(site_now),
+            'today': str(today),
+            'holiday_list_exists': bool(hl_exists),
+            'found': holidays
+        }
+    except Exception as e:
+        frappe.log_error(e)
+        return {'error': str(e)}
 
 
