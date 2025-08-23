@@ -282,8 +282,8 @@ def test_reassignment_for_task(task_name):
             task_doc.save(ignore_permissions=True)
             print(f"Reset task status to Todo")
         
-        # Run reassignment
-        auto_reassign_overdue_tasks()
+        # Run reassignment (use new master function)
+        process_overdue_task_reassignments()
         
         return {"success": True, "message": "Reassignment attempted"}
     except Exception as e:
@@ -298,7 +298,7 @@ def manually_trigger_reassignment():
         if not frappe.has_permission("CRM Task", "write"):
             frappe.throw("Insufficient permissions to trigger reassignment")
         
-        auto_reassign_overdue_tasks()
+        process_overdue_task_reassignments()
         
         return {
             "success": True,
@@ -360,6 +360,15 @@ def process_overdue_task_reassignments():
         grace_period_minutes = 30
         grace_period_time = current_time - timedelta(minutes=grace_period_minutes)
         
+        # Parent condition: only run reassignment inside office hours
+        try:
+            from crm.api.office_hours import is_office_open
+            if not is_office_open():
+                frappe.logger().info("Skipping reassignment processing: outside office hours")
+                return {"success": True, "message": "Skipped (outside office hours)", "reassigned_count": 0}
+        except Exception as e:
+            frappe.logger().error(f"Failed to evaluate office hours: {str(e)}")
+
         # Get tasks where due_date has passed the grace period and status is Todo
         overdue_tasks = frappe.get_list(
             "CRM Task",
