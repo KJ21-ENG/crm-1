@@ -219,6 +219,14 @@
    "description": "Client identification number assigned when account is opened"
   },
   {
+   "fieldname": "account_open_date",
+   "fieldtype": "Date",
+   "label": "Account Open Date",
+   "description": "Date when account was opened (set when status changes to Account Opened or client id is added)",
+   "in_list_view": 1,
+   "read_only": 0
+  },
+  {
    "fieldname": "pod_id",
    "fieldtype": "Data",
    "label": "POD ID",

@@ -49,6 +49,12 @@
           </Button>
         </template>
       </Dropdown>
+      <Button
+        :label="__('Test Lead Expire')"
+        variant="outline"
+        :loading="testExpireLoading"
+        @click="handleTestLeadExpire"
+      />
       <!-- <Button
         v-if="document.doc"
         :label="__('Auto Assign')"
@@ -788,6 +794,7 @@ const { triggerOnChange, assignees, document } =
 const showClientIdModal = ref(false)
 const pendingStatusChange = ref(null)
 const isUpdating = ref(false)
+const testExpireLoading = ref(false)
 
 // Rejection Reason Modal state
 const showRejectionReasonModal = ref(false)
@@ -951,6 +958,43 @@ async function handleStatusChange(fieldname, value) {
   
   // Call the original triggerOnChange for non-special status changes
   await triggerOnChange(fieldname, value)
+}
+
+async function handleTestLeadExpire() {
+  testExpireLoading.value = true
+  console.debug('[TestLeadExpire] calling crm.api.lead_expiry.daily_mark_expired_leads')
+  try {
+    const res = await call('crm.api.lead_expiry.daily_mark_expired_leads')
+    console.debug('[TestLeadExpire] response:', res)
+
+    // Show success message with counts when available
+    if (res && res.success) {
+      const msg = `Lead expiry job executed. updated_case1=${res.updated_case1 || 0}, updated_case2=${res.updated_case2 || 0}`
+      toast.success(msg)
+      await lead.reload()
+      await document.reload()
+      return
+    }
+
+    // If response exists but success=false, show detailed info
+    if (res) {
+      console.error('[TestLeadExpire] failed response:', res)
+      const debugMsg = res.message || res.error || JSON.stringify(res)
+      toast.error(debugMsg || __('Failed to execute lead expiry job'))
+    } else {
+      // No response object
+      console.error('[TestLeadExpire] no response returned from API')
+      toast.error(__('Failed to execute lead expiry job: no response'))
+    }
+  } catch (err) {
+    // Network / unexpected errors
+    console.error('[TestLeadExpire] exception:', err)
+    // Try to surface useful properties from the error
+    const errMsg = err?.message || err?.response?.data || JSON.stringify(err)
+    toast.error(__('Error executing lead expiry job: {0}', [errMsg]))
+  } finally {
+    testExpireLoading.value = false
+  }
 }
 
 // Auto assign function to trigger task reassignment

@@ -179,8 +179,14 @@ scheduler_events = {
 		]
 	},
 	"daily": [
-		"crm.api.task_notifications.get_notification_stats"
+		"crm.api.task_notifications.get_notification_stats",
+		# Daily lead expiry job: run at 10:00 via cron entry below
 	],
+	"cron": {
+		"0 10 * * *": [
+			"crm.api.lead_expiry.daily_mark_expired_leads"
+		]
+	},
 }
 
 # Testing

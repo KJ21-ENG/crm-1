@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import escape_html
+from frappe.utils import escape_html, nowdate
 
 @frappe.whitelist()
 def save_client_id_without_validation(lead_name, client_id):
@@ -20,6 +20,20 @@ def save_client_id_without_validation(lead_name, client_id):
         
         # Commit the transaction
         frappe.db.commit()
+
+        # If the lead is already in 'Account Opened' status, ensure account_open_date is set
+        try:
+            status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+            if status == 'Account Opened':
+                current_acc_date = frappe.db.get_value('CRM Lead', lead_name, 'account_open_date')
+                if not current_acc_date:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_open_date', nowdate(), update_modified=False
+                    )
+                    frappe.db.commit()
+        except Exception:
+            # Non-critical: don't fail the save if this additional step errors
+            pass
         
         return {
             'success': True,
@@ -96,6 +110,16 @@ def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
             new_status,
             update_modified=False
         )
+
+        # If status changed to Account Opened, set account_open_date
+        try:
+            if new_status == 'Account Opened':
+                frappe.db.set_value(
+                    'CRM Lead', lead_name, 'account_open_date', nowdate(), update_modified=False
+                )
+        except Exception:
+            # Non-critical
+            pass
 
         # Commit the transaction
         frappe.db.commit()
