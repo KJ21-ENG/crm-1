@@ -49,12 +49,13 @@
           </Button>
         </template>
       </Dropdown>
-      <Button
+      <!-- Commented out Test Lead Expire button per request -->
+      <!-- <Button
         :label="__('Test Lead Expire')"
         variant="outline"
         :loading="testExpireLoading"
         @click="handleTestLeadExpire"
-      />
+      /> -->
       <!-- <Button
         v-if="document.doc"
         :label="__('Auto Assign')"
