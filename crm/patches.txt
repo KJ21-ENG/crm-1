@@ -26,6 +26,8 @@ crm.patches.v1_0.enhance_quick_filters
 crm.patches.v1_0.add_custom_lead_statuses # 19-07-2025
 crm.patches.v1_0.add_ticket_statuses # 19-07-2025
 crm.patches.v1_0.add_lead_expired_statuses # add Lead Expired statuses for scheduler
+crm.patches.v1_0.add_lead_expiry_status # add Lead Expired status with unique pink color
+crm.patches.v1_0.remove_lead_expiry_status # remove Lead Expiry status
 crm.patches.v1_0.remove_issue_type_add_subject_dropdown
 crm.patches.v1_0.rename_ticket_subjects_to_subject_name
 crm.patches.v1_0.update_existing_tickets_subject_names
