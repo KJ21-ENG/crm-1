@@ -3,6 +3,7 @@ from collections.abc import Iterable
 import frappe
 from frappe import _
 from bs4 import BeautifulSoup
+import json
 from crm.fcrm.doctype.crm_notification.crm_notification import notify_user
 from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
 
@@ -21,6 +22,79 @@ def notify_mentions(doc):
         return
     mentions = extract_mentions(content)
     reference_doc = frappe.get_doc(doc.reference_doctype, doc.reference_name)
+    # Notify all users in parent document's _assign as 'New Message'
+    try:
+        parent_assign_json = reference_doc.get("_assign") if reference_doc else None
+        parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
+        if not isinstance(parent_assign, list):
+            parent_assign = []
+    except Exception:
+        parent_assign = []
+
+    # Build a set of mention emails to avoid duplicate notifications
+    mention_emails = {m.email for m in mentions} if mentions else set()
+
+    owner = frappe.get_cached_value("User", doc.owner, "full_name")
+
+    for assigned_user in parent_assign:
+        try:
+            # Skip notifying the comment owner and users already mentioned
+            if assigned_user == doc.owner or assigned_user in mention_emails:
+                continue
+
+            # Create New Message notification
+            debug_ctx_ass = {
+                "owner": owner,
+                "assigned_to": assigned_user,
+                "reference_doctype": doc.reference_doctype,
+                "reference_docname": doc.reference_name,
+                "comment_name": doc.name,
+            }
+            frappe.logger().debug(f"Creating New Message notification for assign: {debug_ctx_ass}")
+
+            new_notification = create_task_notification(
+                task_name=None,
+                notification_type="New Message",
+                assigned_to=assigned_user,
+                message=doc.content,
+                reference_doctype=doc.reference_doctype,
+                reference_docname=doc.reference_name,
+            )
+
+            if new_notification:
+                try:
+                    parsed = BeautifulSoup(doc.content or "", "html.parser")
+                    preview_text = (parsed.get_text() or "").strip()
+                    words = preview_text.split()
+                    if len(words) > 20:
+                        preview = " ".join(words[:20]).rstrip() + "..."
+                    else:
+                        preview = preview_text
+
+                    new_text = f"""
+                        <div class=\"mb-2 leading-5 text-ink-gray-5\"> 
+                            <span class=\"font-medium text-blue-600\">💬 New Message In Chat</span>
+                            <div class=\"mt-1\">
+                                <span class=\"font-medium text-ink-gray-9\">{ owner }</span>
+                                <span> posted a new message in </span>
+                                <span class=\"font-medium text-ink-gray-9\">{ doc.reference_name }</span>
+                            </div>
+                            <div class=\"mt-1 text-sm text-ink-gray-6\">Message: { preview }</div>
+                        </div>
+                    """
+                    try:
+                        new_notification.db_set("notification_text", new_text)
+                        # Mark sent so frontend gets realtime event
+                        new_notification.mark_as_sent()
+                    except Exception:
+                        frappe.logger().exception("Failed to set notification_text or mark sent for New Message")
+                except Exception:
+                    frappe.logger().exception("Failed to build New Message notification text")
+            else:
+                frappe.logger().warning(f"create_task_notification returned None for New Message: {debug_ctx_ass}")
+
+        except Exception:
+            frappe.logger().exception("Failed to create New Message notification for assigned user")
     for mention in mentions:
         owner = frappe.get_cached_value("User", doc.owner, "full_name")
         doctype = doc.reference_doctype

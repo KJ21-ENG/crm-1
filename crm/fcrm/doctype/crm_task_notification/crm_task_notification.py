@@ -30,6 +30,8 @@ class CRMTaskNotification(Document):
 				self.notification_text = self.get_assignment_request_approved_text()
 			elif self.notification_type == "Assignment Request Rejected":
 				self.notification_text = self.get_assignment_request_rejected_text()
+			elif self.notification_type == "New Message":
+				self.notification_text = self.get_new_message_text()
 			elif self.notification_type == "Mention":
 				self.notification_text = self.get_mention_text()
 			elif self.task:
@@ -231,6 +233,37 @@ class CRMTaskNotification(Document):
 			</div>
 		"""
 
+	def get_new_message_text(self):
+		"""Generate New Message notification text"""
+		msg = self.message or ""
+		try:
+			from bs4 import BeautifulSoup
+			plain = BeautifulSoup(msg, "html.parser").get_text().strip()
+		except Exception:
+			plain = msg
+
+		# Word based preview
+		words = plain.split()
+		if len(words) > 20:
+			preview = " ".join(words[:20]).rstrip() + "..."
+		else:
+			preview = plain
+
+		owner = frappe.get_cached_value("User", self.from_user, "full_name") if getattr(self, "from_user", None) else ""
+
+		return f"""
+			<div class=\"mb-2 leading-5 text-ink-gray-5\"> 
+				<span class=\"font-medium text-blue-600\">💬 New Message In Chat</span>
+				<div class=\"mt-1\"> 
+					<span class=\"font-medium text-ink-gray-9\">{ owner }</span>
+					<span> posted a new message in </span>
+					<span class=\"font-medium text-ink-gray-9\">{ (self.reference_docname or '') }</span>
+				</div>
+				<div class=\"mt-1 text-sm text-ink-gray-6\">Message: { preview }</div>
+				{self.get_reference_context()}
+			</div>
+		"""
+
 	def get_reference_context(self):
 		"""Get reference context for notifications"""
 		if self.reference_doctype and self.reference_docname:
@@ -349,8 +382,8 @@ def create_task_notification(task_name, notification_type, assigned_to, message=
 	frappe.logger().debug(f"create_task_notification called with: {debug_ctx}")
 
 	try:
-		# For Lead Assignment, Assignment Request, and Mention notifications, don't check for existing task notifications
-		if notification_type in ["Lead Assignment", "Assignment Request", "Assignment Request Submitted", "Assignment Request Approved", "Assignment Request Rejected", "Mention"]:
+		# For Lead Assignment, Assignment Request, New Message and Mention notifications, don't check for existing task notifications
+		if notification_type in ["Lead Assignment", "Assignment Request", "Assignment Request Submitted", "Assignment Request Approved", "Assignment Request Rejected", "New Message", "Mention"]:
 			# Create new notification
 			notification = frappe.get_doc({
 				"doctype": "CRM Task Notification",
