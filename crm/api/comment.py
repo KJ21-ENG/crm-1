@@ -63,17 +63,47 @@ def notify_mentions(doc):
             frappe.logger().debug(f"Creating CRM Task Notification for mention: {debug_context}")
 
             # Use task notification system: task_name=None for non-task mentions, notification_type 'Mention'
+            # Create the task notification using the comment content as message
             notification = create_task_notification(
                 task_name=None,
                 notification_type="Mention",
                 assigned_to=mention.email,
-                message=f"{owner} mentioned you in {doc.reference_doctype} - {doc.reference_name}",
+                message=doc.content,
                 reference_doctype=doc.reference_doctype,
                 reference_docname=doc.reference_name,
             )
 
             if notification:
                 try:
+                    # Build enhanced notification_text: header, who mentioned, where, and message preview
+                    # Extract plain text preview from HTML content
+                    parsed = BeautifulSoup(doc.content or "", "html.parser")
+                    preview_text = (parsed.get_text() or "").strip()
+                    # Create a short word-based preview (first 20 words) and append ellipsis if truncated
+                    words = preview_text.split()
+                    if len(words) > 20:
+                        preview = " ".join(words[:20]).rstrip() + "..."
+                    else:
+                        preview = preview_text
+
+                    notification_text = f"""
+                        <div class="mb-2 leading-5 text-ink-gray-5">
+                            <span class="font-medium text-blue-600">💬 Mention</span>
+                            <div class="mt-1">
+                                <span class="font-medium text-ink-gray-9">{ owner }</span>
+                                <span> mentioned you in </span>
+                                <span class="font-medium text-ink-gray-9">{ doc.reference_name }</span>
+                            </div>
+                            <div class="mt-1 text-sm text-ink-gray-6">Message: { preview }</div>
+                        </div>
+                    """
+
+                    # Persist the custom formatted notification text
+                    try:
+                        notification.db_set("notification_text", notification_text)
+                    except Exception:
+                        frappe.logger().exception("Failed to set notification_text on CRM Task Notification")
+
                     # Log essential notification fields
                     frappe.logger().info(
                         "CRM Task Notification created",

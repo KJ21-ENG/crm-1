@@ -202,12 +202,31 @@ class CRMTaskNotification(Document):
 
 	def get_mention_text(self):
 		"""Generate mention notification text"""
+		# Fallback: if message contains HTML, extract plain text preview
+		msg = self.message or ""
+		try:
+			from bs4 import BeautifulSoup
+			plain = BeautifulSoup(msg, "html.parser").get_text().strip()
+		except Exception:
+			plain = msg
+
+		# Word-based preview: first 20 words
+		words = plain.split()
+		if len(words) > 20:
+			preview = " ".join(words[:20]).rstrip() + "..."
+		else:
+			preview = plain
+		owner = frappe.get_cached_value("User", self.from_user, "full_name") if getattr(self, "from_user", None) else ""
+
 		return f"""
 			<div class="mb-2 leading-5 text-ink-gray-5">
 				<span class="font-medium text-blue-600">💬 Mention</span>
 				<div class="mt-1">
-					<span>{self.message}</span>
+					<span class="font-medium text-ink-gray-9">{ owner }</span>
+					<span> mentioned you in </span>
+					<span class="font-medium text-ink-gray-9">{ (self.reference_docname or '') }</span>
 				</div>
+				<div class="mt-1 text-sm text-ink-gray-6">Message: { preview }</div>
 				{self.get_reference_context()}
 			</div>
 		"""
