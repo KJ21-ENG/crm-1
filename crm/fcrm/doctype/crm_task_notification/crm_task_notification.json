@@ -49,7 +49,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Notification Type",
-   "options": "Due Date Reminder\nOverdue Task\nTask Assignment\nTask Completion\nLead Assignment\nTask Reassignment Limit\nAssignment Request\nAssignment Request Submitted\nAssignment Request Approved\nAssignment Request Rejected",
+   "options": "Due Date Reminder\nOverdue Task\nTask Assignment\nTask Completion\nLead Assignment\nTask Reassignment Limit\nAssignment Request\nAssignment Request Submitted\nAssignment Request Approved\nAssignment Request Rejected\nMention",
    "reqd": 1
   },
   {

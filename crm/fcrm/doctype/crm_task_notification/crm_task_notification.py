@@ -30,6 +30,8 @@ class CRMTaskNotification(Document):
 				self.notification_text = self.get_assignment_request_approved_text()
 			elif self.notification_type == "Assignment Request Rejected":
 				self.notification_text = self.get_assignment_request_rejected_text()
+			elif self.notification_type == "Mention":
+				self.notification_text = self.get_mention_text()
 			elif self.task:
 				task_doc = frappe.get_doc("CRM Task", self.task)
 				
@@ -197,6 +199,36 @@ class CRMTaskNotification(Document):
 				</div>
 			</div>
 		"""
+
+	def get_mention_text(self):
+		"""Generate mention notification text"""
+		return f"""
+			<div class="mb-2 leading-5 text-ink-gray-5">
+				<span class="font-medium text-blue-600">💬 Mention</span>
+				<div class="mt-1">
+					<span>{self.message}</span>
+				</div>
+				{self.get_reference_context()}
+			</div>
+		"""
+
+	def get_reference_context(self):
+		"""Get reference context for notifications"""
+		if self.reference_doctype and self.reference_docname:
+			try:
+				if self.reference_doctype == "CRM Lead":
+					lead_doc = frappe.get_doc("CRM Lead", self.reference_docname)
+					lead_name = lead_doc.lead_name or lead_doc.first_name or "Lead"
+					org = f" ({lead_doc.organization})" if lead_doc.organization else ""
+					return f'<div class="text-sm text-ink-gray-6">Reference: {lead_name}{org}</div>'
+				elif self.reference_doctype == "CRM Ticket":
+					ticket_doc = frappe.get_doc("CRM Ticket", self.reference_docname)
+					return f'<div class="text-sm text-ink-gray-6">Reference: {ticket_doc.ticket_subject}</div>'
+				else:
+					return f'<div class="text-sm text-ink-gray-6">Reference: {self.reference_doctype} - {self.reference_docname}</div>'
+			except Exception:
+				return f'<div class="text-sm text-ink-gray-6">Reference: {self.reference_doctype} - {self.reference_docname}</div>'
+		return ""
 	
 	def publish_realtime_notification(self):
 		"""Publish real-time notification to the assigned user"""
@@ -286,9 +318,20 @@ def get_user_task_notifications(limit=20):
 
 def create_task_notification(task_name, notification_type, assigned_to, message=None, reference_doctype=None, reference_docname=None):
 	"""Helper function to create a task notification"""
+	# Add detailed debug logging to help trace failures when called from comment mentions
+	debug_ctx = {
+		"task_name": task_name,
+		"notification_type": notification_type,
+		"assigned_to": assigned_to,
+		"message_preview": (message or "")[:200],
+		"reference_doctype": reference_doctype,
+		"reference_docname": reference_docname,
+	}
+	frappe.logger().debug(f"create_task_notification called with: {debug_ctx}")
+
 	try:
-		# For Lead Assignment and Assignment Request notifications, don't check for existing task notifications
-		if notification_type in ["Lead Assignment", "Assignment Request", "Assignment Request Submitted", "Assignment Request Approved", "Assignment Request Rejected"]:
+		# For Lead Assignment, Assignment Request, and Mention notifications, don't check for existing task notifications
+		if notification_type in ["Lead Assignment", "Assignment Request", "Assignment Request Submitted", "Assignment Request Approved", "Assignment Request Rejected", "Mention"]:
 			# Create new notification
 			notification = frappe.get_doc({
 				"doctype": "CRM Task Notification",
@@ -301,14 +344,19 @@ def create_task_notification(task_name, notification_type, assigned_to, message=
 			})
 		else:
 			# Check if notification already exists for task-based notifications
-			existing = frappe.db.exists("CRM Task Notification", {
-				"task": task_name,
-				"notification_type": notification_type,
-				"assigned_to": assigned_to,
-				"status": ["in", ["Pending", "Sent"]]
-			})
-			
+			try:
+				existing = frappe.db.exists("CRM Task Notification", {
+					"task": task_name,
+					"notification_type": notification_type,
+					"assigned_to": assigned_to,
+					"status": ["in", ["Pending", "Sent"]]
+				})
+			except Exception as db_e:
+				frappe.logger().exception(f"db.exists failed while checking existing notifications: {db_e} | context: {debug_ctx}")
+				raise
+
 			if existing:
+				frappe.logger().debug(f"Existing CRM Task Notification found: {existing} | context: {debug_ctx}")
 				return frappe.get_doc("CRM Task Notification", existing)
 			
 			# Create new task notification
@@ -320,10 +368,21 @@ def create_task_notification(task_name, notification_type, assigned_to, message=
 				"message": message,
 				"status": "Pending"
 			})
-		
+
+		frappe.logger().debug(f"Inserting CRM Task Notification: {debug_ctx}")
 		notification.insert(ignore_permissions=True)
+
+		# For instant visibility in Task Reminder, mark Mention notifications as Sent
+		try:
+			if getattr(notification, "notification_type", None) == "Mention":
+				notification.mark_as_sent()
+		except Exception:
+			frappe.logger().exception("Failed to mark Mention notification as sent")
+		frappe.logger().info(f"CRM Task Notification created: {getattr(notification, 'name', None)} | context: {debug_ctx}")
+		frappe.logger().debug(f"Notification full doc: {notification.as_dict()}")
 		return notification
-		
+
 	except Exception as e:
-		frappe.logger().error(f"Error creating task notification: {str(e)}")
-		return None 
+		# Log full traceback plus context for deeper debugging
+		frappe.logger().exception(f"Error creating task notification: {str(e)} | context: {debug_ctx}")
+		return None

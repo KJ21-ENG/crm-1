@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from bs4 import BeautifulSoup
 from crm.fcrm.doctype.crm_notification.crm_notification import notify_user
+from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
 
 
 def on_update(self, method):
@@ -50,6 +51,51 @@ def notify_mentions(doc):
                 "redirect_to_docname": doc.reference_name,
             }
         )
+        # Also create a Task Reminder style notification so it appears under Task Reminder
+        debug_context = {
+            "owner": owner,
+            "assigned_to": mention.email,
+            "reference_doctype": doc.reference_doctype,
+            "reference_docname": doc.reference_name,
+            "comment_name": doc.name,
+        }
+        try:
+            frappe.logger().debug(f"Creating CRM Task Notification for mention: {debug_context}")
+
+            # Use task notification system: task_name=None for non-task mentions, notification_type 'Mention'
+            notification = create_task_notification(
+                task_name=None,
+                notification_type="Mention",
+                assigned_to=mention.email,
+                message=f"{owner} mentioned you in {doc.reference_doctype} - {doc.reference_name}",
+                reference_doctype=doc.reference_doctype,
+                reference_docname=doc.reference_name,
+            )
+
+            if notification:
+                try:
+                    # Log essential notification fields
+                    frappe.logger().info(
+                        "CRM Task Notification created",
+                        extra={
+                            "name": getattr(notification, "name", None),
+                            "status": getattr(notification, "status", None),
+                            "assigned_to": getattr(notification, "assigned_to", None),
+                            "notification_type": getattr(notification, "notification_type", None),
+                        },
+                    )
+                    # Full doc dump for deeper debugging (may be large)
+                    frappe.logger().debug(f"Notification full doc: {notification.as_dict()}")
+                except Exception:
+                    # If as_dict or attributes fail, still continue
+                    frappe.logger().exception("Failed to log created notification details")
+            else:
+                frappe.logger().warning(f"create_task_notification returned None for mention: {debug_context}")
+
+        except Exception:
+            # Log exception with context — do not interrupt comment creation
+            frappe.logger().exception("Failed to create task reminder notification for mention")
+            frappe.logger().error(f"Debug context when failure occurred: {debug_context}")
 
 
 def extract_mentions(html):
