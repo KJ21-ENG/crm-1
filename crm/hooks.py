@@ -177,10 +177,10 @@ scheduler_events = {
 			"crm.api.task_reassignment.process_overdue_task_reassignments",
 			"crm.api.task_notifications.check_and_send_task_notifications",
 		],
-		# Daily lead expiry job: run at 10:00
-		"0 10 * * *": [
-			"crm.api.lead_expiry.daily_mark_expired_leads",
-		],
+		# # Daily lead expiry job: run at 10:00
+		# "0 10 * * *": [
+		# 	"crm.api.lead_expiry.daily_mark_expired_leads",
+		# ],
 	},
 	"daily": [
 		"crm.api.task_notifications.get_notification_stats",
