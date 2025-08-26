@@ -926,6 +926,35 @@ const quickFilterList = computed(() => {
     })
     .filter(Boolean)
 
+  // For Notes doctype, ensure Title and Content quick filters are available
+  if (props.doctype === 'FCRM Note') {
+    const requiredQuickFields = ['title', 'content']
+    requiredQuickFields.forEach((fn) => {
+      if (!filters.some((f) => f.fieldname === fn)) {
+        const metaField = fieldsMeta.find((m) => m.fieldname === fn) || {}
+        let fieldtype = metaField.fieldtype || 'Data'
+        let options = metaField.options
+        filters.push({
+          label: metaField.label || (fn === 'title' ? __('Title') : __('Content')),
+          fieldname: fn,
+          fieldtype,
+          options,
+        })
+      }
+    })
+
+    // After ensuring required fields exist, reorder quick filters to preferred sequence
+    const preferredOrder = ['title', 'content', 'name', 'modified']
+    filters.sort((a, b) => {
+      const ia = preferredOrder.indexOf(a.fieldname)
+      const ib = preferredOrder.indexOf(b.fieldname)
+      const va = ia === -1 ? 999 : ia
+      const vb = ib === -1 ? 999 : ib
+      if (va !== vb) return va - vb
+      return (a.label || '').localeCompare(b.label || '')
+    })
+  }
+
   // Initialize values and hydrate from current applied filters
   filters.forEach((filter) => {
     // For date/datetime quick filters we want the picker to start empty (no default to now)
@@ -957,6 +986,23 @@ const quickFilterList = computed(() => {
       }
     }
   })
+  // For Notes doctype, ensure Title and Content quick filters are available
+  if (props.doctype === 'FCRM Note') {
+    const requiredQuickFields = ['title', 'content']
+    requiredQuickFields.forEach((fn) => {
+      if (!filters.some((f) => f.fieldname === fn)) {
+        const metaField = fieldsMeta.find((m) => m.fieldname === fn) || {}
+        let fieldtype = metaField.fieldtype || 'Data'
+        let options = metaField.options
+        filters.push({
+          label: metaField.label || (fn === 'title' ? __('Title') : __('Content')),
+          fieldname: fn,
+          fieldtype,
+          options,
+        })
+      }
+    })
+  }
 
   return filters
 })
