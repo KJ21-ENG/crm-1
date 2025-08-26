@@ -448,6 +448,31 @@ def get_data(
 			)
 		data = parse_list_data(data, doctype)
 
+		# Enrich FCRM Note list rows with linked customer info when possible
+		if doctype == "FCRM Note" and data:
+			for row in data:
+				try:
+					# initialize fields
+					row["customer_name"] = None
+					row["customer_mobile_no"] = None
+					ref_doctype = row.get("reference_doctype")
+					ref_name = row.get("reference_docname")
+					if ref_doctype in ("CRM Lead", "CRM Ticket") and ref_name:
+						# get customer_id from referenced doc
+						customer_id = frappe.db.get_value(ref_doctype, ref_name, "customer_id")
+						if customer_id:
+							cust = frappe.db.get_value(
+								"CRM Customer",
+								customer_id,
+								["customer_name", "mobile_no"],
+								as_dict=True,
+							)
+							if cust:
+								row["customer_name"] = cust.get("customer_name")
+								row["customer_mobile_no"] = cust.get("mobile_no")
+				except Exception as e:
+					frappe.logger().error(f"Error enriching note {row.get('name')}: {e}")
+
 	if view_type == "kanban":
 		if not rows:
 			rows = default_rows

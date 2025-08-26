@@ -63,6 +63,11 @@
             <div class="text-sm text-ink-gray-8">
               {{ getUser(note.owner).full_name }}
             </div>
+            <!-- Customer info injected from backend: customer_name & customer_mobile_no -->
+            <div v-if="note.customer_name" class="text-sm text-ink-gray-7 ml-3">
+              • {{ note.customer_name }}
+              <span v-if="note.customer_mobile_no"> ({{ note.customer_mobile_no }})</span>
+            </div>
           </div>
           <Tooltip :text="formatDate(note.modified)">
             <div class="text-sm text-ink-gray-7">
