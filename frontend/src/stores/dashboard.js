@@ -181,14 +181,15 @@ export function useDashboard() {
     console.log('🔍 DEBUG: Previous currentView:', currentView.value)
     currentView.value = view
     console.log('🔍 DEBUG: New currentView:', currentView.value)
-    
+
     // Don't fetch data for custom view - it will be handled by custom date picker
     if (view === 'custom') {
       console.log('🔍 DEBUG: Custom view selected, waiting for date selection')
-      return
+      return Promise.resolve()
     }
-    
-    Promise.all([
+
+    // Return the Promise so callers can await view change completion and data loading
+    return Promise.all([
       fetchDashboardData(view),
       fetchUserDashboardData(view)
     ])

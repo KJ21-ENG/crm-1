@@ -762,13 +762,19 @@ onMounted(async () => {
   
   // Set default view to monthly BEFORE initializing tabs
   currentView.value = 'monthly'
-  
-  // Force the view change to propagate
+
+  // Ensure changeView returns a promise and await fetching data once
   await changeView('monthly')
-  
+
   initializeTabFromURL()
-  fetchDashboardData()
-  fetchUserDashboardData()
+
+  // Remove duplicate immediate fetches; changeView already triggered data fetch
+  // but ensure we have data by awaiting the store fetch promises if needed
+  await Promise.all([
+    // If store fetches did not run for some reason, call them explicitly
+    fetchDashboardData(currentView.value),
+    fetchUserDashboardData(currentView.value)
+  ])
   
   // Fetch available users if admin
   if (isAdminUser.value) {
