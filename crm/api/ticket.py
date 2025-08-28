@@ -375,7 +375,17 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                 "customer_id": customer_id,
                 "status": ["not in", ["Closed", "Resolved"]],
             },
-            fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
+            # Include subject and description for better identification in UI
+            fields=[
+                "name",
+                "ticket_subject",
+                "subject",
+                "description",
+                "status",
+                "priority",
+                "creation",
+                "modified",
+            ],
             order_by="creation desc",
             limit=20,
         )
@@ -386,7 +396,8 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                 "customer_id": customer_id,
                 "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
             },
-            fields=["name", "lead_name", "status", "creation", "modified"],
+            # Include description for identification
+            fields=["name", "lead_name", "description", "status", "creation", "modified"],
             order_by="creation desc",
             limit=20,
         )
@@ -413,7 +424,16 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                         "mobile_no": mobile_no,
                         "status": ["not in", ["Closed", "Resolved"]],
                     },
-                    fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
+                    fields=[
+                        "name",
+                        "ticket_subject",
+                        "subject",
+                        "description",
+                        "status",
+                        "priority",
+                        "creation",
+                        "modified",
+                    ],
                     order_by="creation desc",
                     limit=20,
                 )
@@ -426,7 +446,16 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                         "email": email,
                         "status": ["not in", ["Closed", "Resolved"]],
                     },
-                    fields=["name", "ticket_subject", "status", "priority", "creation", "modified"],
+                    fields=[
+                        "name",
+                        "ticket_subject",
+                        "subject",
+                        "description",
+                        "status",
+                        "priority",
+                        "creation",
+                        "modified",
+                    ],
                     order_by="creation desc",
                     limit=20,
                 )
@@ -449,7 +478,7 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                         "mobile_no": mobile_no,
                         "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
                     },
-                    fields=["name", "lead_name", "status", "creation", "modified"],
+                    fields=["name", "lead_name", "description", "status", "creation", "modified"],
                     order_by="creation desc",
                     limit=20,
                 )
@@ -462,7 +491,7 @@ def get_customer_history(mobile_no=None, email=None, customer_id=None):
                         "email": email,
                         "status": ["not in", ["Converted", "Do Not Contact", "Lost"]],
                     },
-                    fields=["name", "lead_name", "status", "creation", "modified"],
+                    fields=["name", "lead_name", "description", "status", "creation", "modified"],
                     order_by="creation desc",
                     limit=20,
                 )

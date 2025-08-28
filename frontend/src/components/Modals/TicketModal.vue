@@ -134,17 +134,24 @@
                         class="p-3 rounded border bg-orange-50 hover:bg-orange-100 transition-colors cursor-pointer"
                         @click="router.push({ name: 'Ticket', params: { ticketId: existingTicket.name } })"
                       >
-                        <div class="font-medium text-sm text-ink-gray-9">
-                          {{ existingTicket.subject }}
-                        </div>
-                        <div class="text-xs text-ink-gray-6 mt-1">
+                        <div class="text-xs text-ink-gray-6">
                           <Badge 
                             :label="existingTicket.status" 
                             :theme="getStatusColor(existingTicket.status)"
                             variant="subtle"
                             class="mr-2"
                           />
-                          {{ formatDate(existingTicket.creation) }}
+                          {{ formatDate(existingTicket.creation, 'DD/MM/YYYY') }}
+                        </div>
+                        <div class="text-[13px] text-ink-gray-8 mt-1 leading-5">
+                          <div>
+                            <strong>ID :-</strong>
+                            <span class="ml-1">{{ existingTicket.name }}</span>
+                          </div>
+                          <div>
+                            <strong>Description :-</strong>
+                            <span class="ml-1">{{ existingTicket.description || existingTicket.subject || existingTicket.ticket_subject || '-' }}</span>
+                          </div>
                         </div>
                         <div v-if="existingTicket.status !== 'Closed'" class="text-xs text-orange-600 mt-1">
                           ⚠️ {{ __('Open ticket exists') }}
@@ -166,17 +173,24 @@
                         class="p-3 rounded border bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
                         @click="router.push({ name: 'Lead', params: { leadId: existingLead.name } })"
                       >
-                        <div class="font-medium text-sm text-ink-gray-9">
-                          {{ existingLead.lead_name }}
-                        </div>
-                        <div class="text-xs text-ink-gray-6 mt-1">
+                        <div class="text-xs text-ink-gray-6">
                           <Badge 
                             :label="existingLead.status" 
                             :theme="getStatusColor(existingLead.status)"
                             variant="subtle"
                             class="mr-2"
                           />
-                          {{ formatDate(existingLead.creation) }}
+                          {{ formatDate(existingLead.creation, 'DD/MM/YYYY') }}
+                        </div>
+                        <div class="text-[13px] text-ink-gray-8 mt-1 leading-5">
+                          <div>
+                            <strong>ID :-</strong>
+                            <span class="ml-1">{{ existingLead.name }}</span>
+                          </div>
+                          <div>
+                            <strong>Description :-</strong>
+                            <span class="ml-1">{{ existingLead.description || existingLead.lead_name || '-' }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -205,7 +219,7 @@
                             variant="subtle"
                             class="mr-2"
                           />
-                          {{ formatDate(referral.creation) }}
+                          {{ formatDate(referral.creation, 'DD/MM/YYYY') }}
                         </div>
                         <div class="text-xs text-ink-gray-6 mt-1 flex items-center gap-2">
                           <Badge 
@@ -230,7 +244,7 @@
                       <div><strong>Open Tickets:</strong> {{ customerHistory.data.summary.open_tickets }}</div>
                       <div><strong>Total Leads:</strong> {{ customerHistory.data.summary.total_leads }}</div>
                       <div v-if="customerHistory.data.summary.last_interaction">
-                        <strong>Last Contact:</strong> {{ formatDate(customerHistory.data.summary.last_interaction) }}
+                        <strong>Last Contact:</strong> {{ formatDate(customerHistory.data.summary.last_interaction, 'DD/MM/YYYY') }}
                       </div>
                     </div>
                   </div>
