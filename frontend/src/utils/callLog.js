@@ -22,6 +22,25 @@ function parseDurationToSeconds(val, fallback = 0) {
     }
   }
 
+  // Try forms like "1m 20s", "2m", "30s"
+  const trimmed = val.trim().toLowerCase()
+  let match = trimmed.match(/^(\d+)\s*m\s*(\d+)\s*s$/)
+  if (match) {
+    const m = parseInt(match[1], 10) || 0
+    const s = parseInt(match[2], 10) || 0
+    return m * 60 + s
+  }
+  match = trimmed.match(/^(\d+)\s*m(?![a-z])/)
+  if (match) {
+    const m = parseInt(match[1], 10) || 0
+    return m * 60
+  }
+  match = trimmed.match(/^(\d+)\s*s(?![a-z])/)
+  if (match) {
+    const s = parseInt(match[1], 10) || 0
+    return s
+  }
+
   // Try simple number inside string
   const num = parseFloat(val)
   return isNaN(num) ? fallback : num
@@ -63,37 +82,15 @@ export function getCallLogDetail(row, log, columns = []) {
     // Derive status label with strong precedence to duration
     const rawStatus = log.status
     const type = log.type // 'Incoming' | 'Outgoing'
-    const dur = parseDurationToSeconds(log.duration, 0)
+    const dur = parseDurationToSeconds(log.duration ?? log._duration, 0)
 
-    // PRIMARY RULE: Any call with talk time (>0s) is Completed
+    // Override everything with the requested logic
     if (dur > 0) {
-      return { label: 'Completed', color: 'green', name: 'Completed' }
+      return { label: 'Completed', color: 'green', name: rawStatus || 'Completed' }
     }
 
-    // Map known provider statuses when duration is 0
-    if (rawStatus === 'No Answer') {
-      return {
-        label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
-        color: 'red',
-        // Underlying DB value used for filtering
-        name: 'No Answer',
-      }
-    }
-
-    if (rawStatus === 'Completed' || !rawStatus) {
-      return {
-        label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
-        color: 'red',
-        name: 'No Answer',
-      }
-    }
-
-    // Fallback to predefined maps for others (Busy/Failed/etc.)
-    return {
-      label: statusLabelMap[rawStatus] || rawStatus,
-      color: statusColorMap[rawStatus] || 'gray',
-      name: rawStatus,
-    }
+    const zeroDurLabel = type === 'Outgoing' ? 'Did Not Picked' : 'Missed Call'
+    return { label: zeroDurLabel, color: 'red', name: rawStatus || 'No Answer' }
   } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
       label: formatDate(log[row]),
