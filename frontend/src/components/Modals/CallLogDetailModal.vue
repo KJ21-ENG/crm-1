@@ -342,6 +342,7 @@ const detailFields = computed(() => {
       name: 'status',
       value: data.status.label,
       color: data.status.color,
+      tooltip: __('Original status: {0}', [data.status.raw || data.status.name || __('Unknown')]),
     },
     {
       icon: h(FeatherIcon, {

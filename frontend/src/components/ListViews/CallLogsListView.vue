@@ -74,22 +74,27 @@
             </Tooltip>
           </div>
           <div v-else-if="column.key === 'status'" class="truncate text-base">
-            <Badge
-              :variant="'subtle'"
-              :theme="item.color"
-              size="md"
-              :label="__(item.label)"
-              @click="
-                (event) =>
-                  emit('applyFilter', {
-                    event,
-                    idx,
-                    column,
-                    item,
-                    firstColumn: columns[0],
-                  })
-              "
-            />
+            <div class="inline-flex items-center gap-1">
+              <Badge
+                :variant="'subtle'"
+                :theme="item.color"
+                size="md"
+                :label="__(item.label)"
+                @click="
+                  (event) =>
+                    emit('applyFilter', {
+                      event,
+                      idx,
+                      column,
+                      item,
+                      firstColumn: columns[0],
+                    })
+                "
+              />
+              <Tooltip :text="__('Original status: {0}', [item.raw || item.name || __('Unknown')])">
+                <FeatherIcon name="info" class="h-3.5 w-3.5 text-ink-gray-5" />
+              </Tooltip>
+            </div>
           </div>
           <div v-else-if="column.type === 'Check'">
             <FormControl

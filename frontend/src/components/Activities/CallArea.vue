@@ -98,10 +98,15 @@
             <PlayIcon class="size-3" />
           </template>
         </Badge>
-        <Badge
-          :label="status.label"
-          :theme="status.color"
-        />
+        <div class="inline-flex items-center gap-1">
+          <Badge
+            :label="status.label"
+            :theme="status.color"
+          />
+          <Tooltip :text="__('Original status: {0}', [activity.status || __('Unknown')])">
+            <FeatherIcon name="info" class="size-3 text-ink-gray-5" />
+          </Tooltip>
+        </div>
       </div>
       <div
         v-if="activity.show_recording && activity.recording_url"

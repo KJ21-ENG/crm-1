@@ -86,11 +86,11 @@ export function getCallLogDetail(row, log, columns = []) {
 
     // Override everything with the requested logic
     if (dur > 0) {
-      return { label: 'Completed', color: 'green', name: rawStatus || 'Completed' }
+      return { label: 'Completed', color: 'green', name: rawStatus || 'Completed', raw: rawStatus }
     }
 
     const zeroDurLabel = type === 'Outgoing' ? 'Did Not Picked' : 'Missed Call'
-    return { label: zeroDurLabel, color: 'red', name: rawStatus || 'No Answer' }
+    return { label: zeroDurLabel, color: 'red', name: rawStatus || 'No Answer', raw: rawStatus }
   } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
       label: formatDate(log[row]),
