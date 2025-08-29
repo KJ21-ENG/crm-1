@@ -4,6 +4,29 @@ import { getMeta } from '@/stores/meta'
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Call Log')
 
+function parseDurationToSeconds(val, fallback = 0) {
+  if (val == null) return fallback
+  if (typeof val === 'number' && !isNaN(val)) return val
+  if (typeof val !== 'string') return fallback
+
+  // Try HH:MM:SS or MM:SS
+  if (val.includes(':')) {
+    const parts = val.split(':').map((p) => parseInt(p, 10) || 0)
+    if (parts.length === 3) {
+      const [h, m, s] = parts
+      return h * 3600 + m * 60 + s
+    }
+    if (parts.length === 2) {
+      const [m, s] = parts
+      return m * 60 + s
+    }
+  }
+
+  // Try simple number inside string
+  const num = parseFloat(val)
+  return isNaN(num) ? fallback : num
+}
+
 export function getCallLogDetail(row, log, columns = []) {
   let incoming = log.type === 'Incoming'
 
@@ -37,31 +60,39 @@ export function getCallLogDetail(row, log, columns = []) {
       icon: incoming ? 'phone-incoming' : 'phone-outgoing',
     }
   } else if (row === 'status') {
-    // Derive status label with call direction + duration overrides
+    // Derive status label with strong precedence to duration
     const rawStatus = log.status
     const type = log.type // 'Incoming' | 'Outgoing'
-    const dur = typeof log.duration === 'number' ? log.duration : parseFloat(log.duration || '0')
+    const dur = parseDurationToSeconds(log.duration, 0)
 
-    // 1) If provider sent 'No Answer', map by direction
+    // PRIMARY RULE: Any call with talk time (>0s) is Completed
+    if (dur > 0) {
+      return { label: 'Completed', color: 'green', name: 'Completed' }
+    }
+
+    // Map known provider statuses when duration is 0
     if (rawStatus === 'No Answer') {
       return {
         label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
         color: 'red',
+        // Underlying DB value used for filtering
+        name: 'No Answer',
       }
     }
 
-    // 2) If status is Completed but duration is 0, fix based on direction
-    if ((rawStatus === 'Completed' || !rawStatus) && (isNaN(dur) || dur === 0)) {
+    if (rawStatus === 'Completed' || !rawStatus) {
       return {
         label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
         color: 'red',
+        name: 'No Answer',
       }
     }
 
-    // 3) Otherwise fall back to predefined maps
+    // Fallback to predefined maps for others (Busy/Failed/etc.)
     return {
       label: statusLabelMap[rawStatus] || rawStatus,
       color: statusColorMap[rawStatus] || 'gray',
+      name: rawStatus,
     }
   } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
