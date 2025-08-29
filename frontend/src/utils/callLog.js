@@ -37,9 +37,31 @@ export function getCallLogDetail(row, log, columns = []) {
       icon: incoming ? 'phone-incoming' : 'phone-outgoing',
     }
   } else if (row === 'status') {
+    // Derive status label with call direction + duration overrides
+    const rawStatus = log.status
+    const type = log.type // 'Incoming' | 'Outgoing'
+    const dur = typeof log.duration === 'number' ? log.duration : parseFloat(log.duration || '0')
+
+    // 1) If provider sent 'No Answer', map by direction
+    if (rawStatus === 'No Answer') {
+      return {
+        label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
+        color: 'red',
+      }
+    }
+
+    // 2) If status is Completed but duration is 0, fix based on direction
+    if ((rawStatus === 'Completed' || !rawStatus) && (isNaN(dur) || dur === 0)) {
+      return {
+        label: type === 'Outgoing' ? 'Did Not Pick' : 'Missed Call',
+        color: 'red',
+      }
+    }
+
+    // 3) Otherwise fall back to predefined maps
     return {
-      label: statusLabelMap[log.status],
-      color: statusColorMap[log.status],
+      label: statusLabelMap[rawStatus] || rawStatus,
+      color: statusColorMap[rawStatus] || 'gray',
     }
   } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {

@@ -81,7 +81,7 @@
           </template>
         </Badge>
         <Badge
-          v-if="activity.status == 'Completed'"
+          v-if="status.label == 'Completed'"
           :label="activity._duration"
         >
           <template #prefix>
@@ -99,8 +99,8 @@
           </template>
         </Badge>
         <Badge
-          :label="statusLabelMap[activity.status]"
-          :theme="statusColorMap[activity.status]"
+          :label="status.label"
+          :theme="status.color"
         />
       </div>
       <div
@@ -131,10 +131,10 @@ import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import AudioPlayer from '@/components/Activities/AudioPlayer.vue'
 import CallLogDetailModal from '@/components/Modals/CallLogDetailModal.vue'
 import CallLogModal from '@/components/Modals/CallLogModal.vue'
-import { statusLabelMap, statusColorMap } from '@/utils/callLog.js'
+import { getCallLogDetail } from '@/utils/callLog.js'
 import { formatDate, timeAgo } from '@/utils'
 import { Avatar, Badge, Tooltip, createResource } from 'frappe-ui'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   activity: Object,
@@ -148,4 +148,7 @@ const callLog = createResource({
 })
 const showCallLogDetailModal = ref(false)
 const showCallLogModal = ref(false)
+
+// Unified status computation (handles duration + direction)
+const status = computed(() => getCallLogDetail('status', props.activity))
 </script>
