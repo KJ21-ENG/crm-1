@@ -15,6 +15,20 @@
         </div>
       </div>
 
+      <!-- New: Unique Calls -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Unique Calls</p>
+            <p class="text-2xl font-bold text-gray-900">{{ uniqueCallers }}</p>
+            <p class="text-sm text-gray-500 mt-1">New customers contacted</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <FeatherIcon name="users" class="h-5 w-5 text-indigo-600" />
+          </div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
           <div>
@@ -28,18 +42,6 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Missed / No Answer</p>
-            <p class="text-2xl font-bold text-gray-900">{{ missedCalls }}</p>
-            <p class="text-sm text-gray-500 mt-1">Failed connections</p>
-          </div>
-          <div class="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-            <FeatherIcon name="x-circle" class="h-5 w-5 text-red-600" />
-          </div>
-        </div>
-      </div>
       
       <!-- New: Incoming Calls -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -97,19 +99,6 @@
         </div>
       </div>
 
-      <!-- New: Unique Callers -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Unique Callers</p>
-            <p class="text-2xl font-bold text-gray-900">{{ uniqueCallers }}</p>
-            <p class="text-sm text-gray-500 mt-1">First-time numbers in range</p>
-          </div>
-          <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-            <FeatherIcon name="users" class="h-5 w-5 text-indigo-600" />
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Charts -->

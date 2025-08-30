@@ -530,15 +530,16 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     # Did not picked per spec: outgoing calls with duration == 0
     did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing", "duration": 0})
 
-    # Unique callers: count of callers whose first appearance in the call log is within the date range
+    # Unique callers: count of NEW customers (mobile numbers) whose first call was within the date range
     unique_callers_sql = """
         SELECT COUNT(*)
         FROM (
-            SELECT `from` AS caller, MIN(creation) AS first_created
+            SELECT customer, MIN(creation) AS first_call_date
             FROM `tabCRM Call Log`
-            GROUP BY `from`
+            WHERE customer IS NOT NULL AND customer != ''
+            GROUP BY customer
         ) t
-        WHERE t.first_created BETWEEN %s AND %s
+        WHERE t.first_call_date BETWEEN %s AND %s
     """
     unique_callers_res = frappe.db.sql(unique_callers_sql, (start_date, end_date))
     unique_callers = unique_callers_res[0][0] if unique_callers_res else 0
@@ -1024,19 +1025,19 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming", "duration": 0})
     did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing", "duration": 0})
 
-    # Unique callers for this user: callers whose first appearance is within range AND this user has at least one record for that caller
+    # Unique callers for this user: count of NEW customers (mobile numbers) whose first call to this user was within the date range
     unique_callers_sql = """
-        SELECT COUNT(DISTINCT cl.`from`)
-        FROM `tabCRM Call Log` cl
-        JOIN (
-            SELECT `from` AS caller, MIN(creation) AS first_created
+        SELECT COUNT(*)
+        FROM (
+            SELECT customer, MIN(creation) AS first_call_date
             FROM `tabCRM Call Log`
-            GROUP BY `from`
-        ) t ON t.caller = cl.`from`
-        WHERE t.first_created BETWEEN %s AND %s
-        AND cl.employee = %s
+            WHERE customer IS NOT NULL AND customer != ''
+            AND employee = %s
+            GROUP BY customer
+        ) t
+        WHERE t.first_call_date BETWEEN %s AND %s
     """
-    unique_callers_res = frappe.db.sql(unique_callers_sql, (start_date, end_date, user))
+    unique_callers_res = frappe.db.sql(unique_callers_sql, (user, start_date, end_date))
     unique_callers = unique_callers_res[0][0] if unique_callers_res else 0
 
     # 24-hour calling pattern for specific user in range
