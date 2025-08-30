@@ -155,10 +155,7 @@
           </div>
         </div>
       </div>
-      <div
-        v-if="!(callLog?.data?.reference_docname && callLog?.data?.reference_doctype)"
-        class="px-4 pb-7 pt-4 sm:px-6"
-      >
+      <div class="px-4 pb-7 pt-4 sm:px-6">
         <div class="flex gap-2">
           <Button
             class="flex-1"
