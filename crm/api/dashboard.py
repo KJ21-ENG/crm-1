@@ -498,25 +498,64 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
+    # Basic distributions
+    call_type_distribution = frappe.db.get_list("CRM Call Log",
+        fields=["type", "count(name) as count"],
+        filters=date_filter,
+        group_by="type",
+        order_by="count desc"
+    )
+
+    call_status_distribution = frappe.db.get_list("CRM Call Log",
+        fields=["status", "count(name) as count"],
+        filters=date_filter,
+        group_by="status",
+        order_by="count desc"
+    )
+
+    recent_calls = frappe.db.get_list("CRM Call Log",
+        fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+        filters=date_filter,
+        order_by="start_time desc",
+        limit=5
+    )
+
+    # Additional metrics requested by front-end
+    incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming"})
+    outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing"})
+
+    # Missed calls per spec: incoming calls with duration == 0
+    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming", "duration": 0})
+
+    # Did not picked per spec: outgoing calls with duration == 0
+    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing", "duration": 0})
+
+    # Unique callers: count of callers whose first appearance in the call log is within the date range
+    unique_callers_sql = """
+        SELECT COUNT(*)
+        FROM (
+            SELECT `from` AS caller, MIN(creation) AS first_created
+            FROM `tabCRM Call Log`
+            GROUP BY `from`
+        ) t
+        WHERE t.first_created BETWEEN %s AND %s
+    """
+    unique_callers_res = frappe.db.sql(unique_callers_sql, (start_date, end_date))
+    unique_callers = unique_callers_res[0][0] if unique_callers_res else 0
+
+    # Build 24-hour calling pattern aggregated for the range
+    call_activity_pattern = _build_call_activity_pattern(start_date, end_date)
+
     return {
-        "call_type_distribution": frappe.db.get_list("CRM Call Log",
-            fields=["type", "count(name) as count"],
-            filters=date_filter,
-            group_by="type",
-            order_by="count desc"
-        ),
-        "call_status_distribution": frappe.db.get_list("CRM Call Log",
-            fields=["status", "count(name) as count"],
-            filters=date_filter,
-            group_by="status",
-            order_by="count desc"
-        ),
-        "recent_calls": frappe.db.get_list("CRM Call Log",
-            fields=["name", "from", "to", "type", "status", "duration", "start_time"],
-            filters=date_filter,
-            order_by="start_time desc",
-            limit=5
-        )
+        "call_type_distribution": call_type_distribution,
+        "call_status_distribution": call_status_distribution,
+        "recent_calls": recent_calls,
+        "incoming_calls": incoming_calls,
+        "outgoing_calls": outgoing_calls,
+        "missed_incoming_duration0": missed_incoming_duration0,
+        "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
+        "unique_callers": unique_callers,
+        "call_activity_pattern": call_activity_pattern
     }
 
 
@@ -958,26 +997,108 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
+    call_type_distribution = frappe.db.get_list("CRM Call Log",
+        fields=["type", "count(name) as count"],
+        filters={**date_filter, "employee": user},
+        group_by="type",
+        order_by="count desc"
+    )
+
+    call_status_distribution = frappe.db.get_list("CRM Call Log",
+        fields=["status", "count(name) as count"],
+        filters={**date_filter, "employee": user},
+        group_by="status",
+        order_by="count desc"
+    )
+
+    recent_calls = frappe.db.get_list("CRM Call Log",
+        fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+        filters={**date_filter, "employee": user},
+        order_by="start_time desc",
+        limit=5
+    )
+
+    incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming"})
+    outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing"})
+
+    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming", "duration": 0})
+    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing", "duration": 0})
+
+    # Unique callers for this user: callers whose first appearance is within range AND this user has at least one record for that caller
+    unique_callers_sql = """
+        SELECT COUNT(DISTINCT cl.`from`)
+        FROM `tabCRM Call Log` cl
+        JOIN (
+            SELECT `from` AS caller, MIN(creation) AS first_created
+            FROM `tabCRM Call Log`
+            GROUP BY `from`
+        ) t ON t.caller = cl.`from`
+        WHERE t.first_created BETWEEN %s AND %s
+        AND cl.employee = %s
+    """
+    unique_callers_res = frappe.db.sql(unique_callers_sql, (start_date, end_date, user))
+    unique_callers = unique_callers_res[0][0] if unique_callers_res else 0
+
+    # 24-hour calling pattern for specific user in range
+    call_activity_pattern = _build_call_activity_pattern(start_date, end_date, user)
+
     return {
-        "call_type_distribution": frappe.db.get_list("CRM Call Log",
-            fields=["type", "count(name) as count"],
-            filters={**date_filter, "employee": user},
-            group_by="type",
-            order_by="count desc"
-        ),
-        "call_status_distribution": frappe.db.get_list("CRM Call Log",
-            fields=["status", "count(name) as count"],
-            filters={**date_filter, "employee": user},
-            group_by="status",
-            order_by="count desc"
-        ),
+        "call_type_distribution": call_type_distribution,
+        "call_status_distribution": call_status_distribution,
         "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
-        "recent_calls": frappe.db.get_list("CRM Call Log",
-            fields=["name", "from", "to", "type", "status", "duration", "start_time"],
-            filters={**date_filter, "employee": user},
-            order_by="start_time desc",
-            limit=5
-        )
+        "recent_calls": recent_calls,
+        "incoming_calls": incoming_calls,
+        "outgoing_calls": outgoing_calls,
+        "missed_incoming_duration0": missed_incoming_duration0,
+        "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
+        "unique_callers": unique_callers,
+        "call_activity_pattern": call_activity_pattern
+    }
+
+def _build_call_activity_pattern(start_date, end_date, user=None):
+    """Return hourly call activity within date range.
+    Aggregates by hour-of-day across the selected range.
+    Output shape compatible with UserDashboard peak-hours: {
+      hourly_data: [{hour: '00:00', calls: n, duration: x, total_activity: n}],
+      peak_hours: [ints],
+      max_activity: int
+    }
+    """
+    filters_sql = "creation BETWEEN %s AND %s"
+    params = [start_date, end_date]
+    if user:
+        filters_sql += " AND employee = %s"
+        params.append(user)
+
+    # Use COALESCE(start_time, creation) to determine hour bucket
+    rows = frappe.db.sql(
+        f"""
+        SELECT HOUR(COALESCE(start_time, creation)) as hr,
+               COUNT(*) as calls,
+               COALESCE(SUM(duration), 0) as total_duration
+        FROM `tabCRM Call Log`
+        WHERE {filters_sql}
+        GROUP BY HOUR(COALESCE(start_time, creation))
+        """,
+        tuple(params),
+        as_dict=True,
+    )
+
+    hourly_map = {i: {"hour": f"{i:02d}:00", "calls": 0, "duration": 0, "total_activity": 0} for i in range(24)}
+    for r in rows:
+        hr = int(r.get("hr") or 0)
+        hourly_map[hr]["calls"] = int(r.get("calls") or 0)
+        hourly_map[hr]["duration"] = float(r.get("total_duration") or 0)
+        hourly_map[hr]["total_activity"] = hourly_map[hr]["calls"]
+
+    hourly_list = [hourly_map[i] for i in range(24)]
+    max_calls = max((h["calls"] for h in hourly_list), default=0)
+    peak_hours = [idx for idx, h in enumerate(hourly_list) if h["calls"] == max_calls and max_calls > 0]
+
+    return {
+        "hourly_data": hourly_list,
+        "peak_hours": peak_hours,
+        "max_activity": max_calls,
     }
 
 

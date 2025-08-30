@@ -345,6 +345,59 @@
           <ReferralAnalyticsDashboard />
         </div>
 
+        <!-- Call Log Analytics Tab Content - Show for all users with admin selector -->
+        <div 
+          v-if="activeTab === 'calllogs'"
+          :id="`tab-panel-calllogs`"
+          role="tabpanel"
+          :aria-labelledby="`tab-calllogs`"
+        >
+          <!-- User Selector Header (Admin Only) -->
+          <div v-if="isCallLogsSelectorVisible" class="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                <span class="text-sm font-medium text-gray-700">View Call Logs For:</span>
+                <select
+                  v-model="selectedCallLogsUserId"
+                  @change="handleCallLogsUserChange"
+                  class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="all">All Users</option>
+                  <option value="">Current User</option>
+                  <option v-for="user in availableUsers" :key="user.name" :value="user.name">
+                    {{ user.full_name || user.name }}
+                  </option>
+                </select>
+                <span class="text-xs text-gray-500">
+                  {{ availableUsers.length }} users available
+                </span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span v-if="selectedCallLogsUserId" class="text-sm text-blue-600 font-medium">
+                  Viewing: {{ getSelectedCallLogsUserName() }}
+                </span>
+                <button
+                  v-if="selectedCallLogsUserId"
+                  @click="selectedCallLogsUserId = ''; handleCallLogsUserChange()"
+                  class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 rounded-md transition-colors"
+                  title="Reset to Current User"
+                >
+                  <FeatherIcon name="refresh-cw" class="w-4 h-4 mr-1" />
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <CallLogAnalytics
+            :data="callLogsTabData"
+            :current-view="currentView"
+            :loading="loading"
+            :error="error"
+            @refresh="refreshDashboard"
+          />
+        </div>
+
         <!-- User Dashboard Tab Content - Show for all users -->
         <div 
           v-if="activeTab === 'user'"
@@ -408,6 +461,7 @@ import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
 import StatsCard from '@/components/Dashboard/StatsCard.vue'
 import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
 import UserDashboard from '@/components/Dashboard/UserDashboard.vue'
+import CallLogAnalytics from '@/components/Dashboard/CallLogAnalytics.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import { useDashboard } from '@/stores/dashboard'
@@ -431,6 +485,7 @@ const {
   quickActions,
   topPerformers,
   dateRange,
+  callLogAnalytics,
   userDashboardData,
   fetchDashboardData,
   fetchUserDashboardData,
@@ -464,6 +519,13 @@ const allTabs = [
       variant: 'green'
     },
     adminOnly: true
+  },
+  {
+    id: 'calllogs',
+    label: 'Call Log Analytics',
+    icon: 'phone',
+    badge: null,
+    adminOnly: false
   },
   {
     id: 'user',
@@ -530,6 +592,14 @@ watch(activeTab, (newTab) => {
     console.log('🔍 DEBUG: Switching away from user dashboard in custom view, clearing custom date range')
     // This will be handled when the new tab data is fetched
   }
+  // Ensure data for Call Logs tab
+  if (newTab === 'calllogs') {
+    if (selectedCallLogsUserId.value === 'all') {
+      fetchDashboardData(currentView.value)
+    } else {
+      fetchUserDashboardData(currentView.value)
+    }
+  }
 })
 
 // Custom date range picker state
@@ -539,8 +609,10 @@ const customEndDate = ref('')
 
 // User selection state (Admin only)
 const selectedUserId = ref('')
+const selectedCallLogsUserId = ref('')
 const availableUsers = ref([])
 const isUserSelectorVisible = computed(() => isAdminUser.value && activeTab.value === 'user')
+const isCallLogsSelectorVisible = computed(() => isAdminUser.value && activeTab.value === 'calllogs')
 
 // View options
 const viewOptions = [
@@ -737,6 +809,40 @@ const handleUserChange = async () => {
   } else {
     await fetchUserDashboardData(currentView.value, null, null, selectedUserId.value)
   }
+}
+
+const handleCallLogsUserChange = async () => {
+  console.log('🔍 DEBUG: handleCallLogsUserChange selectedCallLogsUserId=', selectedCallLogsUserId.value, 'availableUsers=', availableUsers.value)
+  if (selectedCallLogsUserId.value === 'all') {
+    await fetchDashboardData(currentView.value)
+    return
+  }
+  if (!selectedCallLogsUserId.value) {
+    await fetchUserDashboardData(currentView.value)
+    console.log('🔍 DEBUG: callLogs - userDashboardData after fetch (current user):', userDashboardData.value)
+    return
+  }
+  if (currentView.value === 'custom' && customStartDate.value && customEndDate.value) {
+    await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value, selectedCallLogsUserId.value)
+    console.log('🔍 DEBUG: callLogs - userDashboardData after fetch (custom range):', userDashboardData.value)
+  } else {
+    await fetchUserDashboardData(currentView.value, null, null, selectedCallLogsUserId.value)
+    console.log('🔍 DEBUG: callLogs - userDashboardData after fetch (selected user):', userDashboardData.value)
+  }
+}
+
+const callLogsTabData = computed(() => {
+  if (isAdminUser.value && selectedCallLogsUserId.value === 'all') {
+    return callLogAnalytics.value || {}
+  }
+  return (userDashboardData.value && userDashboardData.value.call_log_analytics) || {}
+})
+
+const getSelectedCallLogsUserName = () => {
+  if (!selectedCallLogsUserId.value) return 'Current User'
+  if (selectedCallLogsUserId.value === 'all') return 'All Users'
+  const user = availableUsers.value.find(u => u.name === selectedCallLogsUserId.value)
+  return user ? (user.full_name || user.name) : selectedCallLogsUserId.value
 }
 
 const getSelectedUserName = () => {
