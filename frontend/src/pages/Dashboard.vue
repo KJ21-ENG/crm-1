@@ -760,11 +760,11 @@ onMounted(async () => {
   // Initialize user role information first
   await initializeUserRole()
   
-  // Set default view to monthly BEFORE initializing tabs
-  currentView.value = 'monthly'
+  // Set default view to daily BEFORE initializing tabs
+  currentView.value = 'daily'
 
   // Ensure changeView returns a promise and await fetching data once
-  await changeView('monthly')
+  await changeView('daily')
 
   initializeTabFromURL()
 

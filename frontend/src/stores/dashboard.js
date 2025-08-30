@@ -7,7 +7,7 @@ export function useDashboard() {
   const dashboardData = ref(null)
   const userDashboardData = ref(null)
   const lastUpdated = ref(null)
-  const currentView = ref('monthly') // 'daily', 'weekly', 'monthly', 'custom'
+  const currentView = ref('daily') // 'daily', 'weekly', 'monthly', 'custom'
   const customDateRange = ref({ start: null, end: null })
   const autoRefreshInterval = ref(null)
 
