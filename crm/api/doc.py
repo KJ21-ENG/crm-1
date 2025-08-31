@@ -435,11 +435,12 @@ def get_data(
 				rows.append("image")
 			data = get_lead_list_with_customer_data(rows, filters, order_by, page_length, start)
 		else:
+			# Use tuple-style filters to allow operators (>, <, between, like, etc.)
 			data = (
 				frappe.get_list(
 					doctype,
 					fields=rows,
-					filters=filters,
+					filters=convert_filter_to_tuple(doctype, filters),
 					order_by=order_by,
 					page_length=page_length,
 					start=start,  # Add start parameter for pagination
@@ -640,7 +641,7 @@ def get_data(
 		"start": start,  # Add start parameter to response
 		"is_default": is_default,
 		"views": get_views(doctype),
-		"total_count": frappe.get_list(doctype, filters=filters, fields="count(*) as total_count")[
+		"total_count": frappe.get_list(doctype, filters=convert_filter_to_tuple(doctype, filters), fields="count(*) as total_count")[
 			0
 		].total_count,
 		"row_count": len(data),

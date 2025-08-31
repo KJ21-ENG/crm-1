@@ -908,13 +908,31 @@ const quickFilterList = computed(() => {
       let options = meta?.options
 
       // Normalize Select options to array format expected by FormControl select
-      if (fieldtype === 'Select' && options && typeof options === 'string') {
-        const opts = options.split('\n').map((o) => ({ label: o, value: o }))
-        // Ensure empty option exists if none present
-        if (!opts.some((o) => !o.value)) {
-          opts.unshift({ label: '', value: '' })
+      if (fieldtype === 'Select') {
+        // Special case for Call Logs Status quick filter:
+        // Show only user-facing statuses and map to business logic in applyQuickFilter
+        if (props.doctype === 'CRM Call Log' && key === 'status') {
+          options = [
+            { label: '', value: '' },
+            { label: __('Completed'), value: 'Completed' },
+            { label: __('Did Not Picked'), value: 'Did Not Picked' },
+            { label: __('Missed Call'), value: 'Missed Call' },
+          ]
+        } else if (props.doctype === 'CRM Call Log' && key === 'type') {
+          // Ensure Type gets proper options even if fields meta is not present in response
+          options = [
+            { label: '', value: '' },
+            { label: __('Incoming'), value: 'Incoming' },
+            { label: __('Outgoing'), value: 'Outgoing' },
+          ]
+        } else if (options && typeof options === 'string') {
+          const opts = options.split('\n').map((o) => ({ label: o, value: o }))
+          // Ensure empty option exists if none present
+          if (!opts.some((o) => !o.value)) {
+            opts.unshift({ label: '', value: '' })
+          }
+          options = opts
         }
-        options = opts
       }
 
       return {
@@ -1028,7 +1046,42 @@ function setupNewQuickFilters(filters) {
 
 function applyQuickFilter(filter, value) {
   let filters = { ...list.value.params.filters }
-  let field = filter.fieldname
+  const field = filter.fieldname
+
+  // Special handling for Call Logs status quick filter
+  if (props.doctype === 'CRM Call Log' && field === 'status') {
+    // Clear any previous status filter and our derived conditions first
+    delete filters['status']
+    delete filters['duration']
+    // We only add type constraint for DNP/Missed
+    // Remove any previously injected type if it was from a status selection
+    // (do not remove user-chosen type filters, but we cannot distinguish reliably here;
+    // keeping existing type if present is fine — it will just narrow the results.)
+
+    if (!value) {
+      // clearing selection
+      filter['value'] = ''
+      return updateFilter(filters)
+    }
+
+    filter['value'] = value
+    if (value === 'Completed') {
+      // Any call with duration > 0
+      filters['duration'] = ['>', 0]
+    } else if (value === 'Did Not Picked') {
+      // Outgoing call with zero duration
+      filters['type'] = filters['type'] || 'Outgoing'
+      filters['duration'] = 0
+    } else if (value === 'Missed Call') {
+      // Incoming call with zero duration
+      filters['type'] = filters['type'] || 'Incoming'
+      filters['duration'] = 0
+    }
+
+    return updateFilter(filters)
+  }
+
+  // Default behavior for all other filters
   if (value) {
     if (
       ['Check', 'Select', 'Link', 'Date', 'Datetime'].includes(filter.fieldtype)
@@ -1484,6 +1537,33 @@ function applyFilter({ event, idx, column, item, firstColumn }) {
   event.preventDefault()
 
   let filters = { ...list.value.params.filters }
+
+  // Special handling for clicking on Status chip in Call Logs list
+  if (props.doctype === 'CRM Call Log' && column.key === 'status') {
+    // Reset previous status/duration constraints
+    delete filters['status']
+    delete filters['duration']
+
+    const label = item?.label || (typeof item === 'string' ? item : '')
+    if (!label) {
+      return updateFilter(filters)
+    }
+
+    if (label === 'Completed') {
+      filters['duration'] = ['>', 0]
+    } else if (label === 'Did Not Picked') {
+      filters['type'] = filters['type'] || 'Outgoing'
+      filters['duration'] = 0
+    } else if (label === 'Missed Call') {
+      filters['type'] = filters['type'] || 'Incoming'
+      filters['duration'] = 0
+    } else {
+      // Fallback: use original behavior if label not one of our derived statuses
+      const fallback = item.name || item.label || item
+      if (fallback) filters[column.key] = fallback
+    }
+    return updateFilter(filters)
+  }
 
   let value = item.name || item.label || item
 
