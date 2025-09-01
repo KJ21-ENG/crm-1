@@ -36,6 +36,32 @@ def notify_mentions(doc):
 
     owner = frappe.get_cached_value("User", doc.owner, "full_name")
 
+    def customer_suffix(reference_doctype: str | None, reference_name: str | None) -> str:
+        """Return HTML suffix with linked customer name for Lead/Ticket if available.
+
+        Example: ' (John Doe)'
+        """
+        try:
+            if not (reference_doctype and reference_name):
+                return ""
+            customer_name = None
+            if reference_doctype == "CRM Ticket":
+                t = frappe.get_doc("CRM Ticket", reference_name)
+                cid = getattr(t, "customer_id", None)
+                if cid:
+                    customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
+            elif reference_doctype == "CRM Lead":
+                l = frappe.get_doc("CRM Lead", reference_name)
+                cid = getattr(l, "customer_id", None)
+                if cid:
+                    customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
+            if customer_name:
+                return f"<span class=\"text-ink-gray-6\"> ({customer_name})</span>"
+        except Exception:
+            # Non-fatal; no suffix
+            pass
+        return ""
+
     for assigned_user in parent_assign:
         try:
             # Skip notifying the comment owner and users already mentioned
@@ -77,7 +103,7 @@ def notify_mentions(doc):
                             <div class=\"mt-1\">
                                 <span class=\"font-medium text-ink-gray-9\">{ owner }</span>
                                 <span> posted a new message in </span>
-                                <span class=\"font-medium text-ink-gray-9\">{ doc.reference_name }</span>
+                                <span class=\"font-medium text-ink-gray-9\">{ doc.reference_name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
                             </div>
                             <div class=\"mt-1 text-sm text-ink-gray-6\">Message: { preview }</div>
                         </div>
@@ -111,7 +137,7 @@ def notify_mentions(doc):
                 <div class="mt-1">
                     <span class="font-medium text-ink-gray-9">{ owner }</span>
                     <span> { _('mentioned you in {0}').format(doctype) } </span>
-                    <span class="font-medium text-ink-gray-9">{ name }</span>
+                    <span class="font-medium text-ink-gray-9">{ name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
                 </div>
             </div>
         """
@@ -169,7 +195,7 @@ def notify_mentions(doc):
                             <div class="mt-1">
                                 <span class="font-medium text-ink-gray-9">{ owner }</span>
                                 <span> mentioned you in </span>
-                                <span class="font-medium text-ink-gray-9">{ doc.reference_name }</span>
+                                <span class="font-medium text-ink-gray-9">{ doc.reference_name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
                             </div>
                             <div class="mt-1 text-sm text-ink-gray-6">Message: { preview }</div>
                         </div>

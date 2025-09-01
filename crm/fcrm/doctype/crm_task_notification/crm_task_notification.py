@@ -219,6 +219,7 @@ class CRMTaskNotification(Document):
 		else:
 			preview = plain
 		owner = frappe.get_cached_value("User", self.from_user, "full_name") if getattr(self, "from_user", None) else ""
+		customer_suffix = self.get_customer_suffix()
 
 		return f"""
 			<div class="mb-2 leading-5 text-ink-gray-5">
@@ -226,7 +227,7 @@ class CRMTaskNotification(Document):
 				<div class="mt-1">
 					<span class="font-medium text-ink-gray-9">{ owner }</span>
 					<span> mentioned you in </span>
-					<span class="font-medium text-ink-gray-9">{ (self.reference_docname or '') }</span>
+					<span class="font-medium text-ink-gray-9">{ (self.reference_docname or '') }</span>{customer_suffix}
 				</div>
 				<div class="mt-1 text-sm text-ink-gray-6">Message: { preview }</div>
 				{self.get_reference_context()}
@@ -250,6 +251,7 @@ class CRMTaskNotification(Document):
 			preview = plain
 
 		owner = frappe.get_cached_value("User", self.from_user, "full_name") if getattr(self, "from_user", None) else ""
+		customer_suffix = self.get_customer_suffix()
 
 		return f"""
 			<div class=\"mb-2 leading-5 text-ink-gray-5\"> 
@@ -257,7 +259,7 @@ class CRMTaskNotification(Document):
 				<div class=\"mt-1\"> 
 					<span class=\"font-medium text-ink-gray-9\">{ owner }</span>
 					<span> posted a new message in </span>
-					<span class=\"font-medium text-ink-gray-9\">{ (self.reference_docname or '') }</span>
+					<span class=\"font-medium text-ink-gray-9\">{ (self.reference_docname or '') }</span>{customer_suffix}
 				</div>
 				<div class=\"mt-1 text-sm text-ink-gray-6\">Message: { preview }</div>
 				{self.get_reference_context()}
@@ -280,6 +282,33 @@ class CRMTaskNotification(Document):
 					return f'<div class="text-sm text-ink-gray-6">Reference: {self.reference_doctype} - {self.reference_docname}</div>'
 			except Exception:
 				return f'<div class="text-sm text-ink-gray-6">Reference: {self.reference_doctype} - {self.reference_docname}</div>'
+		return ""
+
+	def get_customer_suffix(self):
+		"""Return a formatted suffix with linked customer name for reference docs.
+
+		For CRM Lead and CRM Ticket, if a customer is linked (via customer_id), append
+		' (Customer Name)' right after the reference docname in the support text.
+		"""
+		try:
+			if self.reference_doctype and self.reference_docname:
+				customer_name = None
+				if self.reference_doctype == "CRM Ticket":
+					t = frappe.get_doc("CRM Ticket", self.reference_docname)
+					cid = getattr(t, "customer_id", None)
+					if cid:
+						customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
+				elif self.reference_doctype == "CRM Lead":
+					l = frappe.get_doc("CRM Lead", self.reference_docname)
+					cid = getattr(l, "customer_id", None)
+					if cid:
+						customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
+				# Only include suffix when we actually have a customer name
+				if customer_name:
+					return f"<span class=\"text-ink-gray-6\"> ({customer_name})</span>"
+		except Exception:
+			# Non-fatal; just skip suffix
+			pass
 		return ""
 	
 	def publish_realtime_notification(self):

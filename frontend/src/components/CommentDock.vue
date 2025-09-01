@@ -36,9 +36,6 @@
           <div v-if="n.notification_text" v-html="n.notification_text" class="text-sm leading-5" />
           <div class="flex items-center gap-2 text-xs text-ink-gray-6 mt-1">
             <span>{{ __(timeAgo(n.sent_at)) }}</span>
-            <span v-if="n.reference_doctype && n.reference_docname" class="truncate">
-              {{ n.reference_doctype }} • {{ n.reference_docname }}
-            </span>
           </div>
           <div v-if="n.reference_doctype && n.reference_docname" class="mt-2 flex gap-2">
             <Input v-model="quickReplyText[n.name]" size="sm" placeholder="Reply..." class="flex-1" />
@@ -72,6 +69,7 @@
   <!-- Floating button -->
   <button
     class="fixed right-4 bottom-4 z-20 grid place-items-center rounded-full bg-blue-600 text-white shadow-lg h-12 w-12"
+    :class="unreadCommentCount ? 'crm-pulse' : ''"
     @click="toggle"
     aria-label="Toggle Comments"
   >
@@ -142,6 +140,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+@keyframes crm-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+  70% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.crm-pulse {
+  animation: crm-pulse 1.6s ease-out infinite;
+}
 </style>
-
-
