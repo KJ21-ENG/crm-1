@@ -324,8 +324,12 @@ def get_data(
 	if default_filters:
 		default_filters = frappe.parse_json(default_filters)
 		frappe.logger().info(f"🔍 Backend Debug - Parsed default filters: {default_filters}")
-		filters.update(default_filters)
-		frappe.logger().info(f"🔍 Backend Debug - Final merged filters: {filters}")
+		# Merge default filters WITHOUT overriding explicit filters from the client
+		# This ensures manual date changes (e.g., Yesterday/Tomorrow) take precedence
+		for _k, _v in (default_filters or {}).items():
+			if _k not in filters:
+				filters[_k] = _v
+		frappe.logger().info(f"🔍 Backend Debug - Final merged filters (non-overriding): {filters}")
 
 	# Special logging for Call Log debug
 	if doctype == "CRM Call Log":

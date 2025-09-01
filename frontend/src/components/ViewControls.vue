@@ -1157,9 +1157,8 @@ function applyQuickFilter(filter, value) {
 function updateFilter(filters) {
   if (list.value.loading) return
   viewUpdated.value = true
-  if (!defaultParams.value) {
-    defaultParams.value = getParams()
-  }
+  // Rebuild params so default_filters reflects latest props.filters
+  defaultParams.value = getParams()
   list.value.params = defaultParams.value
   list.value.params.filters = filters
   view.value.filters = filters

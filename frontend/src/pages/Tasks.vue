@@ -221,7 +221,7 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
@@ -251,10 +251,19 @@ const defaultFilters = computed(() => {
 })
 
 // Toggle today's tasks filter
-function toggleTodayTasks() {
+async function toggleTodayTasks() {
   showTodayTasks.value = !showTodayTasks.value
+  // Wait for props (:filters) to propagate to ViewControls before applying
+  await nextTick()
+  // Preserve existing filters and only toggle the due_date constraint
+  const currentFilters = (tasks.value?.params?.filters && { ...tasks.value.params.filters }) || {}
+  if (showTodayTasks.value) {
+    currentFilters.due_date = ['timespan', 'Today']
+  } else {
+    if (currentFilters.due_date) delete currentFilters.due_date
+  }
   if (viewControls.value) {
-    viewControls.value.updateFilter(defaultFilters.value)
+    viewControls.value.updateFilter(currentFilters)
   }
 }
 
