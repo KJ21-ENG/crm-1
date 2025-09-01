@@ -12,7 +12,12 @@ def get_task_notifications():
             "CRM Task Notification",
             filters={
                 "assigned_to": frappe.session.user,
-                "status": ["in", ["Pending", "Sent", "Read"]]  # Include Pending for immediate visibility
+                "status": ["in", ["Pending", "Sent", "Read"]],  # Include Pending for immediate visibility
+                # Exclude comment-related types; they will appear in the new Comment Dock
+                "notification_type": [
+                    "not in",
+                    ["Mention", "New Message"],
+                ],
             },
             fields=[
                 "name", "task", "notification_type", "status", 

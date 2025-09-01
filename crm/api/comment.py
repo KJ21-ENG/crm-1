@@ -107,9 +107,12 @@ def notify_mentions(doc):
         )
         notification_text = f"""
             <div class="mb-2 leading-5 text-ink-gray-5">
-                <span class="font-medium text-ink-gray-9">{ owner }</span>
-                <span>{ _('mentioned you in {0}').format(doctype) }</span>
-                <span class="font-medium text-ink-gray-9">{ name }</span>
+                <span class="font-medium text-blue-600">💬 Mention</span>
+                <div class="mt-1">
+                    <span class="font-medium text-ink-gray-9">{ owner }</span>
+                    <span> { _('mentioned you in {0}').format(doctype) } </span>
+                    <span class="font-medium text-ink-gray-9">{ name }</span>
+                </div>
             </div>
         """
         notify_user(
