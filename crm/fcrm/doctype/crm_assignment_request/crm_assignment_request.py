@@ -53,5 +53,65 @@ class CRMAssignmentRequest(Document):
 		except Exception as e:
 			frappe.log_error(f"Error in CRMAssignmentRequest.on_update: {str(e)}", "Assignment Request Notification")
 
+	@staticmethod
+	def default_list_data():
+		columns = [
+			{
+				"label": _("Created"),
+				"type": "Datetime",
+				"key": "creation",
+				"width": "10rem",
+			},
+			{
+				"label": _("Name"),
+				"type": "Data",
+				"key": "reference_name",
+				"width": "14rem",
+			},
+			{
+				"label": _("Requested User"),
+				"type": "Link",
+				"key": "requested_user",
+				"options": "User",
+				"width": "12rem",
+			},
+			{
+				"label": _("Requested By"),
+				"type": "Link",
+				"key": "requested_by",
+				"options": "User",
+				"width": "12rem",
+			},
+			{
+				"label": _("Status"),
+				"type": "Select",
+				"key": "status",
+				"width": "8rem",
+			},
+			{
+				"label": _("Approved On"),
+				"type": "Datetime",
+				"key": "approved_on",
+				"width": "10rem",
+			},
+			{
+				"label": _("Actions"),
+				"type": "Data",
+				"key": "_actions",
+				"width": "10rem",
+			},
+		]
 
+		rows = [
+			"name",
+			"creation",
+			"reference_doctype",
+			"reference_name",
+			"requested_user",
+			"requested_by",
+			"status",
+			"approved_on",
+		]
+
+		return {"columns": columns, "rows": rows, "order_by": "creation desc"}
 

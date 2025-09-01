@@ -894,12 +894,19 @@ const quickFilterList = computed(() => {
     .map((col) => {
       const key = col.key || col.value
       if (!key) return null
+      // Exclude non-data utility columns from quick filters (e.g., Actions)
+      const normalizedLabel = String(col.label || '').trim().toLowerCase()
+      if (key === '_actions' || normalizedLabel === 'actions') return null
       const meta = fieldsMeta.find((f) => f.fieldname === key)
 
       // derive fieldtype and options
       let fieldtype = meta?.fieldtype || col.type || 'Data'
       // Special-case: for Call Logs, treat 'start_time' column as Date so quick filter shows date-only picker
       if (props.doctype === 'CRM Call Log' && key === 'start_time') {
+        fieldtype = 'Date'
+      }
+      // Special-case: for Assignment Requests, show date-only picker for Created and Approved On
+      if (props.doctype === 'CRM Assignment Request' && ['creation', 'approved_on'].includes(key)) {
         fieldtype = 'Date'
       }
       // Allow Date/Datetime fields to be used as quick filters (e.g., Attended On)
@@ -909,14 +916,22 @@ const quickFilterList = computed(() => {
 
       // Normalize Select options to array format expected by FormControl select
       if (fieldtype === 'Select') {
-        // Special case for Call Logs Status quick filter:
-        // Show only user-facing statuses and map to business logic in applyQuickFilter
+        // Provide explicit options when backend meta may not include them
+        // Call Logs Status
         if (props.doctype === 'CRM Call Log' && key === 'status') {
           options = [
             { label: '', value: '' },
             { label: __('Completed'), value: 'Completed' },
             { label: __('Did Not Picked'), value: 'Did Not Picked' },
             { label: __('Missed Call'), value: 'Missed Call' },
+          ]
+        } else if (props.doctype === 'CRM Assignment Request' && key === 'status') {
+          // Assignment Requests Status options
+          options = [
+            { label: '', value: '' },
+            { label: __('Pending'), value: 'Pending' },
+            { label: __('Approved'), value: 'Approved' },
+            { label: __('Rejected'), value: 'Rejected' },
           ]
         } else if (props.doctype === 'CRM Call Log' && key === 'type') {
           // Ensure Type gets proper options even if fields meta is not present in response
@@ -1083,7 +1098,14 @@ function applyQuickFilter(filter, value) {
 
   // Default behavior for all other filters
   if (value) {
-    if (
+    // Special-case: For Assignment Requests, make requested_user/requested_by use LIKE
+    const forceLike =
+      props.doctype === 'CRM Assignment Request' &&
+      ['requested_user', 'requested_by'].includes(field)
+
+    if (forceLike && typeof value === 'string') {
+      filters[field] = ['LIKE', `%${value}%`]
+    } else if (
       ['Check', 'Select', 'Link', 'Date', 'Datetime'].includes(filter.fieldtype)
     ) {
       filters[field] = value

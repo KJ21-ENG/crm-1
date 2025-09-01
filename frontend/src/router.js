@@ -69,7 +69,8 @@ const routes = [
     component: () => import('@/pages/Tasks.vue'),
   },
   {
-    path: '/requests',
+    alias: '/requests',
+    path: '/requests/view/:viewType?',
     name: 'Requests',
     component: () => import('@/pages/Requests.vue'),
   },

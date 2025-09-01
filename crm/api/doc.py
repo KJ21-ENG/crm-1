@@ -344,6 +344,24 @@ def get_data(
 			
 		frappe.logger().info(f"🔍 Call Log Debug - FINAL filters after manual checks: {filters}")
 
+	# Normalize date filters for Assignment Requests: when user picks a date-only value
+	# for Datetime fields like creation/approved_on, convert to a full-day range so time is ignored
+	if doctype == "CRM Assignment Request":
+		for _field in ["creation", "approved_on"]:
+			if _field in filters:
+				val = filters.get(_field)
+				# If frontend passed a simple date string like '2025-09-01', convert to full-day range
+				if isinstance(val, str):
+					try:
+						# Support ISO 'YYYY-MM-DD' only
+						if len(val) >= 10 and val[4] == '-' and val[7] == '-':
+							_date = val[:10]
+							start_of_day = f"{_date} 00:00:00"
+							end_of_day = f"{_date} 23:59:59"
+							filters[_field] = ['between', [start_of_day, end_of_day]]
+					except Exception:
+						pass
+				# If equal comparison came as a datetime tuple, leave as-is
 		# Normalize date filters for Call Log: if user provided a date (no time),
 		# convert to a between range for the full day so datetime equality works.
 		if 'start_time' in filters:
