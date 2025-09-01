@@ -900,6 +900,10 @@ const quickFilterList = computed(() => {
       // Exclude non-data utility columns from quick filters (e.g., Actions)
       const normalizedLabel = String(col.label || '').trim().toLowerCase()
       if (key === '_actions' || normalizedLabel === 'actions') return null
+      
+      const customerStatus = String(col.label || '').trim().toLowerCase()
+      if (props.doctype === 'CRM Customer' && ( key === 'status' || customerStatus === 'status' )) return null
+
       const meta = fieldsMeta.find((f) => f.fieldname === key)||
         (allFieldsMeta || []).find((f) => f.fieldname === key)
 
