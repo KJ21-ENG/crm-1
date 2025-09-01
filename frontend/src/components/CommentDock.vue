@@ -68,7 +68,7 @@
 
   <!-- Floating button -->
   <button
-    class="fixed right-4 bottom-4 z-20 grid place-items-center rounded-full bg-blue-600 text-white shadow-lg h-12 w-12"
+    class="fixed right-4 bottom-16 z-20 grid place-items-center rounded-full bg-blue-600 text-white shadow-lg h-12 w-12"
     :class="unreadCommentCount ? 'crm-pulse' : ''"
     @click="toggle"
     aria-label="Toggle Comments"
