@@ -888,16 +888,21 @@ const quickFilterOptions = computed(() => {
 const quickFilterList = computed(() => {
   const columns = list.value?.data?.columns || []
   const fieldsMeta = list.value?.data?.fields || []
+  // Fallback meta from store (contains full DocType field definitions including types and options)
+  const allFieldsMeta = getFields ? getFields() || [] : []
 
   // Map columns to filter definitions
   const filters = columns
     .map((col) => {
       const key = col.key || col.value
       if (!key) return null
+
       // Exclude non-data utility columns from quick filters (e.g., Actions)
       const normalizedLabel = String(col.label || '').trim().toLowerCase()
       if (key === '_actions' || normalizedLabel === 'actions') return null
-      const meta = fieldsMeta.find((f) => f.fieldname === key)
+      const meta = fieldsMeta.find((f) => f.fieldname === key)||
+        (allFieldsMeta || []).find((f) => f.fieldname === key)
+
 
       // derive fieldtype and options
       let fieldtype = meta?.fieldtype || col.type || 'Data'
@@ -913,6 +918,16 @@ const quickFilterList = computed(() => {
       const excludedTypes = ['Time', 'Duration']
       if (excludedTypes.includes(String(fieldtype))) return null
       let options = meta?.options
+
+      // Debug: log where options are coming from for each quick filter
+      try {
+        const source = fieldsMeta.find((f) => f.fieldname === key)
+          ? 'api'
+          : (allFieldsMeta || []).find((f) => f.fieldname === key)
+          ? 'doctype'
+          : 'none'
+        console.debug('QuickFilter source', { doctype: props.doctype, field: key, source, options: options })
+      } catch (e) {}
 
       // Normalize Select options to array format expected by FormControl select
       if (fieldtype === 'Select') {
@@ -947,6 +962,21 @@ const quickFilterList = computed(() => {
             opts.unshift({ label: '', value: '' })
           }
           options = opts
+        } else if (!options || (Array.isArray(options) && options.length === 0)) {
+          // Fallback: derive Select options from DocType meta if not present in API response
+          const metaField = (allFieldsMeta || []).find((f) => f.fieldname === key)
+          if (metaField && typeof metaField.options === 'string') {
+            const opts = metaField.options.split('\n').map((o) => ({ label: o, value: o }))
+            if (!opts.some((o) => !o.value)) {
+              opts.unshift({ label: '', value: '' })
+            }
+            options = opts
+          }
+        }
+      } else if (fieldtype === 'Link') {
+        // Ensure Link fields carry the target doctype as options
+        if (!options && meta?.options) {
+          options = meta.options
         }
       }
 
