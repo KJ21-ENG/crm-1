@@ -170,6 +170,8 @@ const { $socket } = globalStore()
 const { mark_as_read, toggle, mark_notification_as_read, create_test_notification } = taskNotificationsStore()
 
 const target = ref(null)
+// Poller handle for fallback refresh
+let taskNotifPoller = null
 onClickOutside(
   target,
   () => {
@@ -252,6 +254,10 @@ function openAssignmentRequest(notification) {
 
 onBeforeUnmount(() => {
   $socket.off('crm_task_notification')
+  if (taskNotifPoller) {
+    clearInterval(taskNotifPoller)
+    taskNotifPoller = null
+  }
 })
 
 onMounted(() => {
@@ -266,6 +272,14 @@ onMounted(() => {
       })
     }
   })
+
+  // Fallback polling: refresh task notifications every 3s when tab visible
+  taskNotifPoller = window.setInterval(() => {
+    try {
+      if (document.hidden) return
+      taskNotifications.reload()
+    } catch (err) {}
+  }, 3000)
 })
 </script>
 

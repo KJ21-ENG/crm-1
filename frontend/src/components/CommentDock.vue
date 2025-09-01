@@ -101,6 +101,9 @@ const { toggle, markAllAsRead, markAsRead, sendQuickReply, isMuted, toggleMute }
 
 const quickReplyText = ref({})
 
+// Polling timer handle for fallback refresh
+let poller = null
+
 function openReference(n) {
   if (n.reference_doctype === 'CRM Lead') {
     router.push({ name: 'Lead', params: { leadId: n.reference_docname }, hash: '#comments' })
@@ -132,10 +135,22 @@ onMounted(() => {
     // Always refresh to keep unread badge accurate
     commentNotifications.reload()
   })
+
+  // Fallback polling: refresh comment notifications every 3s when tab is visible
+  poller = window.setInterval(() => {
+    try {
+      if (document.hidden) return
+      commentNotifications.reload()
+    } catch (err) {}
+  }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  if (poller) {
+    clearInterval(poller)
+    poller = null
+  }
 })
 </script>
 
