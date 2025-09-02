@@ -363,8 +363,7 @@ class CRMCustomer(Document):
             {"label": "Email", "type": "Data", "key": "email", "width": "14rem"},
             {"label": "Mobile", "type": "Data", "key": "mobile_no", "width": "10rem"},
             {"label": "Customer Source", "type": "Data", "key": "customer_source", "width": "10rem"},
-            {"label": "Status", "type": "Select", "key": "status", "width": "8rem"},
-            {"label": "Created On", "type": "Datetime", "key": "creation", "width": "10rem"},
+            {"label": "Created On", "type": "Datetime", "key": "creation", "width": "12rem"},
         ]
         rows = [
             "name",
