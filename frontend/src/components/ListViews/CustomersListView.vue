@@ -38,7 +38,7 @@
             @click="(event) => emit('applyFilter', { event, idx, column, item, firstColumn: columns[0] })"
           >
             <Tooltip :text="item.label">
-              <div>{{ item.timeAgo }}</div>
+              <div>{{ item.timeAgo || item.label }}</div>
             </Tooltip>
           </div>
           <div v-else-if="column.type === 'Check'">
