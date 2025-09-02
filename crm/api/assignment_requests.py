@@ -369,3 +369,103 @@ def reject_assignment_request(name, reason=None):
     return {"success": True}
 
 
+# Lightweight helper to fetch reference summary for tooltips in Requests list
+@frappe.whitelist()
+def get_reference_summary(reference_doctype: str, reference_name: str) -> dict:
+    """Return a small info summary for a referenced document.
+
+    For CRM Lead:
+      - customer_name / full name
+      - mobile_no
+      - account_type (if available)
+
+    For CRM Ticket:
+      - customer_name
+      - mobile_no
+      - issue_type (ticket_subject or subject)
+    """
+    try:
+        # Defensive defaults
+        summary = {
+            "customer_name": "",
+            "mobile_no": "",
+            "extra_label": "",
+            "extra_value": "",
+        }
+
+        if reference_doctype == "CRM Lead":
+            # Prefer customer-linked data when available
+            lead = frappe.db.get_value(
+                "CRM Lead",
+                reference_name,
+                [
+                    "customer_id",
+                    "lead_name",
+                    "first_name",
+                    "last_name",
+                    "mobile_no",
+                    "account_type",
+                ],
+                as_dict=True,
+            )
+            if lead:
+                full_name = None
+                # If linked to a customer, extract display name and primary mobile
+                cust_id = lead.get("customer_id")
+                if cust_id:
+                    cust = frappe.db.get_value(
+                        "CRM Customer",
+                        cust_id,
+                        ["customer_name", "mobile_no"],
+                        as_dict=True,
+                    )
+                    if cust:
+                        full_name = cust.get("customer_name") or full_name
+                        if not lead.get("mobile_no"):
+                            lead["mobile_no"] = cust.get("mobile_no")
+                if not full_name:
+                    full_name = lead.get("lead_name") or " ".join(
+                        filter(None, [lead.get("first_name"), lead.get("last_name")])
+                    )
+                summary.update(
+                    {
+                        "customer_name": full_name or "",
+                        "mobile_no": lead.get("mobile_no") or "",
+                        "extra_label": _("Account Type"),
+                        "extra_value": lead.get("account_type") or "",
+                    }
+                )
+
+        elif reference_doctype == "CRM Ticket":
+            ticket = frappe.db.get_value(
+                "CRM Ticket",
+                reference_name,
+                [
+                    "customer_name",
+                    "mobile_no",
+                    "ticket_subject",
+                    "subject",
+                ],
+                as_dict=True,
+            )
+            if ticket:
+                issue = ticket.get("ticket_subject") or ticket.get("subject") or ""
+                summary.update(
+                    {
+                        "customer_name": ticket.get("customer_name") or "",
+                        "mobile_no": ticket.get("mobile_no") or "",
+                        "extra_label": _("Issue Type"),
+                        "extra_value": issue,
+                    }
+                )
+
+        return summary
+    except Exception as e:
+        frappe.log_error(f"get_reference_summary failed for {reference_doctype} {reference_name}: {str(e)}", "Assignment Request Summary")
+        return {
+            "customer_name": "",
+            "mobile_no": "",
+            "extra_label": "",
+            "extra_value": "",
+        }
+

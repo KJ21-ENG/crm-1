@@ -55,10 +55,24 @@
               <div>{{ item && item.timeAgo ? item.timeAgo : '' }}</div>
             </Tooltip>
           </div>
-          <div v-else-if="column.key === 'reference_name'">
-            <RouterLink :to="getDocRoute(row)">
-              <span class="text-primary-600 hover:underline">{{ label }}</span>
+          <div v-else-if="column.key === 'reference_name'" class="flex items-center gap-2 min-w-0">
+            <RouterLink :to="getDocRoute(row)" class="min-w-0 flex-1">
+              <span class="block truncate whitespace-nowrap text-primary-600 hover:underline">{{ label }}</span>
             </RouterLink>
+            <Popover trigger="hover" placement="top" class="flex-shrink-0">
+              <template #target>
+                <span class="inline-flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-ink-gray-6 cursor-help hover:text-ink-gray-8">
+                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm.75 6a.75.75 0 1 0-1.5 0v.008a.75.75 0 0 0 1.5 0V8.25ZM12 10.5a.75.75 0 0 0-.75.75v5.25a.75.75 0 0 0 1.5 0v-5.25a.75.75 0 0 0-.75-.75Z" clip-rule="evenodd" />
+                  </svg>
+                </span>
+              </template>
+              <template #body-main>
+                <div class="p-3 text-sm leading-6 max-w-sm whitespace-pre-line">
+                  {{ getInfoTooltip(row) }}
+                </div>
+              </template>
+            </Popover>
           </div>
           <div v-else-if="column.type === 'Check'">
             <FormControl type="checkbox" :modelValue="item" :disabled="true" class="text-ink-gray-9" />
@@ -98,6 +112,7 @@ import {
   ListRowItem,
   Tooltip,
   FormControl,
+  Popover,
 } from 'frappe-ui'
 import { computed, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
@@ -167,6 +182,42 @@ function getDocRoute(row) {
     return { name: 'Ticket', params: { ticketId: name } }
   }
   return { name: route.name }
+}
+
+function formatInfo(summary) {
+  if (!summary) return ''
+  const lines = []
+  if (summary.customer_name) lines.push(`${__('Customer')}: ${summary.customer_name}`)
+  if (summary.mobile_no) lines.push(`${__('Contact')}: ${summary.mobile_no}`)
+  if (summary.extra_label && summary.extra_value) lines.push(`${summary.extra_label}: ${summary.extra_value}`)
+  return lines.join('\n')
+}
+
+function getInfoTooltip(row) {
+  const cacheKey = `${row.reference_doctype}|${row.reference_name?.label || row.reference_name}`
+  const existing = infoCache[cacheKey]
+  if (existing) return existing
+  // Return placeholder while we fetch; Tooltip will update when cache fills
+  fetchInfo(row)
+  return __('Loading...')
+}
+
+const infoCache = {}
+
+async function fetchInfo(row) {
+  try {
+    const doctype = row?.reference_doctype?.value || row?.reference_doctype || ''
+    const name = row?.reference_name?.value || row?.reference_name?.label || row?.reference_name || ''
+    if (!doctype || !name) return
+    const res = await call('crm.api.assignment_requests.get_reference_summary', {
+      reference_doctype: doctype,
+      reference_name: name,
+    })
+    const text = formatInfo(res)
+    infoCache[`${doctype}|${name}`] = text
+  } catch (e) {
+    console.log(e);
+  }
 }
 
 async function approve(row) {
