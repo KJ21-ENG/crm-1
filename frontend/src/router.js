@@ -150,6 +150,35 @@ let router = createRouter({
   routes,
 })
 
+// Auto-reload once if a route's dynamically imported chunk fails to load
+// (common after a deploy or asset cache corruption). This prevents the UI
+// from becoming non-interactive due to unresolved async components.
+function shouldReloadForError(err) {
+  if (!err) return false
+  const message = String(err && (err.message || err))
+  return (
+    /Failed to fetch dynamically imported module/i.test(message) ||
+    /Loading chunk (\d+|[A-Za-z0-9_-]+) failed/i.test(message) ||
+    /Importing a module script failed/i.test(message) ||
+    /ChunkLoadError/i.test(message)
+  )
+}
+
+router.onError((err) => {
+  try {
+    const alreadyReloaded = sessionStorage.getItem('crm_router_chunk_reload') === '1'
+    if (!alreadyReloaded && shouldReloadForError(err)) {
+      sessionStorage.setItem('crm_router_chunk_reload', '1')
+      window.location.reload()
+    }
+  } catch (_) {
+    // Fallback: if sessionStorage is inaccessible just reload once
+    if (shouldReloadForError(err)) {
+      window.location.reload()
+    }
+  }
+})
+
 router.beforeEach(async (to, from, next) => {
   const { isLoggedIn } = sessionStore()
 
