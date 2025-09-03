@@ -176,7 +176,7 @@ export function useDashboard() {
     }, 100)
   }
 
-  const changeView = (view) => {
+  const changeView = (view, targetUserId = null) => {
     console.log('🔍 DEBUG: changeView called with:', view)
     console.log('🔍 DEBUG: Previous currentView:', currentView.value)
     currentView.value = view
@@ -191,7 +191,7 @@ export function useDashboard() {
     // Return the Promise so callers can await view change completion and data loading
     return Promise.all([
       fetchDashboardData(view),
-      fetchUserDashboardData(view)
+      fetchUserDashboardData(view, null, null, targetUserId)
     ])
   }
 

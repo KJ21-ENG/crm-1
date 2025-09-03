@@ -719,6 +719,13 @@ const applyCustomDateRange = async () => {
     // Fetch data with custom date range
     if (activeTab.value === 'user') {
       await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value)
+    } else if (activeTab.value === 'calllogs') {
+      // If admin has selected a specific user in Call Logs, fetch user-specific data
+      if (selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all') {
+        await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value, selectedCallLogsUserId.value)
+      } else {
+        await fetchDashboardData('custom', customStartDate.value, customEndDate.value)
+      }
     } else {
       await fetchDashboardData('custom', customStartDate.value, customEndDate.value)
     }
@@ -747,7 +754,12 @@ const handleViewChange = async (view) => {
   }
   
   // Change the view
-  await changeView(view)
+  // Pass selectedCallLogsUserId when switching views so user-specific data continues to load
+  if (activeTab.value === 'calllogs' && selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all') {
+    await changeView(view, selectedCallLogsUserId.value)
+  } else {
+    await changeView(view)
+  }
 }
 
 const openCustomDatePicker = () => {
