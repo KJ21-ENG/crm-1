@@ -181,6 +181,16 @@ scheduler_events = {
 		# "0 10 * * *": [
 		# 	"crm.api.lead_expiry.daily_mark_expired_leads",
 		# ],
+		# Daily site backup job: run at 02:00 and invoke wrapper that executes
+		# the server-side backup script shipped in the repository. This mirrors
+		# other cron-style hooks used in this app (e.g. lead expiry).
+		"0 2 * * *": [
+			"crm.utils.backup.run_system_backup_script",
+		],
+		# Daily generic bench backup job: run at 17:25
+		"25 17 * * *": [
+			"crm.utils.backup.run_bench_backup_script",
+		],
 	},
 	"daily": [
 		"crm.api.task_notifications.get_notification_stats",
