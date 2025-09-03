@@ -38,10 +38,11 @@
     <!-- Files table -->
     <div class="rounded border border-gray-200 overflow-hidden">
       <div class="grid grid-cols-12 bg-gray-50 text-xs font-medium text-ink-gray-7 px-3 py-2">
-        <div class="col-span-6">{{ __('File') }}</div>
+        <div class="col-span-5">{{ __('File') }}</div>
         <div class="col-span-2">{{ __('Type') }}</div>
         <div class="col-span-2">{{ __('Size') }}</div>
         <div class="col-span-2">{{ __('Modified') }}</div>
+        <div class="col-span-1">{{ __('Action') }}</div>
       </div>
 
       <div v-if="loading" class="p-6 text-center text-ink-gray-6 text-sm">
@@ -58,10 +59,15 @@
           :key="file.name + file.modified"
           class="grid grid-cols-12 items-center px-3 py-2 text-sm"
         >
-          <div class="col-span-6 truncate" :title="file.name">{{ file.name }}</div>
+          <div class="col-span-5 truncate" :title="file.name">{{ file.name }}</div>
           <div class="col-span-2 uppercase tracking-wide text-xs text-ink-gray-6">{{ formatType(file.type) }}</div>
           <div class="col-span-2 tabular-nums text-ink-gray-7">{{ prettySize(file.size) }}</div>
           <div class="col-span-2 text-ink-gray-7">{{ formatDate(file.modified) }}</div>
+          <div class="col-span-1 flex justify-center">
+            <Button size="sm" type="button" @click="download(file.name)" class="flex items-center">
+              <FeatherIcon name="download" class="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -121,6 +127,20 @@ function formatType(t) {
     archive: __('Archive'),
   }
   return m[t] || t
+}
+
+async function download(filename) {
+  if (!filename) return
+  // open download link using Frappe API endpoint
+  const url = `/api/method/crm.api.settings.download_backup?filename=${encodeURIComponent(filename)}`
+  // create anchor and click to trigger download
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 </script>
 

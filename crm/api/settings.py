@@ -231,3 +231,45 @@ def get_backup_status(max_items: int = 60):
 			"latest": {},
 			"files": [],
 		}
+
+
+
+@frappe.whitelist()
+def download_backup(filename: str):
+    """Securely serve a backup file from the site's private/backups directory.
+
+    Call via: /api/method/crm.api.settings.download_backup?filename=<name>
+    """
+    import mimetypes
+
+    try:
+        if not filename:
+            frappe.throw("filename is required")
+
+        backup_dir = frappe.get_site_path('private', 'backups')
+        # Prevent path traversal
+        requested = os.path.normpath(os.path.join(backup_dir, filename))
+        if not requested.startswith(os.path.normpath(backup_dir) + os.sep) and requested != os.path.normpath(backup_dir):
+            frappe.throw("Invalid filename")
+
+        if not os.path.exists(requested) or not os.path.isfile(requested):
+            frappe.throw("File not found")
+
+        # Guess mime
+        mime_type, _ = mimetypes.guess_type(requested)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+
+        with open(requested, 'rb') as f:
+            content = f.read()
+
+        frappe.response.filename = os.path.basename(requested)
+        frappe.response.filecontent = content
+        frappe.response.type = 'download'
+        frappe.response.headers = {
+            'Content-Type': mime_type,
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error serving backup file {filename}: {str(e)}")
+        frappe.throw(str(e))
