@@ -1,4 +1,7 @@
 import frappe
+import os
+from datetime import datetime, timezone
+
 
 
 @frappe.whitelist()
@@ -120,4 +123,111 @@ def get_default_referral_code():
 			"success": False,
 			"message": "Error retrieving default referral code",
 			"error": str(e)
+		}
+
+
+@frappe.whitelist()
+def get_backup_status(max_items: int = 60):
+	"""Return backup status and recent files for the current site.
+
+	- Detects the current site via Frappe context and inspects
+	  sites/<site>/private/backups
+	- Returns whether a database backup exists for today
+	- Returns recent backup files (db/public/private/site_config) sorted by mtime desc
+
+	Args:
+		max_items: Maximum number of files to return
+
+	Returns:
+		Dict with keys: site, backup_dir, today_backup_exists, latest, files
+	"""
+
+	try:
+		# Resolve current site and backup directory
+		site = frappe.local.site
+		backup_dir = frappe.get_site_path('private', 'backups')
+
+		if not os.path.isdir(backup_dir):
+			return {
+				"site": site,
+				"backup_dir": backup_dir,
+				"today_backup_exists": False,
+				"latest": {},
+				"files": [],
+			}
+
+		# Collect files and metadata (only gz archives)
+		entries = []
+		for fname in sorted(os.listdir(backup_dir)):
+			fpath = os.path.join(backup_dir, fname)
+			if not os.path.isfile(fpath):
+				continue
+			# Only show compressed files (.gz/.tgz/.tar.gz)
+			lower_fname = fname.lower()
+			if not (
+				lower_fname.endswith('.gz')
+				or lower_fname.endswith('.tgz')
+				or lower_fname.endswith('.tar.gz')
+			):
+				continue
+
+			stat = os.stat(fpath)
+			modified_ts = stat.st_mtime
+			modified = datetime.fromtimestamp(modified_ts, tz=timezone.utc)
+
+			# Infer backup type from filename
+			lower = fname.lower()
+			if 'database.sql.gz' in lower or lower.endswith('.sql.gz'):
+				btype = 'database'
+			elif 'private-files' in lower:
+				btype = 'private_files'
+			elif 'public-files' in lower:
+				btype = 'public_files'
+			elif 'site_config_backup.json' in lower:
+				btype = 'site_config'
+			else:
+				btype = 'archive'
+
+			entries.append(
+				{
+					"name": fname,
+					"type": btype,
+					"size": stat.st_size,
+					"modified": modified.isoformat(),
+				}
+			)
+
+		# Sort newest-first
+		entries.sort(key=lambda x: x["modified"], reverse=True)
+		entries = entries[: int(max_items or 60)]
+
+		# Determine if a database backup exists today (server local date)
+		today = datetime.now(timezone.utc).date()
+		today_backup_exists = any(
+			item["type"] == "database"
+			and datetime.fromisoformat(item["modified"]).date() == today
+			for item in entries
+		)
+
+		# Latest by type
+		latest = {}
+		for item in entries:
+			latest.setdefault(item["type"], item)
+
+		return {
+			"site": site,
+			"backup_dir": backup_dir,
+			"today_backup_exists": bool(today_backup_exists),
+			"latest": latest,
+			"files": entries,
+		}
+
+	except Exception as e:
+		frappe.log_error(f"Error reading backup status: {str(e)}")
+		return {
+			"site": frappe.local.site if getattr(frappe.local, 'site', None) else None,
+			"error": str(e),
+			"today_backup_exists": False,
+			"latest": {},
+			"files": [],
 		}

@@ -57,6 +57,7 @@ import ERPNextSettings from '@/components/Settings/ERPNextSettings.vue'
 import EmailTemplatePage from '@/components/Settings/EmailTemplate/EmailTemplatePage.vue'
 import TelephonySettings from '@/components/Settings/TelephonySettings.vue'
 import EmailConfig from '@/components/Settings/EmailConfig.vue'
+import BackupSettings from '@/components/Settings/BackupSettings.vue'
 import OfficeHoursSettings from '@/components/Settings/OfficeHoursSettings.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { usersStore } from '@/stores/users'
@@ -121,6 +122,12 @@ const tabs = computed(() => {
           label: __('Office Hours'),
           icon: PhoneIcon,
           component: markRaw(OfficeHoursSettings),
+          condition: () => isManager(),
+        },
+        {
+          label: __('Backup'),
+          icon: 'database',
+          component: markRaw(BackupSettings),
           condition: () => isManager(),
         },
       ],
