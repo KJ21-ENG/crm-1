@@ -265,11 +265,15 @@ const totalCalls = computed(() =>
   (props.data.call_type_distribution || []).reduce((sum, i) => sum + (i.count || 0), 0)
 )
 
-const completedCalls = computed(() =>
-  (props.data.call_status_distribution || [])
+// Prefer backend-provided completed_calls; fallback to status-based calculation
+const completedCalls = computed(() => {
+  if (typeof props.data.completed_calls === 'number') {
+    return props.data.completed_calls
+  }
+  return (props.data.call_status_distribution || [])
     .filter(i => String(i.status).toLowerCase() === 'completed')
     .reduce((sum, i) => sum + (i.count || 0), 0)
-)
+})
 
 const missedCalls = computed(() =>
   (props.data.call_status_distribution || [])

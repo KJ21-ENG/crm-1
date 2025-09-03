@@ -524,11 +524,28 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming"})
     outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing"})
 
-    # Missed calls per spec: incoming calls with duration == 0
-    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming", "duration": 0})
+    # Missed calls per spec: incoming calls with duration == 0 OR duration IS NULL
+    missed_incoming_sql = """
+        SELECT COUNT(*) FROM `tabCRM Call Log`
+        WHERE creation BETWEEN %s AND %s
+        AND `type` = 'Incoming'
+        AND (duration = 0 OR duration IS NULL)
+    """
+    missed_incoming_res = frappe.db.sql(missed_incoming_sql, (start_date, end_date))
+    missed_incoming_duration0 = missed_incoming_res[0][0] if missed_incoming_res else 0
 
-    # Did not picked per spec: outgoing calls with duration == 0
-    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing", "duration": 0})
+    # Did not picked per spec: outgoing calls with duration == 0 OR duration IS NULL
+    did_not_picked_sql = """
+        SELECT COUNT(*) FROM `tabCRM Call Log`
+        WHERE creation BETWEEN %s AND %s
+        AND `type` = 'Outgoing'
+        AND (duration = 0 OR duration IS NULL)
+    """
+    did_not_picked_res = frappe.db.sql(did_not_picked_sql, (start_date, end_date))
+    did_not_picked_outgoing_duration0 = did_not_picked_res[0][0] if did_not_picked_res else 0
+
+    # Completed calls per business logic: (Incoming - Missed) + (Outgoing - Did Not Pick)
+    completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
 
     # Unique callers: count of NEW customers (mobile numbers) whose first call was within the date range
     unique_callers_sql = """
@@ -555,6 +572,7 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
         "outgoing_calls": outgoing_calls,
         "missed_incoming_duration0": missed_incoming_duration0,
         "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
+        "completed_calls": completed_calls,
         "unique_callers": unique_callers,
         "call_activity_pattern": call_activity_pattern
     }
@@ -1022,8 +1040,26 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming"})
     outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing"})
 
-    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming", "duration": 0})
-    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing", "duration": 0})
+    # User-specific missed/did-not-pick: include NULL durations
+    missed_incoming_user_sql = """
+        SELECT COUNT(*) FROM `tabCRM Call Log`
+        WHERE creation BETWEEN %s AND %s
+        AND `type` = 'Incoming'
+        AND employee = %s
+        AND (duration = 0 OR duration IS NULL)
+    """
+    missed_incoming_user_res = frappe.db.sql(missed_incoming_user_sql, (start_date, end_date, user))
+    missed_incoming_duration0 = missed_incoming_user_res[0][0] if missed_incoming_user_res else 0
+
+    did_not_picked_user_sql = """
+        SELECT COUNT(*) FROM `tabCRM Call Log`
+        WHERE creation BETWEEN %s AND %s
+        AND `type` = 'Outgoing'
+        AND employee = %s
+        AND (duration = 0 OR duration IS NULL)
+    """
+    did_not_picked_user_res = frappe.db.sql(did_not_picked_user_sql, (start_date, end_date, user))
+    did_not_picked_outgoing_duration0 = did_not_picked_user_res[0][0] if did_not_picked_user_res else 0
 
     # Unique callers for this user: count of NEW customers (mobile numbers) whose first call to this user was within the date range
     unique_callers_sql = """
@@ -1043,6 +1079,9 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     # 24-hour calling pattern for specific user in range
     call_activity_pattern = _build_call_activity_pattern(start_date, end_date, user)
 
+    # Completed calls per business logic for specific user
+    completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
+
     return {
         "call_type_distribution": call_type_distribution,
         "call_status_distribution": call_status_distribution,
@@ -1052,6 +1091,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
         "outgoing_calls": outgoing_calls,
         "missed_incoming_duration0": missed_incoming_duration0,
         "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
+        "completed_calls": completed_calls,
         "unique_callers": unique_callers,
         "call_activity_pattern": call_activity_pattern
     }
