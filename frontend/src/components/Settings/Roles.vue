@@ -290,6 +290,7 @@ async function addRole() {
         doctype: 'Role',
         role_name: newRoleName.value,
         desk_access: 1,
+        is_custom: 1,
       },
     })
     toast.success(__('Role {0} created', [newRoleName.value]))
