@@ -55,6 +55,8 @@
             { label: __('All'), value: 'all' },
             { label: __('Custom'), value: 'custom' },
             { label: __('Standard'), value: 'standard' },
+            { label: __('Enabled'), value: 'enabled' },
+            { label: __('Disabled'), value: 'disabled' },
           ]"
         />
       </div>
@@ -170,7 +172,7 @@ const newRoleName = ref('')
 const creating = ref(false)
 const error = ref('')
 const search = ref('')
-const filter = ref('all')
+const filter = ref('enabled')
 const deleting = ref({})
 
 const canCreate = computed(() => isAdmin())
@@ -276,6 +278,10 @@ const filteredRoles = computed(() => {
     data = data.filter((r) => !!r.is_custom)
   } else if (filter.value === 'standard') {
     data = data.filter((r) => !r.is_custom)
+  } else if (filter.value === 'enabled') {
+    data = data.filter((r) => !r.disabled)
+  } else if (filter.value === 'disabled') {
+    data = data.filter((r) => !!r.disabled)
   }
   // sort by name asc for stable UI
   return [...data].sort((a, b) => a.name.localeCompare(b.name))
