@@ -179,6 +179,7 @@ const roles = createListResource({
   doctype: 'Role',
   fields: ['name', 'desk_access', 'disabled', 'two_factor_auth', 'is_custom', 'home_page', 'restrict_to_domain'],
   orderBy: 'modified desc',
+  pageLength: 1000, // Set high limit to fetch all roles
   cache: 'roles-list',
   initialData: [],
   auto: true,
