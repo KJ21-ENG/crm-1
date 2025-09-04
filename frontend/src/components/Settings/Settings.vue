@@ -48,6 +48,7 @@ import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import EmailTemplateIcon from '@/components/Icons/EmailTemplateIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import Users from '@/components/Settings/Users.vue'
+import Roles from '@/components/Settings/Roles.vue'
 import GeneralSettings from '@/components/Settings/GeneralSettings.vue'
 import InviteUserPage from '@/components/Settings/InviteUserPage.vue'
 import ProfileSettings from '@/components/Settings/ProfileSettings.vue'
@@ -99,6 +100,12 @@ const tabs = computed(() => {
           label: __('Users'),
           icon: 'user',
           component: markRaw(Users),
+          condition: () => isManager(),
+        },
+        {
+          label: __('Roles'),
+          icon: 'shield',
+          component: markRaw(Roles),
           condition: () => isManager(),
         },
         {
