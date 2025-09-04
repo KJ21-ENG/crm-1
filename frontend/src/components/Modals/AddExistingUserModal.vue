@@ -64,7 +64,7 @@
 import MultiSelectUserInput from '@/components/Controls/MultiSelectUserInput.vue'
 import { validateEmail } from '@/utils'
 import { usersStore } from '@/stores/users'
-import { createResource, toast } from 'frappe-ui'
+import { createResource, createListResource, toast } from 'frappe-ui'
 import { ref, computed } from 'vue'
 
 const { users, isAdmin, isManager } = usersStore()
@@ -72,32 +72,19 @@ const { users, isAdmin, isManager } = usersStore()
 const show = defineModel()
 
 const newUsers = ref([])
-const role = ref('Sales User')
+const role = ref('')
 
-const description = computed(() => {
-  return {
-    'System Manager':
-      'Can manage all aspects of the CRM, including user management, customizations and settings.',
-    'Sales Manager':
-      'Can manage and invite new users, and create public & private views (reports).',
-    'Support Manager':
-      'Can manage support operations and create public & private views (reports).',
-    'Sales User':
-      'Can work with leads and deals and create private views (reports).',
-    'Support User':
-      'Can work with tickets and support-related activities.',
-  }[role.value]
+const description = computed(() => '')
+
+const enabledRoles = createListResource({
+  doctype: 'Role',
+  fields: ['name'],
+  filters: { disabled: 0 },
+  orderBy: 'name asc',
+  auto: true,
 })
 
-const roleOptions = computed(() => {
-  return [
-    { value: 'Sales User', label: __('Sales User') },
-    { value: 'Support User', label: __('Support User') },
-    ...(isManager() ? [{ value: 'Sales Manager', label: __('Sales Manager') }] : []),
-    ...(isManager() ? [{ value: 'Support Manager', label: __('Support Manager') }] : []),
-    ...(isAdmin() ? [{ value: 'System Manager', label: __('Admin') }] : []),
-  ]
-})
+const roleOptions = computed(() => (enabledRoles.data || []).map(r => ({ value: r.name, label: __(r.name) })))
 
 const addNewUser = createResource({
   url: 'crm.api.user.add_existing_users',

@@ -24,14 +24,20 @@ class CRMInvitation(Document):
 		title = "Frappe CRM"
 		template = "crm_invitation"
 
-		frappe.sendmail(
-			recipients=self.email,
-			subject=f"You have been invited to join {title}",
-			template=template,
-			args={"title": title, "invite_link": invite_link},
-			now=True,
-		)
-		self.db_set("email_sent_at", frappe.utils.now())
+		# Send email but do not fail invitation creation if mail sending fails
+		try:
+			frappe.sendmail(
+				recipients=self.email,
+				subject=f"You have been invited to join {title}",
+				template=template,
+				args={"title": title, "invite_link": invite_link},
+				now=True,
+			)
+			# mark email sent only if sending succeeded
+			self.db_set("email_sent_at", frappe.utils.now())
+		except Exception as e:
+			# Log the error and continue — invitation will exist but email may not have been delivered
+			frappe.log_error(f"Failed to send invite email to {self.email}: {e}", "CRM Invitation Email Error")
 
 	@frappe.whitelist()
 	def accept_invitation(self):

@@ -24,10 +24,10 @@
   },
   {
    "fieldname": "role",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Role",
-   "options": "\nSales User\nSupport User\nSales Manager\nSupport Manager\nSystem Manager",
+   "options": "Role",
    "reqd": 1
   },
   {

@@ -118,7 +118,7 @@ import {
 } from 'frappe-ui'
 import ReloadInviteStatus from './ReloadInviteStatus.vue'
 import { useOnboarding } from 'frappe-ui/frappe'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { call, toast } from 'frappe-ui'
 
 const { updateOnboardingStep } = useOnboarding('frappecrm')
@@ -127,6 +127,20 @@ const { users, isAdmin, isManager } = usersStore()
 const invitees = ref([])
 const role = ref('Sales User')
 const error = ref(null)
+
+const enabledRoles = createListResource({
+  doctype: 'Role',
+  fields: ['name'],
+  filters: { disabled: 0 },
+  orderBy: 'name asc',
+  auto: true,
+})
+
+watch(() => enabledRoles.data, (val) => {
+  if (val && val.length && !role.value) {
+    role.value = val[0].name
+  }
+}, { immediate: true })
 
 const userExistMessage = computed(() => {
   const inviteesSet = new Set(invitees.value)
@@ -160,30 +174,9 @@ const inviteeExistMessage = computed(() => {
   ])
 })
 
-const description = computed(() => {
-  return {
-    'System Manager':
-      'Can manage all aspects of the CRM, including user management, customizations and settings.',
-    'Sales Manager':
-      'Can manage and invite new users, and create public & private views (reports).',
-    'Support Manager':
-      'Can manage support operations and create public & private views (reports).',
-    'Sales User':
-      'Can work with leads and deals and create private views (reports).',
-    'Support User':
-      'Can work with tickets and support-related activities.',
-  }[role.value]
-})
+const description = computed(() => '')
 
-const roleOptions = computed(() => {
-  return [
-    { value: 'Sales User', label: __('Sales User') },
-    { value: 'Support User', label: __('Support User') },
-    ...(isManager() ? [{ value: 'Sales Manager', label: __('Sales Manager') }] : []),
-    ...(isManager() ? [{ value: 'Support Manager', label: __('Support Manager') }] : []),
-    ...(isAdmin() ? [{ value: 'System Manager', label: __('Admin') }] : []),
-  ]
-})
+const roleOptions = computed(() => (enabledRoles.data || []).map(r => ({ value: r.name, label: __(r.name) })))
 
 const roleMap = {
   'Sales User': __('Sales User'),
@@ -222,7 +215,6 @@ const inviteByEmail = createResource({
         data.existing_invites.join(', '),
       ])
     } else {
-      role.value = 'Sales User'
       error.value = null
     }
 
