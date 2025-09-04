@@ -76,13 +76,38 @@ async function load() {
     const map = {}
     ;(res || []).forEach(r => map[r.workday] = { ...r })
 
+    // Normalize time strings to HH:MM for <input type="time"> compatibility
+    function normalizeToHHMM(val) {
+      if (!val && val !== 0) return ''
+      try {
+        // Accept strings like "HH:MM:SS" or "H:MM" or Date objects
+        if (typeof val === 'string') {
+          const parts = val.split(':')
+          if (parts.length >= 2) {
+            const h = String(parts[0]).padStart(2, '0')
+            const m = String(parts[1]).padStart(2, '0')
+            return `${h}:${m}`
+          }
+          return ''
+        }
+        if (val instanceof Date) {
+          const h = String(val.getHours()).padStart(2, '0')
+          const m = String(val.getMinutes()).padStart(2, '0')
+          return `${h}:${m}`
+        }
+        return ''
+      } catch (e) {
+        return ''
+      }
+    }
+
     rows.value = weekdays.map(w => {
       const existing = map[w]
       return {
         name: existing?.name || null,
         workday: w,
-        start_time: existing?.start_time ? existing.start_time.substr(0,5) : '',
-        end_time: existing?.end_time ? existing.end_time.substr(0,5) : '',
+        start_time: normalizeToHHMM(existing?.start_time),
+        end_time: normalizeToHHMM(existing?.end_time),
         office_open: existing?.office_open === 0 || existing?.office_open === '0' || existing?.office_open === false ? false : true,
         error: ''
       }
