@@ -39,11 +39,11 @@
       doctype="CRM Task"
     >
       <div v-if="column.key === 'due_date'">
-        <Tooltip :text="item && formatDate(item, 'ddd, MMM D, YYYY | hh:mm a')">
+        <Tooltip :text="item && item.original ? formatDate(item.original, 'ddd, MMM D, YYYY | hh:mm a') : ''">
           <div class="flex items-center gap-2 truncate text-base">
             <div><CalendarIcon /></div>
-            <div v-if="item" class="truncate">
-              {{ item }}
+            <div v-if="item && item.display" class="truncate">
+              {{ item.display }}
             </div>
             <div v-else class="text-gray-400 text-sm">
               No date set

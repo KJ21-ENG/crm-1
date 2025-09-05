@@ -352,8 +352,11 @@ function parseRows(rows, columns = []) {
           ...(task.assigned_to && getUser(task.assigned_to)),
         }
       } else if (row == 'due_date') {
-        // Ensure due_date is properly formatted
-        _rows[row] = task[row] ? formatDate(task[row], 'D MMM, hh:mm a') : null;
+        // Store both original date and formatted display string
+        _rows[row] = task[row] ? {
+          original: task[row],
+          display: formatDate(task[row], 'D MMM, hh:mm a')
+        } : null;
       }
     })
     return _rows
