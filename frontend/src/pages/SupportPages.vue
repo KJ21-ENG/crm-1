@@ -56,7 +56,7 @@
               {{ searchQuery.trim() ? __('Try adjusting your search terms') : __('Create your first support page to get started') }}
             </p>
             <Button 
-              v-if="!searchQuery.trim()"
+              v-if="!searchQuery.trim() && canWriteSupport"
               variant="solid" 
               :label="__('Create Support Page')" 
               @click="showCreateModal = true"
@@ -105,6 +105,7 @@
                   variant="outline" 
                   :label="__('Edit')" 
                   @click="editPage(page)"
+                  v-if="canWriteSupport"
                 />
                 <Button 
                   size="sm" 
@@ -112,6 +113,7 @@
                   theme="red" 
                   :label="__('Delete')" 
                   @click="deletePage(page)"
+                  v-if="canWriteSupport"
                 />
               </div>
             </div>
@@ -212,8 +214,13 @@ import {
 } from 'frappe-ui'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
 
 const router = useRouter()
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteSupport = computed(() => canWrite('Support Pages'))
 
 // State
 const showCreateModal = ref(false)

@@ -447,6 +447,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
 import ClientIdModal from '@/components/Modals/ClientIdModal.vue'
 import RejectionReasonModal from '@/components/Modals/RejectionReasonModal.vue'
+import { permissionsStore } from '@/stores/permissions'
 
 
 const { brand } = getSettings()
@@ -1091,6 +1092,10 @@ async function triggerAutoAssign() {
 // }
 
 const activities = ref(null)
+
+// Module permissions
+const { canWrite } = permissionsStore()
+const canWriteLeads = computed(() => canWrite('Leads'))
 
 function openEmailBox() {
   let currentTab = tabs.value[tabIndex.value]

@@ -37,7 +37,7 @@
     v-model="tasks"
     :options="{
       onClick: (row) => showTask(row.name),
-      onNewClick: (column) => createTask(column),
+      onNewClick: canWriteTasks ? (column) => createTask(column) : undefined,
     }"
     @update="(data) => viewControls.updateKanbanSettings(data)"
     @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
@@ -223,6 +223,7 @@ import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
 import { computed, ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
@@ -237,6 +238,10 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteTasks = computed(() => canWrite('Tasks'))
 
 // Track if showing today's tasks
 const showTodayTasks = ref(true)

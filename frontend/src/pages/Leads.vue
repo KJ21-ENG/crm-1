@@ -9,6 +9,7 @@
         :actions="leadsListView.customListActions"
       />
       <Button
+        v-if="canWriteLeads"
         variant="solid"
         :label="__('Create')"
         @click="showLeadModal = true"
@@ -314,6 +315,7 @@ import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
+import { permissionsStore } from '@/stores/permissions'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -605,3 +607,6 @@ function showTask(name) {
   showTaskModal.value = true
 }
 </script>
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteLeads = computed(() => canWrite('Leads'))

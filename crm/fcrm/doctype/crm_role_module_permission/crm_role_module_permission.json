@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:{role}-{module}",
+ "creation": "2025-09-05 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "role",
+  "module",
+  "permission"
+ ],
+ "fields": [
+  {
+   "fieldname": "role",
+   "fieldtype": "Link",
+   "label": "Role",
+   "options": "Role",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "module",
+   "fieldtype": "Select",
+   "label": "Module",
+   "options": "Dashboard\nTickets\nLeads\nCustomers\nSupport Pages\nNotes\nTasks\nCall Logs",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "permission",
+   "fieldtype": "Select",
+   "label": "Permission",
+   "options": "None\nRead\nRead & Write",
+   "default": "Read & Write",
+   "reqd": 1,
+   "in_list_view": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Role Module Permission",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "export": 1,
+   "share": 1,
+   "print": 1,
+   "report": 1,
+   "email": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+

@@ -126,6 +126,11 @@
           </div>
           <div class="col-span-1 flex justify-end gap-2">
             <Button variant="ghost" icon-left="edit-2" @click="openRenameModal(r)" />
+            <Tooltip :text="__('Manage module permissions')">
+              <div>
+                <Button variant="ghost" icon="lock" @click="openPermsModal(r)" />
+              </div>
+            </Tooltip>
             <Tooltip :text="r.is_custom ? __('Delete Role') : __('Only custom roles can be deleted')">
               <div>
                 <Button
@@ -154,6 +159,25 @@
           </div>
         </template>
       </Dialog>
+
+      <!-- Permissions Modal -->
+      <Dialog v-model="showPerms" :options="{ size: 'lg' }">
+        <template #body>
+          <div class="p-4">
+            <h3 class="text-lg font-semibold mb-3">{{ __('Module Permissions for {0}', [permsTarget?.name || '']) }}</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div v-for="m in modules" :key="m" class="flex items-center justify-between border rounded p-2">
+                <div class="text-sm text-ink-gray-8">{{ m }}</div>
+                <FormControl type="select" class="w-48" v-model="permsByModule[m]" :options="permOptions" />
+              </div>
+            </div>
+            <div class="mt-4 flex justify-end gap-2">
+              <Button variant="subtle" @click="showPerms = false">{{ __('Cancel') }}</Button>
+              <Button variant="solid" :loading="savingPerms" @click="savePerms">{{ __('Save') }}</Button>
+            </div>
+          </div>
+        </template>
+      </Dialog>
     </div>
 
     <ErrorMessage class="mt-2" v-if="error" :message="__(error)" />
@@ -165,6 +189,7 @@
 import { ref, computed } from 'vue'
 import { createListResource, createResource, call, toast, TextInput, Button, Badge, Tooltip, FeatherIcon, FormControl, ErrorMessage, Dialog, Dropdown } from 'frappe-ui'
 import { usersStore } from '@/stores/users'
+import { APP_MODULES } from '@/stores/permissions'
 
 const { isAdmin } = usersStore()
 
@@ -340,6 +365,54 @@ async function deleteRole(role) {
     deleting.value = { ...deleting.value, [role.name]: false }
   }
 }
-</script>
 
+// Permissions modal state and logic
+const showPerms = ref(false)
+const permsTarget = ref(null)
+const savingPerms = ref(false)
+const modules = APP_MODULES
+const permOptions = [
+  { label: __('None'), value: 'None' },
+  { label: __('Read'), value: 'Read' },
+  { label: __('Read & Write'), value: 'Read & Write' },
+]
+const permsByModule = ref({})
+
+function openPermsModal(role) {
+  permsTarget.value = role
+  permsByModule.value = {}
+  showPerms.value = true
+  // Load current values
+  createResource({
+    url: 'crm.api.permissions.get_role_module_permissions',
+    params: { role: role.name },
+    auto: true,
+    onSuccess(data) {
+      const map = {}
+      for (const row of data || []) map[row.module] = row.permission || 'Read & Write'
+      // Ensure all modules present
+      for (const m of modules) if (!map[m]) map[m] = 'Read & Write'
+      permsByModule.value = map
+    },
+    onError(e) {
+      toast.error(e?.messages?.[0] || __('Failed to load permissions'))
+    }
+  })
+}
+
+async function savePerms() {
+  if (!permsTarget.value) return
+  savingPerms.value = true
+  try {
+    const payload = modules.map(m => ({ module: m, permission: permsByModule.value[m] || 'Read & Write' }))
+    await call('crm.api.permissions.set_role_module_permissions', { role: permsTarget.value.name, permissions: payload })
+    toast.success(__('Permissions saved'))
+    showPerms.value = false
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Failed to save permissions'))
+  } finally {
+    savingPerms.value = false
+  }
+}
+</script>
 

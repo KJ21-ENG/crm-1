@@ -5,6 +5,7 @@
       <div class="flex items-center justify-between">
         <h1 class="text-xl font-semibold text-ink-900">Customers</h1>
         <Button
+          v-if="canWriteCustomers"
           variant="solid"
           label="New Customer"
           @click="showCreateDialog = true"
@@ -49,7 +50,7 @@
     <div v-else-if="customersList.data" class="flex h-full items-center justify-center">
       <div class="flex flex-col items-center gap-3 text-xl font-medium text-ink-gray-4">
         <span>No Customers Found</span>
-        <Button :label="'New Customer'" @click="showCreateDialog = true">
+        <Button v-if="canWriteCustomers" :label="'New Customer'" @click="showCreateDialog = true">
           <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
         </Button>
       </div>
@@ -57,6 +58,7 @@
 
     <!-- Create Customer Dialog -->
     <Dialog
+      v-if="canWriteCustomers"
       v-model="showCreateDialog"
       :options="{
         title: 'Create New Customer',
@@ -208,8 +210,12 @@ import ViewControls from '@/components/ViewControls.vue'
 import CustomersListView from '@/components/ListViews/CustomersListView.vue'
 import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 import { useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
 
 const router = useRouter()
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteCustomers = computed(() => canWrite('Customers'))
 
 // Data
 const showCreateDialog = ref(false)

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-between gap-3 border-t px-4 py-2.5 sm:px-10">
+  <div v-if="canWrite" class="flex justify-between gap-3 border-t px-4 py-2.5 sm:px-10">
     <div class="flex gap-1.5">
       <Button
         ref="sendEmailRef"
@@ -29,7 +29,7 @@
     </div>
   </div>
   <div
-    v-show="showEmailBox"
+    v-show="canWrite && showEmailBox"
     @keydown.ctrl.enter.capture.stop="submitEmail"
     @keydown.meta.enter.capture.stop="submitEmail"
   >
@@ -63,7 +63,7 @@
       "
     />
   </div>
-  <div v-show="showCommentBox">
+  <div v-show="canWrite && showCommentBox">
     <CommentBox
       ref="newCommentEditor"
       v-model:content="newComment"
@@ -103,6 +103,10 @@ const props = defineProps({
   doctype: {
     type: String,
     default: 'CRM Lead',
+  },
+  canWrite: {
+    type: Boolean,
+    default: true,
   },
 })
 

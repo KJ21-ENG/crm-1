@@ -10,6 +10,7 @@
     :whatsappBox="whatsappBox"
     :modalRef="modalRef"
     :whatsappStatus="whatsappStatus"
+    :canWrite="canWrite"
   />
   <div class="relative flex flex-1">
     <FadedScrollableDiv
@@ -438,29 +439,29 @@
     >
       <component :is="emptyTextIcon" class="h-10 w-10" />
       <span>{{ __(emptyText) }}</span>
-      <MultiActionButton v-if="title == 'Calls'" :options="callActions" />
+      <MultiActionButton v-if="canWrite && title == 'Calls'" :options="callActions" />
       <Button
-        v-else-if="title == 'Notes'"
+        v-else-if="canWrite && title == 'Notes'"
         :label="__('Create Note')"
         @click="modalRef.showNote()"
       />
       <Button
-        v-else-if="title == 'Emails'"
+        v-else-if="canWrite && title == 'Emails'"
         :label="__('New Email')"
         @click="emailBox.show = true"
       />
       <Button
-        v-else-if="title == 'Comments'"
+        v-else-if="canWrite && title == 'Comments'"
         :label="__('New Comment')"
         @click="emailBox.showComment = true"
       />
       <Button
-        v-else-if="title == 'Tasks'"
+        v-else-if="canWrite && title == 'Tasks'"
         :label="__('Create Task')"
         @click="modalRef.showTask()"
       />
       <Button
-        v-else-if="title == 'Attachments'"
+        v-else-if="canWrite && title == 'Attachments'"
         :label="__('Upload Attachment')"
         @click="showFilesUploader = true"
       />
@@ -488,6 +489,7 @@
       v-model="doc"
       v-model:reload="reload_email"
       :doctype="doctype"
+      :canWrite="canWrite"
       @scroll="scroll"
     />
     <WhatsAppBox
@@ -521,7 +523,7 @@
     :doc="doc"
   />
   <FilesUploader
-    v-if="doc.data?.name"
+    v-if="doc.data?.name && canWrite"
     v-model="showFilesUploader"
     :doctype="doctype"
     :docname="doc.data.name"
@@ -605,6 +607,10 @@ const props = defineProps({
   tabs: {
     type: Array,
     default: () => [],
+  },
+  canWrite: {
+    type: Boolean,
+    default: true,
   },
 })
 

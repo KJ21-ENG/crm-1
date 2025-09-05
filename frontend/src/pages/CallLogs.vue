@@ -8,7 +8,7 @@
         v-if="callLogsListView?.customListActions"
         :actions="callLogsListView.customListActions"
       />
-      <Button variant="solid" :label="__('Create')" @click="createCallLog">
+      <Button v-if="canWriteCallLogs" variant="solid" :label="__('Create')" @click="createCallLog">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </template>
@@ -85,6 +85,7 @@ import { getCallLogDetail } from '@/utils/callLog'
 import { createResource } from 'frappe-ui'
 import { computed, ref, onMounted, watch } from 'vue'
 import { sessionStore } from '@/stores/session'
+import { permissionsStore } from '@/stores/permissions'
 
 const callLogsListView = ref(null)
 const showCallLogModal = ref(false)
@@ -98,6 +99,10 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteCallLogs = computed(() => canWrite('Call Logs'))
 
 // Create a more robust user filter that waits for session
 const userOwnerFilter = computed(() => {

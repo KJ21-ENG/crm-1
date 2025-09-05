@@ -5,21 +5,22 @@
     </template>
     <template #right-header>
       <CustomActions
-        v-if="ticket.data._customActions?.length"
+        v-if="canWriteTickets && ticket.data._customActions?.length"
         :actions="ticket.data._customActions"
       />
       <CustomActions
-        v-if="document.actions?.length"
+        v-if="canWriteTickets && document.actions?.length"
         :actions="document.actions"
       />
       <AssignTo
+        v-if="canWriteTickets"
         v-model="assignees.data"
         :data="document.doc"
         doctype="CRM Ticket"
         @navigateToActivity="navigateToActivity"
       />
       <Dropdown
-        v-if="document.doc"
+        v-if="canWriteTickets && document.doc"
         :options="
           statusOptions(
             'ticket',
@@ -99,6 +100,7 @@
           v-model:reload="reload"
           v-model:tabIndex="tabIndex"
           v-model="ticket"
+          :canWrite="canWriteTickets"
           @afterSave="reloadAssignees"
         />
       </template>
@@ -113,6 +115,7 @@
       
       <!-- Customer Info Section -->
       <FileUploader
+        v-if="canWriteTickets"
         @success="(file) => updateField('image', file.file_url)"
         :validateFile="validateIsImageFile"
       >
@@ -216,34 +219,36 @@
                     </Button>
                   </div>
                 </Tooltip>
-                <Tooltip :text="__('Create Task')">
-                  <div>
-                    <Button @click="showCreateTaskModal = true">
-                      <template #icon>
-                        <TaskIcon />
-                      </template>
-                    </Button>
-                  </div>
-                </Tooltip>
-                <Tooltip :text="__('Attach a file')">
-                  <div>
-                    <Button @click="showFilesUploader = true">
-                      <template #icon>
-                        <AttachmentIcon />
-                      </template>
-                    </Button>
-                  </div>
-                </Tooltip>
-                <Tooltip :text="__('Delete')">
-                  <div>
-          <Button
-                      @click="deleteTicketWithModal(ticket.data.name)"
-                      variant="subtle"
-                      theme="red"
-                      icon="trash-2"
-                    />
-                  </div>
-                </Tooltip>
+                <template v-if="canWriteTickets">
+                  <Tooltip :text="__('Create Task')">
+                    <div>
+                      <Button @click="showCreateTaskModal = true">
+                        <template #icon>
+                          <TaskIcon />
+                        </template>
+                      </Button>
+                    </div>
+                  </Tooltip>
+                  <Tooltip :text="__('Attach a file')">
+                    <div>
+                      <Button @click="showFilesUploader = true">
+                        <template #icon>
+                          <AttachmentIcon />
+                        </template>
+                      </Button>
+                    </div>
+                  </Tooltip>
+                  <Tooltip :text="__('Delete')">
+                    <div>
+                      <Button
+                        @click="deleteTicketWithModal(ticket.data.name)"
+                        variant="subtle"
+                        theme="red"
+                        icon="trash-2"
+                      />
+                    </div>
+                  </Tooltip>
+                </template>
               </div>
               <ErrorMessage :message="__(error)" />
             </div>
@@ -550,7 +555,7 @@
   </Dialog>
 
   <FilesUploader
-    v-if="ticket.data?.name"
+    v-if="ticket.data?.name && canWriteTickets"
     v-model="showFilesUploader"
     doctype="CRM Ticket"
     :docname="ticket.data.name"
@@ -617,6 +622,7 @@ import {
 import { useRoute } from 'vue-router'
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
 
 const { getView: getViewFromStore } = viewsStore()
 const { brand } = getSettings()
@@ -1127,4 +1133,8 @@ function navigateToActivity() {
   // Also try to set the URL hash
   router.push({ ...route, hash: '#activity' })
 }
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteTickets = computed(() => canWrite('Tickets'))
 </script> 

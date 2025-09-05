@@ -4,7 +4,7 @@
       <ViewBreadcrumbs v-model="viewControls" routeName="Notes" />
     </template>
     <template #right-header>
-      <Button variant="solid" :label="__('Create')" @click="createNote">
+      <Button v-if="canWriteNotes" variant="solid" :label="__('Create')" @click="createNote">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </template>
@@ -34,13 +34,17 @@
             {{ note.title }}
           </div>
           <Dropdown
-            :options="[
-              {
-                label: __('Delete'),
-                icon: 'trash-2',
-                onClick: () => deleteNote(note.name),
-              },
-            ]"
+            :options="(
+              canWriteNotes
+                ? [
+                    {
+                      label: __('Delete'),
+                      icon: 'trash-2',
+                      onClick: () => deleteNote(note.name),
+                    },
+                  ]
+                : []
+            )"
             @click.stop
           >
             <Button
@@ -93,7 +97,7 @@
     >
       <NoteIcon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Notes')]) }}</span>
-      <Button :label="__('Create')" @click="createNote">
+      <Button v-if="canWriteNotes" :label="__('Create')" @click="createNote">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </div>
@@ -117,6 +121,7 @@ import { usersStore } from '@/stores/users'
 import { timeAgo, formatDate } from '@/utils'
 import { TextEditor, call, Dropdown, Tooltip } from 'frappe-ui'
 import { ref, watch, computed } from 'vue'
+import { permissionsStore } from '@/stores/permissions'
 
 const { getUser } = usersStore()
 
@@ -127,6 +132,10 @@ const notes = ref({})
 const loadMore = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteNotes = computed(() => canWrite('Notes'))
 
 // Add pagination computed properties
 const currentPage = computed(() => {

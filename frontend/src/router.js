@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { userResource } from '@/stores/user'
 import { sessionStore } from '@/stores/session'
 import { viewsStore } from '@/stores/views'
+import { permissionsStore } from '@/stores/permissions'
 
 const routes = [
   {
@@ -135,6 +136,11 @@ const routes = [
     component: () => import('@/pages/Welcome.vue'),
   },
   {
+    path: '/not-permitted',
+    name: 'Not Permitted',
+    component: () => import('@/pages/NotPermitted.vue'),
+  },
+  {
     path: '/:invalidpath',
     name: 'Invalid Page',
     component: () => import('@/pages/InvalidPage.vue'),
@@ -183,6 +189,8 @@ router.beforeEach(async (to, from, next) => {
   const { isLoggedIn } = sessionStore()
 
   isLoggedIn && (await userResource.promise)
+  const pstore = permissionsStore()
+  isLoggedIn && (await pstore.permissions.promise)
 
   if (to.name === 'Home' && isLoggedIn) {
     const { views, getDefaultView } = viewsStore()
@@ -206,7 +214,29 @@ router.beforeEach(async (to, from, next) => {
     window.location.href = '/login?redirect-to=/crm'
   } else if (to.matched.length === 0) {
     next({ name: 'Invalid Page' })
-  } else if (['Lead'].includes(to.name) && !to.hash) {
+  } else {
+    // Module-level guard
+    const routeName = to.name
+    const routeToModule = {
+      'Dashboard': 'Dashboard',
+      'Tickets': 'Tickets',
+      'Ticket': 'Tickets',
+      'Leads': 'Leads',
+      'Lead': 'Leads',
+      'Customers': 'Customers',
+      'Customer': 'Customers',
+      'Support Pages': 'Support Pages',
+      'Notes': 'Notes',
+      'Tasks': 'Tasks',
+      'Call Logs': 'Call Logs',
+    }
+    const mod = routeToModule[routeName]
+    if (mod && !pstore.canRead(mod)) {
+      next({ name: 'Not Permitted', query: { module: mod } })
+      return
+    }
+  }
+  if (['Lead'].includes(to.name) && !to.hash) {
     let storageKey = 'lastLeadTab'
     const activeTab = localStorage.getItem(storageKey) || 'activity'
     const hash = '#' + activeTab

@@ -121,9 +121,19 @@ before_uninstall = "crm.uninstall.before_uninstall"
 # "Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
 #
-# has_permission = {
-# "Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+has_permission = {
+    # Core CRM doctypes mapped to modules
+    "CRM Ticket": "crm.api.permissions.doctype_has_permission",
+    "CRM Lead": "crm.api.permissions.doctype_has_permission",
+    "CRM Customer": "crm.api.permissions.doctype_has_permission",
+    "CRM Support Pages": "crm.api.permissions.doctype_has_permission",
+    # Ancillary doctypes commonly created from detail pages
+    "CRM Task": "crm.api.permissions.doctype_has_permission",
+    # These may be created/attached from module pages; guard by reference_doctype when present
+    "Comment": "crm.api.permissions.doctype_has_permission",
+    "Communication": "crm.api.permissions.doctype_has_permission",
+    "File": "crm.api.permissions.doctype_has_permission",
+}
 
 # DocType Class
 # ---------------

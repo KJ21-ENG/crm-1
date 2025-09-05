@@ -9,13 +9,14 @@
         v-if="ticketsListView?.customListActions"
         :actions="ticketsListView.customListActions"
       />
-        <Button
-          variant="solid"
+      <Button
+        v-if="canWriteTickets"
+        variant="solid"
         :label="__('Create')"
-          @click="showTicketModal = true"
-        >
+        @click="showTicketModal = true"
+      >
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-        </Button>
+      </Button>
       </template>
   </LayoutHeader>
   <ViewControls
@@ -308,6 +309,7 @@ import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Avatar, Tooltip, Dropdown, Badge, Button, FeatherIcon } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
+import { permissionsStore } from '@/stores/permissions'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Ticket')
@@ -522,11 +524,13 @@ function actions(itemName) {
       icon: h(NoteIcon, { class: 'h-4 w-4' }),
       label: __('New Note'),
       onClick: () => showNote(itemName),
+      condition: () => canWriteTickets.value,
     },
     {
       icon: h(TaskIcon, { class: 'h-4 w-4' }),
       label: __('New Task'),
       onClick: () => showTask(itemName),
+      condition: () => canWriteTickets.value,
     },
   ]
   return actions.filter((action) =>
@@ -564,5 +568,8 @@ function showTask(name) {
 function handleTicketCreated() {
   console.log('Ticket created, refreshing list...')
   tickets.value?.reload?.()
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteTickets = computed(() => canWrite('Tickets'))
 }
 </script> 
