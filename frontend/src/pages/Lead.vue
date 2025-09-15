@@ -17,13 +17,14 @@
         :actions="document.actions"
       />
       <AssignTo
+        v-if="canWriteLeads"
         v-model="assignees.data"
         :data="document.doc"
         doctype="CRM Lead"
         @navigateToActivity="navigateToActivity"
       />
       <Dropdown
-        v-if="document.doc"
+        v-if="document.doc && canWriteLeads"
         :options="
           statusOptions(
             'lead',
@@ -84,6 +85,7 @@
           v-model:reload="reload"
           v-model:tabIndex="tabIndex"
           v-model="lead"
+          :canWrite="canWriteLeads"
           @afterSave="reloadAssignees"
         />
       </template>
@@ -96,6 +98,7 @@
         {{ lead.data.name }}
       </div>
       <FileUploader
+        v-if="canWriteLeads"
         @success="(file) => updateCustomerImage(file.file_url)"
         :validateFile="validateIsImageFile"
       >
@@ -196,7 +199,7 @@
                     </Button>
                   </div>
                 </Tooltip>
-                <Tooltip :text="__('Attach a file')">
+                <Tooltip v-if="canWriteLeads" :text="__('Attach a file')">
                   <div>
                     <Button @click="showFilesUploader = true">
                       <template #icon>
@@ -205,7 +208,7 @@
                     </Button>
                   </div>
                 </Tooltip>
-                <Tooltip :text="__('Delete')">
+                <Tooltip v-if="canWriteLeads" :text="__('Delete')">
                   <div>
                     <Button
                       @click="deleteLeadWithModal(lead.data.name)"
