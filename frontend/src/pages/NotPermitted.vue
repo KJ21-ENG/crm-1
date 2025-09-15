@@ -4,10 +4,7 @@
       <div class="mb-2 text-ink-gray-7">
         {{ __('Not permitted to access {0}', [moduleLabel]) }}
       </div>
-      <Button :route="{ name: 'Leads' }">
-        <template #prefix><LeadsIcon class="w-4" /></template>
-        {{ __('Go to Leads') }}
-      </Button>
+      <!-- Removed 'Go to Leads' button per request -->
     </div>
   </div>
   

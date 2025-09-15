@@ -7,7 +7,7 @@
     </template>
     <template #right-header>
       <CustomActions 
-        v-if="customer?.data?.name"
+        v-if="customer?.data?.name && canWriteCustomers"
         :actions="actions"
         class="flex items-center gap-1"
       />
@@ -520,6 +520,7 @@ import {
   toast
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
+import { permissionsStore } from '@/stores/permissions'
 import { useRouter } from 'vue-router'
 import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 
@@ -598,6 +599,10 @@ const loadCustomer = async () => {
     console.error('Error loading customer:', error)
   }
 }
+
+// Module permissions
+const { canWrite } = permissionsStore()
+const canWriteCustomers = computed(() => canWrite('Customers'))
 
 const actions = computed(() => [
   {
