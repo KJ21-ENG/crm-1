@@ -1134,8 +1134,17 @@ function navigateToActivity() {
   router.push({ ...route, hash: '#activity' })
 }
 
-// Permissions
+// Permissions: module level + per-record assignment gate
 const { canWrite } = permissionsStore()
-const { isAdmin } = usersStore()
-const canWriteTickets = computed(() => isAdmin() || canWrite('Tickets'))
+const { isAdmin, getUser } = usersStore()
+const isAssignedToThisTicket = computed(() => {
+  try {
+    const list = assignees?.data || []
+    const sessionUser = getUser().name
+    return Array.isArray(list) && list.some((a) => a?.name === sessionUser)
+  } catch (e) {
+    return false
+  }
+})
+const canWriteTickets = computed(() => isAdmin() || (canWrite('Tickets') && isAssignedToThisTicket.value))
 </script> 

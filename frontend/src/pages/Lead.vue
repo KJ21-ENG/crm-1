@@ -455,7 +455,7 @@ import { permissionsStore } from '@/stores/permissions'
 
 const { brand } = getSettings()
 const { user } = sessionStore()
-const { isManager } = usersStore()
+const { isManager, isAdmin } = usersStore()
 const { $dialog, $socket, makeCall } = globalStore()
 const { statusOptions, getLeadStatus } = statusesStore()
 const { doctypeMeta } = getMeta('CRM Lead')
@@ -1096,9 +1096,17 @@ async function triggerAutoAssign() {
 
 const activities = ref(null)
 
-// Module permissions
+// Module permissions + per-record assignment gate
 const { canWrite } = permissionsStore()
-const canWriteLeads = computed(() => canWrite('Leads'))
+const isAssignedToThisLead = computed(() => {
+  try {
+    const list = assignees?.data || []
+    return Array.isArray(list) && list.some((a) => a?.name === user)
+  } catch (e) {
+    return false
+  }
+})
+const canWriteLeads = computed(() => isAdmin() || (canWrite('Leads') && isAssignedToThisLead.value))
 
 function openEmailBox() {
   let currentTab = tabs.value[tabIndex.value]

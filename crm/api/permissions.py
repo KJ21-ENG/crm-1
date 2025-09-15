@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any
 
 
 MODULES = [
@@ -52,6 +52,69 @@ def _map_doctype_to_module(doctype: str) -> Optional[str]:
         "File": None,
     }
     return mapping.get(doctype)
+
+
+def _safe_json_loads(val: Optional[str]) -> List[str]:
+    try:
+        if not val:
+            return []
+        import json
+
+        parsed = json.loads(val) if isinstance(val, str) else val
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
+
+
+def _is_user_assigned_to_doc(doctype: str, name: str, user: Optional[str] = None) -> bool:
+    """Return True if the given user is present in the document's _assign list.
+
+    Note: We treat empty/None _assign as "no one assigned" — i.e., returns False.
+    System Manager checks should be handled by callers.
+    """
+    try:
+        user = user or frappe.session.user
+        assign = frappe.db.get_value(doctype, name, "_assign")
+        assigned_list = _safe_json_loads(assign)
+        return user in set(assigned_list or [])
+    except Exception:
+        return False
+
+
+def _getattr(doc: Any, key: str) -> Optional[Any]:
+    if doc is None:
+        return None
+    try:
+        if isinstance(doc, dict):
+            return doc.get(key)
+        return getattr(doc, key, None)
+    except Exception:
+        return None
+
+
+def _extract_parent_context(doc: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Try to determine parent reference (Lead/Ticket) for a related document.
+
+    Supports common patterns used in this app:
+    - reference_doctype + reference_docname/reference_name (Tasks, Communication)
+    - attached_to_doctype + attached_to_name (File)
+    """
+    if not doc:
+        return (None, None)
+
+    # Preferred fields
+    rdt = _getattr(doc, "reference_doctype")
+    rname = _getattr(doc, "reference_docname") or _getattr(doc, "reference_name")
+    if rdt and rname:
+        return (rdt, rname)
+
+    # File attachment style
+    adt = _getattr(doc, "attached_to_doctype")
+    aname = _getattr(doc, "attached_to_name")
+    if adt and aname:
+        return (adt, aname)
+
+    return (None, None)
 
 
 def _get_role_permissions(role: str) -> Dict[str, str]:
@@ -192,15 +255,31 @@ def doctype_has_permission(doc=None, ptype: str = "read", user: Optional[str] = 
 
         # Handle communication/comment/file based on reference_doctype
         if dt in {"Communication", "Comment", "File"} and getattr(doc, "reference_doctype", None):
-            module = _map_doctype_to_module(doc.reference_doctype)
+            module = _map_doctype_to_module(getattr(doc, "reference_doctype", None))
         else:
             module = _map_doctype_to_module(dt)
 
-        # If not mapped, allow default Frappe permission rules
+        # First, evaluate the existing module-level permission gate (if mapped)
+        if module and not user_has_module_permission(module, ptype, user):
+            return False
+
+        # Next, enforce assignment-based rule for creating related docs of a specific Lead/Ticket
+        # Only applies when creating a document that explicitly references a parent Lead/Ticket
+        if (ptype or "").lower() in {"create"} and doc:
+            parent_dt, parent_name = _extract_parent_context(doc)
+            if parent_dt in {"CRM Lead", "CRM Ticket"} and parent_name:
+                # System Managers bypass assignment checks
+                if not _is_system_manager(user):
+                    if not _is_user_assigned_to_doc(parent_dt, parent_name, user):
+                        # Not assigned to the parent → treat as read-only for related creates
+                        return False
+
+        # If doctype isn't mapped to a module, allow (after assignment check above)
         if not module:
             return True
 
-        return user_has_module_permission(module, ptype, user)
+        # Allowed by module gate and assignment gate
+        return True
     except Exception:
         # Fail-open to avoid hard locks in case of unexpected errors
         return True
