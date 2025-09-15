@@ -146,17 +146,34 @@ def set_role_module_permissions(role: str, permissions: List[dict]):
     frappe.db.commit()
 
 
+def _is_system_manager(user: Optional[str]) -> bool:
+    try:
+        if not user:
+            user = frappe.session.user
+        if user == "Administrator":
+            return True
+        roles = frappe.get_roles(user)
+        return "System Manager" in roles
+    except Exception:
+        return False
+
+
 @frappe.whitelist()
 def get_current_user_module_permissions(user: Optional[str] = None) -> Dict[str, str]:
     """Return the effective module permission level for the current (or given) user,
     derived by combining all of their roles.
     """
+    if _is_system_manager(user):
+        # Full access for System Manager/Administrator
+        return {m: "Read & Write" for m in MODULES}
     roles = _get_user_roles(user)
     return _aggregate_role_permissions(roles)
 
 
 def user_has_module_permission(module: str, ptype: str = "read", user: Optional[str] = None) -> bool:
     user = user or frappe.session.user
+    if _is_system_manager(user):
+        return True
     levels = get_current_user_module_permissions(user)
     level = levels.get(module, "Read & Write")
     return _level_allows(level, ptype)
@@ -187,4 +204,3 @@ def doctype_has_permission(doc=None, ptype: str = "read", user: Optional[str] = 
     except Exception:
         # Fail-open to avoid hard locks in case of unexpected errors
         return True
-

@@ -255,7 +255,7 @@
     >
       <TicketIcon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Tickets')]) }}</span>
-      <Button :label="__('Create')" @click="showTicketModal = true">
+      <Button v-if="canWriteTickets" :label="__('Create')" @click="showTicketModal = true">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </div>
@@ -310,6 +310,7 @@ import { Avatar, Tooltip, Dropdown, Badge, Button, FeatherIcon } from 'frappe-ui
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
 import { permissionsStore } from '@/stores/permissions'
+// usersStore is already imported above; avoid duplicate import
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Ticket')
@@ -568,8 +569,10 @@ function showTask(name) {
 function handleTicketCreated() {
   console.log('Ticket created, refreshing list...')
   tickets.value?.reload?.()
+}
+
 // Permissions
 const { canWrite } = permissionsStore()
-const canWriteTickets = computed(() => canWrite('Tickets'))
-}
+const { isAdmin } = usersStore()
+const canWriteTickets = computed(() => isAdmin() || canWrite('Tickets'))
 </script> 

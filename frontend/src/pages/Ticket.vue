@@ -1136,5 +1136,6 @@ function navigateToActivity() {
 
 // Permissions
 const { canWrite } = permissionsStore()
-const canWriteTickets = computed(() => canWrite('Tickets'))
+const { isAdmin } = usersStore()
+const canWriteTickets = computed(() => isAdmin() || canWrite('Tickets'))
 </script> 

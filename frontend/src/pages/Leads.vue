@@ -262,7 +262,7 @@
     >
       <LeadsIcon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Leads')]) }}</span>
-      <Button :label="__('Create')" @click="showLeadModal = true">
+      <Button v-if="canWriteLeads" :label="__('Create')" @click="showLeadModal = true">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </div>
@@ -308,7 +308,6 @@ import TaskModal from '@/components/Modals/TaskModal.vue'
 import ViewControls from '@/components/ViewControls.vue'
 import { getMeta } from '@/stores/meta'
 import { globalStore } from '@/stores/global'
-import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/settings'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
@@ -316,6 +315,7 @@ import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
 import { permissionsStore } from '@/stores/permissions'
+import { usersStore } from '@/stores/users'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -357,6 +357,11 @@ onMounted(() => {
     router.replace({ query: {} })
   }
 })
+
+// Permissions
+const { canWrite } = permissionsStore()
+const { isAdmin } = usersStore()
+const canWriteLeads = computed(() => isAdmin() || canWrite('Leads'))
 
 // leads data is loaded in the ViewControls component
 const leads = ref({})
@@ -607,6 +612,3 @@ function showTask(name) {
   showTaskModal.value = true
 }
 </script>
-// Permissions
-const { canWrite } = permissionsStore()
-const canWriteLeads = computed(() => canWrite('Leads'))
