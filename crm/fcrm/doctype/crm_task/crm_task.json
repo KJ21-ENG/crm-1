@@ -111,7 +111,7 @@
  "name": "CRM Task",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
- "permissions": [
+"permissions": [
   {
    "create": 1,
    "delete": 1,
@@ -143,12 +143,16 @@
     "report": 1,
     "role": "Support User"
    },
-   {
-    "create": 1,
-    "read": 1,
-    "write": 1,
-    "report": 1,
-    "role": "Support Manager"
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "role": "Support Manager"
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "sort_field": "modified",
