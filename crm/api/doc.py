@@ -500,6 +500,9 @@ def get_data(
 					# Replace ticket_owner email with full name string for display
 					if owner and owner in users_meta:
 						row["ticket_owner"] = users_meta[owner]["full_name"]
+					# Replace assigned_to with an object carrying full_name
+					if assignee and assignee in users_meta:
+						row["assigned_to"] = users_meta[assignee]["full_name"]
 
 		# Enrich FCRM Note list rows with linked customer info when possible
 		if doctype == "FCRM Note" and data:
