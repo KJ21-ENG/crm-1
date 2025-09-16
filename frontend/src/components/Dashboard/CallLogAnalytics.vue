@@ -99,6 +99,20 @@
         </div>
       </div>
 
+      <!-- New: Total Talk Time -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Total Talk Time</p>
+            <p class="text-2xl font-bold text-gray-900">{{ formatDurationSeconds(totalDurationSeconds) }}</p>
+            <p class="text-sm text-gray-500 mt-1">Sum of call durations in selected range</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <FeatherIcon name="clock" class="h-5 w-5 text-indigo-600" />
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Charts -->
@@ -288,6 +302,23 @@ const missedIncomingDuration0 = computed(() => props.data.missed_incoming_durati
 const didNotPickedOutgoingDuration0 = computed(() => props.data.did_not_picked_outgoing_duration0 || 0)
 const uniqueCallers = computed(() => props.data.unique_callers || 0)
 const callActivity = computed(() => props.data.call_activity_pattern || { hourly_data: [] })
+const totalDurationSeconds = computed(() => {
+  // Backend stores `duration` in seconds. Return raw seconds (number)
+  const val = Number(props.data.total_duration || 0)
+  return Math.max(0, Math.round(val || 0))
+})
+
+// Format seconds into Hh Mm Ss via existing formatDuration (which expects minutes),
+// so add a helper to format seconds directly.
+const formatDurationSeconds = (seconds) => {
+  if (!seconds || seconds === 0) return '0s'
+  const hrs = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`
+  if (mins > 0) return `${mins}m ${secs}s`
+  return `${secs}s`
+}
 
 const getViewContext = () => {
   switch (props.currentView) {

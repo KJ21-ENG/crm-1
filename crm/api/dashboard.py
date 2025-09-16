@@ -564,6 +564,14 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     # Build 24-hour calling pattern aggregated for the range
     call_activity_pattern = _build_call_activity_pattern(start_date, end_date)
 
+    # Total duration for the range (sum of duration field)
+    try:
+        total_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s", (start_date, end_date))
+        total_duration = float(total_duration_res[0][0]) if total_duration_res and total_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute total_duration: {e}")
+        total_duration = 0
+
     return {
         "call_type_distribution": call_type_distribution,
         "call_status_distribution": call_status_distribution,
@@ -574,6 +582,7 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
         "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
         "completed_calls": completed_calls,
         "unique_callers": unique_callers,
+        "total_duration": total_duration,
         "call_activity_pattern": call_activity_pattern
     }
 
