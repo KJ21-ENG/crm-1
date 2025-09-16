@@ -571,6 +571,20 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     except Exception as e:
         print(f"⚠️ WARNING: Failed to compute total_duration: {e}")
         total_duration = 0
+    # Total duration split by call type
+    try:
+        incoming_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Incoming'", (start_date, end_date))
+        incoming_total_duration = float(incoming_duration_res[0][0]) if incoming_duration_res and incoming_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute incoming_total_duration: {e}")
+        incoming_total_duration = 0
+
+    try:
+        outgoing_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Outgoing'", (start_date, end_date))
+        outgoing_total_duration = float(outgoing_duration_res[0][0]) if outgoing_duration_res and outgoing_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute outgoing_total_duration: {e}")
+        outgoing_total_duration = 0
 
     return {
         "call_type_distribution": call_type_distribution,
@@ -583,6 +597,8 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
         "completed_calls": completed_calls,
         "unique_callers": unique_callers,
         "total_duration": total_duration,
+        "incoming_total_duration": incoming_total_duration,
+        "outgoing_total_duration": outgoing_total_duration,
         "call_activity_pattern": call_activity_pattern
     }
 
@@ -1150,6 +1166,27 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     # Completed calls per business logic for specific user
     completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
 
+    # Total duration split by call type for this user
+    try:
+        incoming_duration_res = frappe.db.sql(
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Incoming' AND employee = %s",
+            (start_date, end_date, user)
+        )
+        incoming_total_duration = float(incoming_duration_res[0][0]) if incoming_duration_res and incoming_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute incoming_total_duration (user): {e}")
+        incoming_total_duration = 0
+
+    try:
+        outgoing_duration_res = frappe.db.sql(
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Outgoing' AND employee = %s",
+            (start_date, end_date, user)
+        )
+        outgoing_total_duration = float(outgoing_duration_res[0][0]) if outgoing_duration_res and outgoing_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute outgoing_total_duration (user): {e}")
+        outgoing_total_duration = 0
+
     return {
         "call_type_distribution": call_type_distribution,
         "call_status_distribution": call_status_distribution,
@@ -1161,7 +1198,9 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
         "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
         "completed_calls": completed_calls,
         "unique_callers": unique_callers,
-        "call_activity_pattern": call_activity_pattern
+        "call_activity_pattern": call_activity_pattern,
+        "incoming_total_duration": incoming_total_duration,
+        "outgoing_total_duration": outgoing_total_duration
     }
 
 def _build_call_activity_pattern(start_date, end_date, user=None):

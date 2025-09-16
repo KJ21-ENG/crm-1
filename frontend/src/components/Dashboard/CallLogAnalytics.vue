@@ -49,7 +49,7 @@
           <div>
             <p class="text-sm font-medium text-gray-600">Incoming Calls</p>
             <p class="text-2xl font-bold text-gray-900">{{ incomingCalls }}</p>
-            <p class="text-sm text-gray-500 mt-1">Total incoming calls</p>
+            <p class="text-sm text-gray-500 mt-1">{{ formatDurationSeconds(incomingDurationSeconds) }}</p>
           </div>
           <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
             <FeatherIcon name="phone-incoming" class="h-5 w-5 text-blue-600" />
@@ -63,7 +63,7 @@
           <div>
             <p class="text-sm font-medium text-gray-600">Outgoing Calls</p>
             <p class="text-2xl font-bold text-gray-900">{{ outgoingCalls }}</p>
-            <p class="text-sm text-gray-500 mt-1">Total outgoing calls</p>
+            <p class="text-sm text-gray-500 mt-1">{{ formatDurationSeconds(outgoingDurationSeconds) }}</p>
           </div>
           <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
             <FeatherIcon name="phone-outgoing" class="h-5 w-5 text-purple-600" />
@@ -306,6 +306,26 @@ const totalDurationSeconds = computed(() => {
   // Backend stores `duration` in seconds. Return raw seconds (number)
   const val = Number(props.data.total_duration || 0)
   return Math.max(0, Math.round(val || 0))
+})
+
+const incomingDurationSeconds = computed(() => {
+  const val = Number(props.data.incoming_total_duration || 0)
+  if (val && val > 0) return Math.max(0, Math.round(val))
+  // Fallback: if outgoing calls are zero, assume all duration is incoming
+  const total = Number(props.data.total_duration || 0)
+  const outgoingCnt = Number(props.data.outgoing_calls || 0)
+  if ((!val || val === 0) && outgoingCnt === 0 && total > 0) return Math.max(0, Math.round(total))
+  return 0
+})
+
+const outgoingDurationSeconds = computed(() => {
+  const val = Number(props.data.outgoing_total_duration || 0)
+  if (val && val > 0) return Math.max(0, Math.round(val))
+  // Fallback: if incoming calls are zero, assume all duration is outgoing
+  const total = Number(props.data.total_duration || 0)
+  const incomingCnt = Number(props.data.incoming_calls || 0)
+  if ((!val || val === 0) && incomingCnt === 0 && total > 0) return Math.max(0, Math.round(total))
+  return 0
 })
 
 // Format seconds into Hh Mm Ss via existing formatDuration (which expects minutes),
