@@ -899,32 +899,91 @@ def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_e
     """Get user-specific overview statistics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
-    
-    return {
-        "leads_assigned": frappe.db.count("CRM Lead", filters={
-            **date_filter, "lead_owner": user
-        }),
-        "leads_created": frappe.db.count("CRM Lead", filters={
-            **date_filter, "owner": user
-        }),
-        "tickets_assigned": frappe.db.count("CRM Ticket", filters={
-            **date_filter, "assigned_to": user
-        }),
-        "tickets_created": frappe.db.count("CRM Ticket", filters={
-            **date_filter, "owner": user
-        }),
-        "tasks_assigned": frappe.db.count("CRM Task", filters={
-            **date_filter, "assigned_to": user
-        }),
-        "tasks_created": frappe.db.count("CRM Task", filters={
-            **date_filter, "owner": user
-        }),
-        "calls_made": frappe.db.count("CRM Call Log", filters={
-            **date_filter, "employee": user
-        }),
-        "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
-        "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
-    }
+    # We want the "main" metric to represent documents where the user is either the
+    # creator (owner) OR is present in the parent `_assign` JSON array. The support
+    # metrics will show the bifurcation: created (owner) and assigned (present in _assign).
+    try:
+        import json as _json
+
+        def count_owner_or_assign(doctype):
+            sql = f"""
+                SELECT COUNT(*) FROM `tab{doctype}`
+                WHERE creation BETWEEN %s AND %s
+                AND (
+                    owner = %s
+                    OR JSON_CONTAINS(_assign, %s)
+                )
+            """
+            params = (start_date, end_date, user, _json.dumps(user))
+            res = frappe.db.sql(sql, params)
+            return int(res[0][0]) if res and res[0] else 0
+
+        def count_assign_only(doctype):
+            # Count rows where user is in _assign JSON array BUT the user is NOT the owner
+            # This prevents double-counting when owner == user (treat as 'created' only)
+            sql = f"""
+                SELECT COUNT(*) FROM `tab{doctype}`
+                WHERE creation BETWEEN %s AND %s
+                AND JSON_CONTAINS(_assign, %s)
+                AND (owner IS NULL OR owner <> %s)
+            """
+            # params: start_date, end_date, json(user), user
+            params = (start_date, end_date, _json.dumps(user), user)
+            res = frappe.db.sql(sql, params)
+            return int(res[0][0]) if res and res[0] else 0
+
+        leads_created = frappe.db.count("CRM Lead", filters={**date_filter, "owner": user})
+        leads_assigned_total = count_owner_or_assign("CRM Lead")
+        leads_assigned_only = count_assign_only("CRM Lead")
+
+        tickets_created = frappe.db.count("CRM Ticket", filters={**date_filter, "owner": user})
+        tickets_assigned_total = count_owner_or_assign("CRM Ticket")
+        tickets_assigned_only = count_assign_only("CRM Ticket")
+
+        tasks_created = frappe.db.count("CRM Task", filters={**date_filter, "owner": user})
+        tasks_assigned_total = count_owner_or_assign("CRM Task")
+        tasks_assigned_only = count_assign_only("CRM Task")
+
+        calls_made = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user})
+
+        return {
+            # Leads
+            "leads_total": leads_assigned_total,
+            "leads_created": leads_created,
+            "leads_assigned": leads_assigned_only,
+
+            # Tickets
+            "tickets_total": tickets_assigned_total,
+            "tickets_created": tickets_created,
+            "tickets_assigned": tickets_assigned_only,
+
+            # Tasks
+            "tasks_total": tasks_assigned_total,
+            "tasks_created": tasks_created,
+            "tasks_assigned": tasks_assigned_only,
+
+            # Calls
+            "calls_made": calls_made,
+            "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
+            "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
+        }
+    except Exception as e:
+        print(f"❌ ERROR: get_user_overview_stats SQL error: {e}")
+        # Fallback to previous (simpler) counts if JSON queries fail
+        return {
+            "leads_total": frappe.db.count("CRM Lead", filters={**date_filter, "owner": user}),
+            "leads_created": frappe.db.count("CRM Lead", filters={**date_filter, "owner": user}),
+            "leads_assigned": 0,
+            "tickets_total": frappe.db.count("CRM Ticket", filters={**date_filter, "owner": user}),
+            "tickets_created": frappe.db.count("CRM Ticket", filters={**date_filter, "owner": user}),
+            "tickets_assigned": 0,
+            "tasks_total": frappe.db.count("CRM Task", filters={**date_filter, "owner": user}),
+            "tasks_created": frappe.db.count("CRM Task", filters={**date_filter, "owner": user}),
+            "tasks_assigned": 0,
+            "calls_made": frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user}),
+            "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
+            "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
+        }
 
 
 def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):

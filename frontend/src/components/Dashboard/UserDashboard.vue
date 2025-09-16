@@ -35,11 +35,13 @@
 
     <!-- Performance Overview Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <!-- Leads tile: main = total (owner OR in _assign), support = created (owner) and assigned (_assign) -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToLeads" @keydown.enter.prevent="navigateToLeads" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Leads Assigned</p>
-            <p class="text-2xl font-bold text-gray-900">{{ userOverview.leads_assigned || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Leads</p>
+            <p class="text-2xl font-bold text-gray-900">{{ userOverview.leads_total || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Created: <strong>{{ userOverview.leads_created || 0 }}</strong> • Assigned: <strong>{{ userOverview.leads_assigned || 0 }}</strong></p>
             <div v-if="performanceMetrics.improvements?.leads" class="flex items-center mt-1">
               <span 
                 :class="[
@@ -58,11 +60,13 @@
         </div>
       </div>
 
+      <!-- Tickets tile -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTickets" @keydown.enter.prevent="navigateToTickets" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Tickets Assigned</p>
-            <p class="text-2xl font-bold text-gray-900">{{ userOverview.tickets_assigned || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Tickets</p>
+            <p class="text-2xl font-bold text-gray-900">{{ userOverview.tickets_total || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Created: <strong>{{ userOverview.tickets_created || 0 }}</strong> • Assigned: <strong>{{ userOverview.tickets_assigned || 0 }}</strong></p>
             <div v-if="performanceMetrics.improvements?.tickets" class="flex items-center mt-1">
               <span 
                 :class="[
@@ -81,11 +85,13 @@
         </div>
       </div>
 
+      <!-- Tasks tile -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTasks" @keydown.enter.prevent="navigateToTasks" role="button" tabindex="0">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Tasks Assigned</p>
-            <p class="text-2xl font-bold text-gray-900">{{ userOverview.tasks_assigned || 0 }}</p>
+            <p class="text-sm font-medium text-gray-600">Tasks</p>
+            <p class="text-2xl font-bold text-gray-900">{{ userOverview.tasks_total || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Created: <strong>{{ userOverview.tasks_created || 0 }}</strong> • Assigned: <strong>{{ userOverview.tasks_assigned || 0 }}</strong></p>
             <div v-if="performanceMetrics.improvements?.tasks" class="flex items-center mt-1">
               <span 
                 :class="[

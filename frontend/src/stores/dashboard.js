@@ -10,6 +10,8 @@ export function useDashboard() {
   const currentView = ref('daily') // 'daily', 'weekly', 'monthly', 'custom'
   const customDateRange = ref({ start: null, end: null })
   const autoRefreshInterval = ref(null)
+  // Track which user id the latest user-specific fetch returned for ('' = current user)
+  const lastFetchedUserId = ref('')
 
   const fetchDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null) => {
     loading.value = true
@@ -133,6 +135,8 @@ export function useDashboard() {
       
       userDashboardData.value = processedData
       lastUpdated.value = new Date()
+      // Record which user the backend responded with (empty => current user)
+      lastFetchedUserId.value = targetUserId || ''
       
       console.log('✅ SUCCESS: User dashboard data loaded successfully')
       console.log('🔍 DEBUG: Final userDashboardData:', userDashboardData.value)
@@ -149,6 +153,8 @@ export function useDashboard() {
     } finally {
       loading.value = false
       console.log('🔍 DEBUG: fetchUserDashboardData completed, loading set to false')
+      // Ensure UI selector sync even if fetch failed
+      lastFetchedUserId.value = targetUserId || ''
     }
   }
 
@@ -389,5 +395,7 @@ export function useDashboard() {
     
     // User dashboard additional data
     userPeakHours
+    ,
+    lastFetchedUserId
   }
 } 

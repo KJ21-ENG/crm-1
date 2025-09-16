@@ -493,6 +493,7 @@ const {
   changeView,
   startAutoRefresh,
   stopAutoRefresh
+  , lastFetchedUserId
 } = useDashboard()
 
 // User role management
@@ -581,7 +582,9 @@ watch(activeTab, (newTab) => {
     console.log('🔍 DEBUG: User Dashboard tab activated, checking data')
     if (!userDashboardData || Object.keys(userDashboardData).length === 0) {
       console.log('🔍 DEBUG: User dashboard data empty, fetching...')
-      fetchUserDashboardData()
+      // We're loading the current user's dashboard by default here — ensure the selector reflects that
+      selectedUserId.value = ''
+      fetchUserDashboardData(currentView.value)
     } else {
       console.log('🔍 DEBUG: User dashboard data already loaded:', userDashboardData)
     }
@@ -596,9 +599,25 @@ watch(activeTab, (newTab) => {
   if (newTab === 'calllogs') {
     if (selectedCallLogsUserId.value === 'all') {
       fetchDashboardData(currentView.value)
+    } else if (selectedCallLogsUserId.value) {
+      // Admin has selected a specific user for calllogs — load that user's data
+      fetchUserDashboardData(currentView.value, null, null, selectedCallLogsUserId.value)
     } else {
+      // No specific user selected: ensure selector shows "Current User" and load current user's data
+      selectedCallLogsUserId.value = ''
       fetchUserDashboardData(currentView.value)
     }
+  }
+})
+
+// Keep dropdown selectors in sync with what was last fetched
+watch(lastFetchedUserId, (newVal) => {
+  console.log('🔍 DEBUG: lastFetchedUserId changed:', newVal)
+  // Sync the main user selector
+  selectedUserId.value = newVal || ''
+  // If calllogs selector is not specifically in use, also sync it
+  if (!isCallLogsSelectorVisible.value || activeTab.value !== 'calllogs') {
+    selectedCallLogsUserId.value = newVal || ''
   }
 })
 
