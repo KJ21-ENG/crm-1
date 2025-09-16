@@ -471,6 +471,36 @@ def get_data(
 			)
 		data = parse_list_data(data, doctype)
 
+		# Enrich user link fields with full name and image for better UX
+		# Specifically handle CRM Ticket to show user's full name instead of email
+		if doctype == "CRM Ticket" and data:
+			# Collect unique user emails from ticket_owner and assigned_to
+			user_emails = set()
+			for row in data:
+				if row.get("ticket_owner"):
+					user_emails.add(row.get("ticket_owner"))
+				if row.get("assigned_to"):
+					user_emails.add(row.get("assigned_to"))
+
+			if user_emails:
+				users_meta = {}
+				# Fetch user full_name and image in one query
+				users = frappe.get_all(
+					"User",
+					filters={"name": ["in", list(user_emails)]},
+					fields=["name", "full_name", "user_image"],
+				)
+				for u in users:
+					users_meta[u.name] = {"full_name": u.full_name or u.name, "user_image": u.user_image}
+
+				# Attach enriched data so frontend can render Avatar with name instead of email
+				for row in data:
+					owner = row.get("ticket_owner")
+					assignee = row.get("assigned_to")
+					# Replace ticket_owner email with full name string for display
+					if owner and owner in users_meta:
+						row["ticket_owner"] = users_meta[owner]["full_name"]
+
 		# Enrich FCRM Note list rows with linked customer info when possible
 		if doctype == "FCRM Note" and data:
 			for row in data:
