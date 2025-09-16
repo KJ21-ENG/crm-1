@@ -727,7 +727,7 @@ const getViewTooltip = (viewType) => {
 
 // Custom date range methods
 const applyCustomDateRange = async () => {
-  if (!customStartDate.value || !customStartDate.value > customEndDate.value) {
+  if (!customStartDate.value || !customEndDate.value || customStartDate.value > customEndDate.value) {
     return
   }
   
@@ -742,8 +742,12 @@ const applyCustomDateRange = async () => {
       // If admin has selected a specific user in Call Logs, fetch user-specific data
       if (selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all') {
         await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value, selectedCallLogsUserId.value)
-      } else {
+      } else if (isAdminUser.value && selectedCallLogsUserId.value === 'all') {
+        // Admin viewing all users
         await fetchDashboardData('custom', customStartDate.value, customEndDate.value)
+      } else {
+        // Non-admin should see only their own data
+        await fetchUserDashboardData('custom', customStartDate.value, customEndDate.value)
       }
     } else {
       await fetchDashboardData('custom', customStartDate.value, customEndDate.value)
