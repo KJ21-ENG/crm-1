@@ -747,7 +747,10 @@ const handleViewChange = async (view) => {
   if (currentView.value === 'custom' && view !== 'custom') {
     // Clear custom date range by fetching data for the new view
     if (activeTab.value === 'user') {
-      await fetchUserDashboardData(view)
+      const targetUser = selectedUserId.value || null
+      await fetchUserDashboardData(view, null, null, targetUser)
+    } else if (activeTab.value === 'calllogs' && selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all') {
+      await fetchUserDashboardData(view, null, null, selectedCallLogsUserId.value)
     } else {
       await fetchDashboardData(view)
     }
@@ -757,6 +760,9 @@ const handleViewChange = async (view) => {
   // Pass selectedCallLogsUserId when switching views so user-specific data continues to load
   if (activeTab.value === 'calllogs' && selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all') {
     await changeView(view, selectedCallLogsUserId.value)
+  } else if (activeTab.value === 'user') {
+    const targetUser = selectedUserId.value || null
+    await changeView(view, targetUser)
   } else {
     await changeView(view)
   }
