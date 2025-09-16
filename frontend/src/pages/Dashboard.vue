@@ -792,14 +792,42 @@ const handleViewChange = async (view) => {
 }
 
 const openCustomDatePicker = () => {
-  // Set default dates to current month
-  const today = new Date()
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  
-  customStartDate.value = firstDay.toISOString().split('T')[0]
-  customEndDate.value = lastDay.toISOString().split('T')[0]
-  
+  // Try to prefill with the last used date range when in custom view
+  let prefillStart = null
+  let prefillEnd = null
+
+  // Prefer user-specific range when appropriate
+  const useUserRange = (
+    activeTab.value === 'user' ||
+    (activeTab.value === 'calllogs' && (
+      // Non-admins always view their own data on calllogs
+      !isAdminUser.value ||
+      // Admin with a specific user selected
+      (selectedCallLogsUserId.value && selectedCallLogsUserId.value !== 'all')
+    ))
+  )
+
+  if (useUserRange && userDashboardData.value && userDashboardData.value.date_range) {
+    prefillStart = userDashboardData.value.date_range.start_date
+    prefillEnd = userDashboardData.value.date_range.end_date
+  } else if (dateRange.value && dateRange.value.start_date && dateRange.value.end_date) {
+    prefillStart = dateRange.value.start_date
+    prefillEnd = dateRange.value.end_date
+  }
+
+  if (prefillStart && prefillEnd) {
+    // Normalize to YYYY-MM-DD
+    customStartDate.value = String(prefillStart).split('T')[0].split(' ')[0]
+    customEndDate.value = String(prefillEnd).split('T')[0].split(' ')[0]
+  } else {
+    // Fallback: current month
+    const today = new Date()
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    customStartDate.value = firstDay.toISOString().split('T')[0]
+    customEndDate.value = lastDay.toISOString().split('T')[0]
+  }
+
   showCustomDatePicker.value = true
 }
 
