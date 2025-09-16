@@ -138,37 +138,17 @@ def check_duplicate_call_log(call_log_data):
         str: Name of existing call log document if duplicate, None otherwise
     """
     try:
-        # Check by device call ID if available
-        if call_log_data.get('device_call_id'):
-            existing = frappe.db.get_value(
-                'CRM Call Log',
-                {'device_call_id': call_log_data['device_call_id']},
-                'name'
-            )
-            if existing:
-                return existing
-        
-        # Check by timestamp, phone numbers, and duration
-        start_time = get_datetime(call_log_data['start_time'])
-        
-        # Search within 1 minute window to account for timing differences
-        time_window = timedelta(minutes=1)
-        start_range = start_time - time_window
-        end_range = start_time + time_window
-        
-        filters = {
-            'from': call_log_data['from'],
-            'to': call_log_data['to'],
-            'start_time': ['between', [start_range, end_range]]
-        }
-        
-        # Add duration filter if available
-        if call_log_data.get('duration'):
-            filters['duration'] = call_log_data['duration']
-        
-        existing = frappe.db.get_value('CRM Call Log', filters, 'name')
+        if not call_log_data.get('device_call_id'):
+            return None
+
+        existing = frappe.db.get_value(
+            'CRM Call Log',
+            {'device_call_id': call_log_data['device_call_id']},
+            'name'
+        )
+
         return existing
-        
+
     except Exception as e:
         frappe.logger().error(f"Error checking duplicate call log: {e}")
         return None
