@@ -322,9 +322,8 @@ class CRMTicket(Document):
 			},
 			{
 				"label": "Assigned To",
-				"type": "Link",
-				"key": "assigned_to",
-				"options": "User",
+				"type": "Text",
+				"key": "_assign",
 				"width": "10rem",
 			},
 			{

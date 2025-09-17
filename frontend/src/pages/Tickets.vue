@@ -414,12 +414,29 @@ function getKanbanRows(listRows, columns) {
 }
 
 function parseRows(rows, columns) {
-  return rows.map((row) => {
+  return rows.map((ticket) => {
     let _row = {}
     columns.forEach((column) => {
-      _row[column.key] = parseValue(row[column.key], column)
+      const key = column.key
+      const value = ticket[key]
+      
+      if (key === '_assign') {
+        try {
+          const { getUser } = usersStore()
+          const assignees = JSON.parse(value || '[]')
+          _row[key] = assignees.map((user) => ({
+            name: user,
+            image: getUser(user).user_image,
+            label: getUser(user).full_name,
+          }))
+        } catch (e) {
+          _row[key] = []
+        }
+      } else {
+        _row[key] = parseValue(value, column)
+      }
     })
-    _row['name'] = row.name
+    _row['name'] = ticket.name
     return _row
   })
 }
