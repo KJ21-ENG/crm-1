@@ -235,8 +235,23 @@ class RoleAssignmentTracker(Document):
 			except json.JSONDecodeError:
 				stored_user_list = []
 
-		if not stored_user_list:
+		# If stored list is missing or differs from current Has Role, sync it to avoid stale subsets
+		# Fetch current enabled users from Has Role
+		try:
+			current_rows = frappe.get_all("Has Role", filters={"role": role_name, "parent": ["not in", ["Administrator", "admin@example.com"]]}, fields=["parent"])
+			current_enabled = [r.parent for r in current_rows if frappe.db.get_value("User", r.parent, "enabled")]
+		except Exception:
+			current_enabled = []
+
+		if not stored_user_list and not current_enabled:
 			frappe.throw(f"No users found for role: {role_name}")
+
+		# If stored list is empty or is a strict subset of current_enabled, refresh stored list to include all enabled users
+		if not stored_user_list or (set(stored_user_list) - set(current_enabled)) or (set(current_enabled) - set(stored_user_list)):
+			# Use the authoritative current_enabled ordering
+			stored_user_list = current_enabled
+			tracker.user_list = json.dumps(stored_user_list)
+			tracker.total_users = len(stored_user_list)
 
 		# Start searching from the tracker's current_position to preserve global round-robin order
 		start_pos = tracker.current_position if tracker.current_position < len(stored_user_list) else 0
@@ -246,14 +261,21 @@ class RoleAssignmentTracker(Document):
 		for i in range(len(stored_user_list)):
 			idx = (start_pos + i) % len(stored_user_list)
 			candidate = stored_user_list[idx]
-			if candidate in user_list:
+			# Defensive: ensure candidate exists and enabled
+			if candidate in user_list and frappe.db.exists("User", candidate) and frappe.db.get_value("User", candidate, "enabled"):
 				selected_user = candidate
 				selected_index_in_global = idx
 				break
 
 		if not selected_user:
 			# Fallback: pick first user from provided list
-			selected_user = user_list[0]
+			selected_user = None
+			for u in user_list:
+				if frappe.db.exists("User", u) and frappe.db.get_value("User", u, "enabled"):
+					selected_user = u
+					break
+			if not selected_user:
+				frappe.throw(f"No valid enabled users provided for role: {role_name}")
 			# try to find its index in global list
 			try:
 				selected_index_in_global = stored_user_list.index(selected_user)

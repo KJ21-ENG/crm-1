@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
 from crm.api.activities import emit_activity_update
+from crm.api.assignment_core import assign_document_by_role
 
 def _get_assigned_users_for_document(doctype: str, docname: str):
     """Return a set of users already assigned to the given document.
@@ -223,177 +224,18 @@ def get_assignable_users():
 
 @frappe.whitelist()
 def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=False):
-    """Assign a lead to a role using round-robin logic"""
-    try:
-        if not assigned_by:
-            assigned_by = frappe.session.user
-
-        # Build eligible pool and exclude already-assigned users for this lead
-        eligible_users = RoleAssignmentTracker.get_role_users(role_name)
-        already_assigned = _get_assigned_users_for_document("CRM Lead", lead_name)
-        available_users = [u for u in eligible_users if u not in already_assigned]
-
-        if not available_users:
-            return {
-                "success": False,
-                "error": f"All eligible users for role '{role_name}' are already assigned to this lead",
-                "all_assigned": True,
-                "eligible_users": eligible_users,
-                "assigned_users": list(already_assigned),
-            }
-
-        # Get the next user from the filtered list using the tracker
-        assigned_user = RoleAssignmentTracker.assign_to_next_user_from_list(
-            role_name=role_name,
-            user_list=available_users,
-            document_type="CRM Lead",
-            document_name=lead_name,
-            assigned_by=assigned_by,
-        )
-        
-        # Update the lead assigned_role directly in database to avoid timestamp conflicts
-        frappe.db.set_value("CRM Lead", lead_name, "assigned_role", role_name)
-        
-        # Also update the assign_to field with the assigned user's name
-        frappe.db.set_value("CRM Lead", lead_name, "assign_to", assigned_user)
-        
-        # Use Frappe's standard assignment system
-        frappe.desk.form.assign_to.add({
-            "assign_to": [assigned_user],
-            "doctype": "CRM Lead",
-            "name": lead_name,
-            "description": f"Lead assigned to {role_name} role - round-robin assignment"
-        })
-        
-        # Create activity timeline entry for the assignment
-        assigned_user_name = get_fullname(assigned_user)
-        assigned_by_name = get_fullname(assigned_by)
-        
-        # Create assignment activity
-        assignment_comment = frappe.get_doc({
-            "doctype": "Comment", 
-            "comment_type": "Comment",  # Changed to Comment so it shows in docinfo.comments
-            "reference_doctype": "CRM Lead",
-            "reference_name": lead_name,
-            "content": f"🎯 <strong>{assigned_by_name}</strong> assigned this lead to <strong>{assigned_user_name}</strong> from <strong>{role_name}</strong> role using round-robin assignment",
-            "comment_email": assigned_by,
-            "creation": frappe.utils.now(),
-        })
-        assignment_comment.insert(ignore_permissions=True)
-        
-        # Emit activity update to refresh frontend
-        emit_activity_update("CRM Lead", lead_name)
-        
-        # Commit the database changes
-        frappe.db.commit()
-        
-        task_created = None
-        # Prefer modifying existing open task for this lead; create only if none exists and not skipped
-        existing_tasks = frappe.get_list(
-            "CRM Task",
-            filters={
-                "reference_doctype": "CRM Lead",
-                "reference_docname": lead_name,
-                "status": ["not in", ["Done", "Canceled"]],
-            },
-            fields=["name", "_assign", "due_date"],
-            order_by="creation asc",
-            limit=1,
-        )
-
-        # Ensure parent _assign includes the user
-        try:
-            parent_assign_json = frappe.db.get_value("CRM Lead", lead_name, "_assign")
-            parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
-            if not isinstance(parent_assign, list):
-                parent_assign = []
-        except Exception:
-            parent_assign = []
-        if assigned_user not in parent_assign:
-            parent_assign.append(assigned_user)
-            frappe.db.set_value("CRM Lead", lead_name, "_assign", json.dumps(parent_assign))
-
-        task_doc = None
-        if existing_tasks:
-            # Reassign existing task
-            task_doc = frappe.get_doc("CRM Task", existing_tasks[0].name)
-            # Update assignment history on task
-            assign_list = []
-            try:
-                assign_list = json.loads(task_doc._assign) if task_doc._assign else []
-                if not isinstance(assign_list, list):
-                    assign_list = []
-            except Exception:
-                assign_list = []
-            if assigned_user not in assign_list:
-                assign_list.append(assigned_user)
-            task_doc.assigned_to = assigned_user
-            # Extend due date to give time
-            task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
-            task_doc.save(ignore_permissions=True)
-            frappe.db.set_value("CRM Task", task_doc.name, "_assign", json.dumps(assign_list))
-
-            # Parent _assign already updated above
-
-            # Comment on parent about manual reassignment
-            comment_content = (
-                f"🔄 Lead Reassigned\n\nNew Assignee: {get_fullname(assigned_user)}\nReason: Manual assignment"
-            )
-            frappe.get_doc({
-                "doctype": "Comment",
-                "comment_type": "Comment",
-                "reference_doctype": "CRM Lead",
-                "reference_name": lead_name,
-                "content": comment_content,
-                "comment_email": assigned_by,
-            }).insert(ignore_permissions=True)
-
-            # Send enhanced task notification with lead context
-            try:
-                lead_doc = frappe.get_doc("CRM Lead", lead_name)
-                from crm.api.lead_notifications import create_task_with_lead_notification
-                create_task_with_lead_notification(task_doc, lead_doc, is_assignment=True)
-            except Exception:
-                pass
-
-        elif not skip_task_creation:
-            # Create follow-up task if none exists
-            lead_details = frappe.db.get_value("CRM Lead", lead_name, ["first_name", "last_name"], as_dict=True)
-            first_name = lead_details.get("first_name") or ""
-            last_name = lead_details.get("last_name") or ""
-            task_doc = frappe.get_doc({
-                "doctype": "CRM Task",
-                "title": f"Follow up on lead: {first_name or lead_name}",
-                "assigned_to": assigned_user,
-                "reference_doctype": "CRM Lead",
-                "reference_docname": lead_name,
-                "description": f"Task created for lead assignment to {role_name} role - {first_name} {last_name}".strip(),
-                "priority": "Medium",
-                "status": "Todo",
-                "due_date": frappe.utils.now_datetime(),
-            })
-            task_doc.insert(ignore_permissions=True)
-            task_created = task_doc.name
-        
-        # Emit activity update to refresh frontend
-        emit_activity_update("CRM Lead", lead_name)
-        
-        frappe.db.commit()
-        
-        return {
-            "success": True,
-            "assigned_user": assigned_user,
-            "role": role_name,
-            "message": f"Lead successfully assigned to {assigned_user} from {role_name} role",
-            "task_created": task_created
-        }
-        
-    except Exception as e:
-        frappe.log_error(f"Role assignment failed: {str(e)}", "Role Assignment Error")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+	"""Assign a lead to a role using unified core with round-robin logic"""
+	try:
+		return assign_document_by_role(
+			document_type="CRM Lead",
+			document_name=lead_name,
+			role_name=role_name,
+			assigned_by=assigned_by,
+			skip_task_creation=skip_task_creation,
+		)
+	except Exception as e:
+		frappe.log_error(f"Role assignment failed: {str(e)}", "Role Assignment Error")
+		return {"success": False, "error": str(e)}
 
 @frappe.whitelist()
 def assign_to_user(lead_name, user_name, assigned_by=None):
