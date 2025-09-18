@@ -285,29 +285,47 @@ class CRMTaskNotification(Document):
 		return ""
 
 	def get_customer_suffix(self):
-		"""Return a formatted suffix with linked customer name for reference docs.
+		"""Return suffix with customer name and optional client id.
 
-		For CRM Lead and CRM Ticket, if a customer is linked (via customer_id), append
-		' (Customer Name)' right after the reference docname in the support text.
+		If a linked customer exists via customer_id, display:
+		- " (Customer Name)" when there is no client id
+		- " (Customer Name - CLIENT123)" when a client id is available
 		"""
 		try:
 			if self.reference_doctype and self.reference_docname:
 				customer_name = None
+				client_id = None
+				cid = None
 				if self.reference_doctype == "CRM Ticket":
 					t = frappe.get_doc("CRM Ticket", self.reference_docname)
 					cid = getattr(t, "customer_id", None)
-					if cid:
-						customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
 				elif self.reference_doctype == "CRM Lead":
 					l = frappe.get_doc("CRM Lead", self.reference_docname)
 					cid = getattr(l, "customer_id", None)
-					if cid:
-						customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
-				# Only include suffix when we actually have a customer name
+
+				if cid:
+					customer = frappe.db.get_value("CRM Customer", cid, ["customer_name", "accounts"], as_dict=1)
+					if customer:
+						customer_name = customer.get("customer_name")
+						accounts_raw = customer.get("accounts")
+						try:
+							if accounts_raw:
+								import json as _json
+								accounts = accounts_raw if isinstance(accounts_raw, list) else _json.loads(accounts_raw)
+								if isinstance(accounts, list):
+									for acc in accounts:
+										cid_val = acc.get("client_id") if isinstance(acc, dict) else None
+										if cid_val:
+											client_id = cid_val
+											break
+						except Exception:
+							client_id = None
+
+				# Build suffix
 				if customer_name:
-					return f"<span class=\"text-ink-gray-6\"> ({customer_name})</span>"
+					suffix_text = customer_name if not client_id else f"{customer_name} - {client_id}"
+					return f"<span class=\"text-ink-gray-6\"> ({suffix_text})</span>"
 		except Exception:
-			# Non-fatal; just skip suffix
 			pass
 		return ""
 	

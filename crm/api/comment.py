@@ -37,26 +37,56 @@ def notify_mentions(doc):
     owner = frappe.get_cached_value("User", doc.owner, "full_name")
 
     def customer_suffix(reference_doctype: str | None, reference_name: str | None) -> str:
-        """Return HTML suffix with linked customer name for Lead/Ticket if available.
+        """Return HTML suffix with customer name and optional client id.
 
-        Example: ' (John Doe)'
+        Example outputs:
+        - " (John Doe)"
+        - " (John Doe - ABC123)"  # when a client_id exists on the linked customer
         """
         try:
             if not (reference_doctype and reference_name):
                 return ""
             customer_name = None
+            client_id = None
+            cid = None
+
             if reference_doctype == "CRM Ticket":
                 t = frappe.get_doc("CRM Ticket", reference_name)
                 cid = getattr(t, "customer_id", None)
-                if cid:
-                    customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
             elif reference_doctype == "CRM Lead":
                 l = frappe.get_doc("CRM Lead", reference_name)
                 cid = getattr(l, "customer_id", None)
-                if cid:
-                    customer_name = frappe.get_cached_value("CRM Customer", cid, "customer_name")
+
+            if cid:
+                # Fetch customer_name and accounts in one go
+                customer = frappe.db.get_value(
+                    "CRM Customer", cid, ["customer_name", "accounts"], as_dict=1
+                )
+                if customer:
+                    customer_name = customer.get("customer_name")
+                    # accounts is JSON storing list of objects with client_id
+                    accounts_raw = customer.get("accounts")
+                    try:
+                        if accounts_raw:
+                            import json as _json
+
+                            accounts = (
+                                accounts_raw if isinstance(accounts_raw, list) else _json.loads(accounts_raw)
+                            )
+                            if isinstance(accounts, list) and accounts:
+                                # Use the first client_id found
+                                for acc in accounts:
+                                    cid_val = acc.get("client_id") if isinstance(acc, dict) else None
+                                    if cid_val:
+                                        client_id = cid_val
+                                        break
+                    except Exception:
+                        # Ignore JSON issues silently
+                        client_id = None
+
             if customer_name:
-                return f"<span class=\"text-ink-gray-6\"> ({customer_name})</span>"
+                suffix = customer_name if not client_id else f"{customer_name} - {client_id}"
+                return f"<span class=\"text-ink-gray-6\"> ({suffix})</span>"
         except Exception:
             # Non-fatal; no suffix
             pass
