@@ -404,7 +404,9 @@ function getValueControl(f) {
   } else if (typeDate.includes(fieldtype) && operator == 'between') {
     return h(DateRangePicker, { value: f.value, iconLeft: '' })
   } else if (typeDate.includes(fieldtype)) {
-    return h(fieldtype == 'Date' ? DatePicker : CustomDateTimePicker, {
+    // For Call Logs, ensure 'start_time' uses date-only picker
+    const useDateOnly = props.doctype === 'CRM Call Log' && field.fieldname === 'start_time'
+    return h(useDateOnly || fieldtype == 'Date' ? DatePicker : CustomDateTimePicker, {
       value: f.value,
       iconLeft: '',
     })
