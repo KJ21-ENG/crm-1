@@ -444,9 +444,17 @@ function getStatusColor(status) {
 // 🆕 AUTO-FILL: Watch for mobile number changes to trigger auto-fill
 watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
   // Only trigger if mobile number changed and is not empty
-  if (newMobile && newMobile !== oldMobile && newMobile.length >= 10) {
-    console.log('🔍 [LEAD AUTO-FILL] Mobile number changed, triggering auto-fill:', newMobile)
-    await autoFillCustomerData(newMobile)
+  if (newMobile !== oldMobile) {
+    // Clear customer related fields to avoid stale data
+    clearCustomerFields()
+    // Also clear linked history context
+    lead.doc.customer_id = ''
+    referralHistory.clear?.()
+    customerHistory.clear?.()
+    if (newMobile && newMobile.length >= 10) {
+      console.log('🔍 [LEAD AUTO-FILL] Mobile number changed, triggering auto-fill:', newMobile)
+      await autoFillCustomerData(newMobile)
+    }
   }
 }, { immediate: false })
 
@@ -557,11 +565,36 @@ async function autoFillCustomerData(mobileNumber) {
       referralHistory.reload()
     } else {
       console.log('ℹ️ [LEAD AUTO-FILL] No existing customer found for mobile:', mobileNumber)
+      // Ensure histories are cleared for non-existing numbers
+      lead.doc.customer_id = ''
+      referralHistory.clear?.()
+      customerHistory.clear?.()
     }
   } catch (error) {
     console.error('❌ [LEAD AUTO-FILL] Error looking up customer data:', error)
     console.error('❌ [LEAD AUTO-FILL] Error details:', error.message, error.stack)
   }
+}
+
+// Clear customer-related fields when mobile changes to a non-existing customer
+function clearCustomerFields() {
+  const fieldsToClear = [
+    'first_name',
+    'last_name',
+    'email',
+    'organization',
+    'pan_card_number',
+    'aadhaar_card_number',
+    'referral_through',
+    'marital_status',
+    'date_of_birth',
+    'anniversary'
+  ]
+  fieldsToClear.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(lead.doc, key)) {
+      lead.doc[key] = ''
+    }
+  })
 }
 
 const leadStatuses = computed(() => {
