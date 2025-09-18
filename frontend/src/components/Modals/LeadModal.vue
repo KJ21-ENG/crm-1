@@ -682,6 +682,59 @@ const tabs = createResource({
   auto: true,
   transform: (_tabs) => {
     _tabs.forEach((tab) => {
+      // Align Contact Information like Ticket: keep First, Last, Mobile in main section (3 cols)
+      // and move remaining contact fields to a collapsible 3-column expander
+      const contactSectionIndex = (tab.sections || []).findIndex(
+        (s) => (s.label || '').toLowerCase() === 'contact information'
+      )
+      if (contactSectionIndex !== -1) {
+        const contactSection = tab.sections[contactSectionIndex]
+        const keepFieldnames = ['first_name', 'last_name', 'mobile_no']
+
+        // Gather all fields from all columns
+        const allFields = []
+        ;(contactSection.columns || []).forEach((col) => {
+          ;(col.fields || []).forEach((f) => allFields.push(f))
+        })
+
+        const keptFields = allFields.filter((f) => keepFieldnames.includes(f.fieldname))
+        const additionalFields = allFields.filter((f) => !keepFieldnames.includes(f.fieldname))
+
+        // Rebuild main contact section into three columns
+        const colNames = [
+          contactSection.columns?.[0]?.name || 'column_contact_primary_a',
+          contactSection.columns?.[1]?.name || 'column_contact_primary_b',
+          contactSection.columns?.[2]?.name || 'column_contact_primary_c',
+        ]
+        const keptByName = (name) => keptFields.find((f) => f.fieldname === name)
+        contactSection.columns = [
+          { name: colNames[0], fields: [keptByName('first_name')].filter(Boolean) },
+          { name: colNames[1], fields: [keptByName('last_name')].filter(Boolean) },
+          { name: colNames[2], fields: [keptByName('mobile_no')].filter(Boolean) },
+        ]
+
+        // Additional fields into 3-column collapsible section
+        if (additionalFields.length) {
+          const colA = { name: 'column_additional_contact_a', fields: [] }
+          const colB = { name: 'column_additional_contact_b', fields: [] }
+          const colC = { name: 'column_additional_contact_c', fields: [] }
+          additionalFields.forEach((f, i) => {
+            if (i % 3 === 0) colA.fields.push(f)
+            else if (i % 3 === 1) colB.fields.push(f)
+            else colC.fields.push(f)
+          })
+          const additionalSection = {
+            name: 'additional_contact_info',
+            label: 'Additional Contact Information',
+            collapsible: true,
+            opened: false,
+            hideBorder: true,
+            columns: [colA, colB, colC],
+          }
+          tab.sections.splice(contactSectionIndex + 1, 0, additionalSection)
+        }
+      }
+
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field, fieldIndex) => {
