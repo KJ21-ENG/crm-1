@@ -130,7 +130,12 @@ class CallLogSyncService {
         await _incrementTodaySuccess(sc);
       }
     }
-    return payload is Map<String, dynamic> ? payload : { 'success': true };
+    final out = payload is Map<String, dynamic> ? payload : { 'success': true };
+    // Notify widget (if app is running) to refresh via MethodChannel
+    try {
+      const MethodChannel('crm/widget').invokeMethod('refreshWidget');
+    } catch (_) {}
+    return out;
   }
 }
 

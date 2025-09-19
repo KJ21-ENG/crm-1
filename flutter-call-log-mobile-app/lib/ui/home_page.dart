@@ -23,6 +23,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _lastSync = 'Never';
   String _lastSyncLabel = 'Never';
+  String _lastSyncLocal = 'Never';
   int _syncedCount = 0;
   int _pendingCount = 0;
   bool _serviceRunning = false;
@@ -103,10 +104,27 @@ class _HomePageState extends State<HomePage> {
             _lastSyncLabel = _formatRelative(lastDt.millisecondsSinceEpoch);
           } else {
             // fallback to local preference timestamp
-            _lastSync = localTs != null
-                ? DateTime.fromMillisecondsSinceEpoch(localTs).toIso8601String()
-                : 'Never';
-            _lastSyncLabel = _formatRelative(localTs);
+            if (localTs != null) {
+              // Normalize seconds -> milliseconds if necessary
+              final int normalized = localTs < 1000000000000 ? localTs * 1000 : localTs;
+              _lastSync = DateTime.fromMillisecondsSinceEpoch(normalized).toIso8601String();
+              _lastSyncLabel = _formatRelative(normalized);
+            } else {
+              _lastSync = 'Never';
+              _lastSyncLabel = _formatRelative(localTs);
+            }
+          }
+
+          // Always set local readable last sync for debugging
+          if (localTs != null) {
+            final int normalizedLocal = localTs < 1000000000000 ? localTs * 1000 : localTs;
+            try {
+              _lastSyncLocal = DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.fromMillisecondsSinceEpoch(normalizedLocal));
+            } catch (_) {
+              _lastSyncLocal = DateTime.fromMillisecondsSinceEpoch(normalizedLocal).toIso8601String();
+            }
+          } else {
+            _lastSyncLocal = 'Never';
           }
         });
       }
@@ -439,9 +457,16 @@ class _HomePageState extends State<HomePage> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _OverviewRow(
-                    lastSync: _lastSyncLabel,
-                    syncedCount: _syncedCount,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _OverviewRow(
+                        lastSync: _lastSyncLabel,
+                        syncedCount: _syncedCount,
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Local last sync: $_lastSyncLocal', style: const TextStyle(color: Color(0xFFB0B6BB))),
+                    ],
                   ),
                     ),
                   ),

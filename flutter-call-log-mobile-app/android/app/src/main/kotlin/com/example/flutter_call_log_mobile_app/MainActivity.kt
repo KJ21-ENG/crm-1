@@ -37,7 +37,22 @@ class MainActivity: FlutterActivity() {
             }
         }
         // Widget channel - used to pass intents from Android widget to Flutter
-        widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+        val widgetMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+        widgetMethodChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "refreshWidget" -> {
+                    try {
+                        val intent = Intent("com.eshin.crm.ACTION_WIDGET_REFRESH")
+                        intent.setPackage(packageName)
+                        sendBroadcast(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
