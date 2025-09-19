@@ -775,6 +775,10 @@ const tabs = createResource({
             if (['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number', 'phone'].includes(field.fieldname)) {
               field.read_only = 0
             }
+            // Mark mandatory fields to show asterisk in UI
+            if (['first_name', 'mobile_no'].includes(field.fieldname)) {
+              field.reqd = 1
+            }
             if (field.fieldname == 'status') {
               field.fieldtype = 'Select'
               field.options = leadStatuses.value
