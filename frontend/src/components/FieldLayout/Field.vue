@@ -5,7 +5,9 @@
       <span
         v-if="
           field.reqd ||
-          (field.mandatory_depends_on && field.mandatory_via_depends_on)
+          (field.mandatory_depends_on && field.mandatory_via_depends_on) ||
+          field.fieldname === 'ticket_subject' ||
+          field.fieldname === 'ticket_subjects'
         "
         class="text-ink-red-2"
         >*</span

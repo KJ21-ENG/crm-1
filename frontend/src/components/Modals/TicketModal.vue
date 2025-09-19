@@ -873,7 +873,7 @@ const tabs = createResource({
               field.read_only = 0
             }
             // Mark mandatory fields to show asterisk in UI
-            if (['first_name', 'mobile_no'].includes(field.fieldname)) {
+            if (['first_name', 'mobile_no', 'ticket_subject', 'ticket_subjects'].includes(field.fieldname)) {
               field.reqd = 1
             }
             // Configure specific field types
