@@ -2,7 +2,10 @@
   <div class="calllog-analytics">
     <!-- Stats Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('all')]"
+        @click="handleTileClick('all')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Total Calls</p>
@@ -16,7 +19,9 @@
       </div>
 
       <!-- New: Unique Calls -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('') ]"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Unique Calls</p>
@@ -29,7 +34,10 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('completed')]"
+        @click="handleTileClick('completed')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Completed</p>
@@ -44,7 +52,10 @@
 
       
       <!-- New: Incoming Calls -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('incoming')]"
+        @click="handleTileClick('incoming')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Incoming Calls</p>
@@ -58,7 +69,10 @@
       </div>
 
       <!-- New: Outgoing Calls -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('outgoing')]"
+        @click="handleTileClick('outgoing')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Outgoing Calls</p>
@@ -72,7 +86,10 @@
       </div>
 
       <!-- New: Missed Calls (duration 0 for incoming) -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('missed')]"
+        @click="handleTileClick('missed')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Missed Calls</p>
@@ -86,7 +103,10 @@
       </div>
 
       <!-- New: Did Not Picked (outgoing with duration 0) -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('did_not_pick')]"
+        @click="handleTileClick('did_not_pick')"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Did Not Pick</p>
@@ -99,8 +119,26 @@
         </div>
       </div>
 
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('cold_calls')]"
+        @click="handleTileClick('cold_calls')"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Cold Calls</p>
+            <p class="text-2xl font-bold text-gray-900">{{ coldCalls }}</p>
+            <p class="text-sm text-gray-500 mt-1">{{ formatDurationSeconds(coldCallDurationSeconds) }}</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-cyan-100 flex items-center justify-center">
+            <FeatherIcon name="thermometer" class="h-5 w-5 text-cyan-600" />
+          </div>
+        </div>
+      </div>
+
       <!-- New: Total Talk Time -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('') ]"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Total Talk Time</p>
@@ -263,7 +301,20 @@ const props = defineProps({
   error: { type: String, default: null }
 })
 
-defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'navigate'])
+
+const clickableTiles = new Set(['all', 'completed', 'incoming', 'outgoing', 'missed', 'did_not_pick', 'cold_calls'])
+
+const tileClasses = (key) => ({
+  'analytics-card': true,
+  'analytics-card--clickable': clickableTiles.has(key),
+})
+
+const handleTileClick = (key) => {
+  if (clickableTiles.has(key)) {
+    emit('navigate', key)
+  }
+}
 
 const typeChart = computed(() =>
   (props.data.call_type_distribution || []).map(i => ({ label: i.type, value: i.count }))
@@ -326,6 +377,12 @@ const outgoingDurationSeconds = computed(() => {
   const incomingCnt = Number(props.data.incoming_calls || 0)
   if ((!val || val === 0) && incomingCnt === 0 && total > 0) return Math.max(0, Math.round(total))
   return 0
+})
+
+const coldCalls = computed(() => props.data.cold_calls || 0)
+const coldCallDurationSeconds = computed(() => {
+  const val = Number(props.data.cold_call_total_duration || 0)
+  return val > 0 ? Math.max(0, Math.round(val)) : 0
 })
 
 // Format seconds into Hh Mm Ss via existing formatDuration (which expects minutes),
@@ -402,6 +459,19 @@ const formatPeakHours = (peakHours) => {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.analytics-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.analytics-card--clickable {
+  cursor: pointer;
+}
+
+.analytics-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
 /* 24-column grid for timeline */
 .grid-cols-24 {
   grid-template-columns: repeat(24, minmax(0, 1fr));
@@ -419,5 +489,3 @@ const formatPeakHours = (peakHours) => {
   }
 }
 </style>
-
-

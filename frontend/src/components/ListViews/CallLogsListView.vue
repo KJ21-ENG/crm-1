@@ -36,7 +36,7 @@
     <ListRows
       class="mx-3 sm:mx-5"
       :rows="rows"
-      v-slot="{ idx, column, item }"
+      v-slot="{ idx, column, item, row }"
       doctype="CRM Call Log"
     >
       <ListRowItem :item="item" :align="column.align">
@@ -118,7 +118,7 @@
           </div>
           <div
             v-else
-            class="truncate text-base"
+            class="flex items-center gap-2 truncate text-base"
             @click="
               (event) =>
                 emit('applyFilter', {
@@ -130,7 +130,24 @@
                 })
             "
           >
-            {{ label }}
+            <span class="flex-1 truncate">{{ label }}</span>
+            <Tooltip
+              v-if="idx === 0"
+              :text="row?.__isColdCall ? __('Unmark cold call') : __('Mark as cold call')"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                class="!p-1"
+                @click.stop="toggleColdCall(row)"
+              >
+                <FeatherIcon
+                  name="flag"
+                  class="h-4 w-4 transition-colors"
+                  :class="row?.__isColdCall ? 'text-blue-600' : 'text-ink-gray-4'"
+                />
+              </Button>
+            </Tooltip>
           </div>
         </template>
       </ListRowItem>
@@ -171,6 +188,8 @@ import ListRows from '@/components/ListViews/ListRows.vue'
 import Pagination from '@/components/Pagination.vue'
 import {
   Avatar,
+  Button,
+  FeatherIcon,
   ListView,
   ListHeader,
   ListHeaderItem,
@@ -211,6 +230,7 @@ const emit = defineEmits([
   'applyFilter',
   'applyLikeFilter',
   'likeDoc',
+  'toggleColdCall',
   'selectionsChanged',
   'pageChange',
   'pageSizeChange',
@@ -230,6 +250,13 @@ function isLiked(item) {
     let likedByMe = JSON.parse(item)
     return likedByMe.includes(user)
   }
+}
+
+function toggleColdCall(row) {
+  if (!row) return
+  const name = row.__doc?.name || row.name
+  if (!name) return
+  emit('toggleColdCall', { name, nextValue: !row.__isColdCall })
 }
 
 watch(pageLengthCount, (val, old_value) => {
@@ -278,3 +305,6 @@ function handlePageSizeChange(pageSize) {
 }
 
 </script>
+
+<style scoped>
+</style>

@@ -389,13 +389,14 @@
             </div>
           </div>
 
-          <CallLogAnalytics
-            :data="callLogsTabData"
-            :current-view="currentView"
-            :loading="loading"
-            :error="error"
-            @refresh="refreshDashboard"
-          />
+        <CallLogAnalytics
+          :data="callLogsTabData"
+          :current-view="currentView"
+          :loading="loading"
+          :error="error"
+          @refresh="refreshDashboard"
+          @navigate="handleCallLogTileNavigate"
+        />
         </div>
 
         <!-- User Dashboard Tab Content - Show for all users -->
@@ -466,6 +467,7 @@ import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
 import { useDashboard } from '@/stores/dashboard'
 import { useUserRole } from '@/stores/userRole'
+import { sessionStore } from '@/stores/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -498,6 +500,8 @@ const {
 
 // User role management
 const { isAdminUser, currentUserRole, initializeUserRole, userRoleLoading, userRoleError } = useUserRole()
+
+const session = sessionStore()
 
 // Tab system with role-based access control
 const activeTab = ref('user') // Default to user dashboard for non-admin users
@@ -906,6 +910,48 @@ const callLogsTabData = computed(() => {
   }
   return (userDashboardData.value && userDashboardData.value.call_log_analytics) || {}
 })
+
+const handleCallLogTileNavigate = (key) => {
+  if (!key) return
+
+  const filters = (() => {
+    switch (key) {
+      case 'incoming':
+        return { type: 'Incoming' }
+      case 'outgoing':
+        return { type: 'Outgoing' }
+      case 'missed':
+        return { type: 'Incoming', duration: 0 }
+      case 'did_not_pick':
+        return { type: 'Outgoing', duration: 0 }
+      case 'completed':
+        return { duration: ['>', 0] }
+      case 'cold_calls':
+        return { is_cold_call: 1 }
+      default:
+        return {}
+    }
+  })()
+
+  let ownerToken
+  if (selectedCallLogsUserId.value === 'all') {
+    ownerToken = '__all__'
+  } else if (selectedCallLogsUserId.value) {
+    ownerToken = selectedCallLogsUserId.value
+  } else if (session.user) {
+    ownerToken = session.user
+  } else {
+    ownerToken = '__current__'
+  }
+
+  filters.owner = ownerToken
+
+  try {
+    router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
+  } catch (error) {
+    console.error('Failed to navigate to Call Logs with filters', error)
+  }
+}
 
 const getSelectedCallLogsUserName = () => {
   if (!selectedCallLogsUserId.value) return 'Current User'

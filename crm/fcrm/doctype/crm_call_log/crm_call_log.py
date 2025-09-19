@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import cint
 
 from crm.integrations.api import get_contact_by_phone_number
 from crm.utils import seconds_to_duration
@@ -353,6 +354,9 @@ def parse_call_log(call):
 		call["activity_type"] = "outgoing_call"
 		call["_caller"] = employee_info
 		call["_receiver"] = customer_info
+
+	# Normalize cold call flag for consistent front-end usage
+	call["is_cold_call"] = 1 if cint(call.get("is_cold_call")) else 0
 
 	return call
 

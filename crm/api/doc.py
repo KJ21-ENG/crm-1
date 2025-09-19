@@ -446,6 +446,10 @@ def get_data(
 		if group_by_field and group_by_field not in rows:
 			rows.append(group_by_field)
 
+		# Ensure cold call flag is always retrieved for highlighting
+		if doctype == "CRM Call Log" and "is_cold_call" not in rows:
+			rows.append("is_cold_call")
+
 		frappe.logger().info(f"🔍 Backend Debug - Final order_by used: {order_by}")
 		
 		# Special handling for CRM Ticket and CRM Lead to join with customer table

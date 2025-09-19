@@ -474,7 +474,7 @@ def get_user_call_logs(limit=50, offset=0, from_date=None, to_date=None):
         fields = [
             'name', 'from', 'to', 'type', 'status', 'duration',
             'start_time', 'end_time', 'telephony_medium', 'medium',
-            'employee', 'customer', 'customer_name',
+            'employee', 'customer', 'customer_name', 'is_cold_call',
             'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
         ]
         

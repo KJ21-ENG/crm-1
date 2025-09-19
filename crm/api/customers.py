@@ -227,7 +227,7 @@ def get_customer_interactions(customer_mobile: str | None = None, customer_id: s
             logs_by_mobile = frappe.get_list(
                 "CRM Call Log",
                 filters={"customer": customer_mobile},
-                fields=["name", "type", "status", "duration", "start_time", "employee"],
+                fields=["name", "type", "status", "duration", "start_time", "employee", "is_cold_call"],
                 order_by="start_time desc",
             )
         if customer_id:
@@ -237,7 +237,7 @@ def get_customer_interactions(customer_mobile: str | None = None, customer_id: s
                     "reference_doctype": "CRM Customer",
                     "reference_docname": customer_id,
                 },
-                fields=["name", "type", "status", "duration", "start_time", "employee"],
+                fields=["name", "type", "status", "duration", "start_time", "employee", "is_cold_call"],
                 order_by="start_time desc",
             )
 

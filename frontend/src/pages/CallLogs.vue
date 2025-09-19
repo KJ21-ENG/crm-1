@@ -44,6 +44,7 @@
     @applyFilter="(data) => viewControls.applyFilter(data)"
     @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
     @likeDoc="(data) => viewControls.likeDoc(data)"
+    @toggleColdCall="handleToggleColdCall"
     @selectionsChanged="
       (selections) => viewControls.updateSelections(selections)
     "
@@ -82,8 +83,9 @@ import CallLogsListView from '@/components/ListViews/CallLogsListView.vue'
 import CallLogDetailModal from '@/components/Modals/CallLogDetailModal.vue'
 import CallLogModal from '@/components/Modals/CallLogModal.vue'
 import { getCallLogDetail } from '@/utils/callLog'
-import { createResource } from 'frappe-ui'
+import { call, createResource, toast } from 'frappe-ui'
 import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { sessionStore } from '@/stores/session'
 import { permissionsStore } from '@/stores/permissions'
 
@@ -103,6 +105,9 @@ const viewControls = ref(null)
 // Permissions
 const { canWrite } = permissionsStore()
 const canWriteCallLogs = computed(() => canWrite('Call Logs'))
+
+const route = useRoute()
+const router = useRouter()
 
 // Create a more robust user filter that waits for session
 const userOwnerFilter = computed(() => {
@@ -149,22 +154,82 @@ watch(() => session.isLoggedIn, (isLoggedIn) => {
   }
 }, { immediate: true })
 
+const applyCallLogFiltersFromRoute = () => {
+  const payload = route.query.calllogFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const baseFilters = { ...(userOwnerFilter.value || {}) }
+    const normalized = { ...baseFilters }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      if (field === 'owner') {
+        if (value === '__all__') {
+          delete normalized.owner
+        } else if (value === '__current__') {
+          if (session.user) normalized.owner = session.user
+          else delete normalized.owner
+        } else if (value) {
+          normalized.owner = value
+        } else {
+          delete normalized.owner
+        }
+      } else if (value === null || value === undefined || value === '__unset__') {
+        delete normalized[field]
+      } else {
+        normalized[field] = value
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply call log filters from route', error)
+  } finally {
+    if (route.query.calllogFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.calllogFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.calllogFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      // Delay to ensure ViewControls settled before applying filters
+      setTimeout(() => applyCallLogFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
+
 // Enhanced filtering with manual data filtering as fallback
 const filteredRows = computed(() => {
   const data = callLogs.value?.data?.data
   if (!data || !session.user) return []
+  const rowKeys = callLogs.value?.data?.rows || []
+  const columns = callLogs.value?.data?.columns || []
+
   // Rely on backend filtering; just format current page
   return data.map((callLog) => {
     const _rows = {}
-    callLogs.value?.data.rows.forEach((row) => {
-      _rows[row] = getCallLogDetail(row, callLog, callLogs.value?.data.columns)
+    rowKeys.forEach((row) => {
+      _rows[row] = getCallLogDetail(row, callLog, columns)
     })
+    _rows.__doc = callLog
+    _rows.__isColdCall = Boolean(callLog.is_cold_call)
     return _rows
   })
 })
 
 const showCallLogDetailModal = ref(false)
 const callLog = ref({})
+const togglingColdCalls = new Set()
 
 function showCallLog(name) {
   showCallLogDetailModal.value = true
@@ -179,6 +244,45 @@ function showCallLog(name) {
 function createCallLog() {
   callLog.value = {}
   showCallLogModal.value = true
+}
+
+function handleToggleColdCall({ name, nextValue }) {
+  if (!name || togglingColdCalls.has(name)) return
+
+  togglingColdCalls.add(name)
+
+  call('crm.api.call_log.set_cold_call', {
+    call_log: name,
+    cold_call: nextValue ? 1 : 0,
+  })
+    .then(() => {
+      const message = nextValue ? __('Marked as cold call') : __('Cold call removed')
+      const toastFn = nextValue ? toast.success : toast.info
+      toastFn(message)
+
+      const rawList = callLogs.value?.data?.data
+      if (Array.isArray(rawList)) {
+        const idx = rawList.findIndex((entry) => entry.name === name)
+        if (idx !== -1) {
+          const updated = {
+            ...rawList[idx],
+            is_cold_call: nextValue ? 1 : 0,
+          }
+          rawList.splice(idx, 1, updated)
+          // Trigger computed consumers
+          callLogs.value.data.data = [...rawList]
+        }
+      }
+
+      viewControls.value?.reload?.()
+    })
+    .catch((error) => {
+      const message = error?.messages?.[0] || error?.message || __('Failed to update cold call flag')
+      toast.error(message)
+    })
+    .finally(() => {
+      togglingColdCalls.delete(name)
+    })
 }
 
 const openCallLogFromURL = () => {

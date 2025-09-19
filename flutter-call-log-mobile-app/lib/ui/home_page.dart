@@ -724,16 +724,20 @@ class _CallLogTile extends StatelessWidget {
     final durationText = _HomePageState._formatDuration(durationSec);
     final startRaw = (item['start_time'] ?? '').toString();
     final startText = _HomePageState._formatListDate(startRaw);
+    final isColdCall = _HomePageState._asInt(item['is_cold_call']) == 1;
 
     // Pre-calculate colors to avoid switch statement in build
     final (chipBg, chipFg) = _getChipColors(type);
+    final cardBg = isColdCall ? const Color(0xFFEFF6FF) : Colors.white;
+    final borderColor = isColdCall ? const Color(0xFF2563EB) : Colors.transparent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor.withOpacity(isColdCall ? 0.5 : 0), width: isColdCall ? 1.2 : 0),
         boxShadow: const [
           BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
         ],
@@ -742,7 +746,6 @@ class _CallLogTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
@@ -752,6 +755,24 @@ class _CallLogTile extends StatelessWidget {
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
+              if (isColdCall) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBEAFE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Cold Call',
+                    style: TextStyle(
+                      color: Color(0xFF1D4ED8),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -793,5 +814,4 @@ class _CallLogTile extends StatelessWidget {
     }
   }
 }
-
 

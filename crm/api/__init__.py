@@ -150,10 +150,11 @@ def get_call_log_analytics():
             order_by="count desc"
         ),
         "recent_calls": frappe.db.get_list("CRM Call Log",
-            fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+            fields=["name", "from", "to", "type", "status", "duration", "start_time", "is_cold_call"],
             order_by="start_time desc",
             limit=5
-        )
+        ),
+        "cold_calls": frappe.db.count("CRM Call Log", {"is_cold_call": 1})
     }
 
 

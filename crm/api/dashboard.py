@@ -514,7 +514,7 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     )
 
     recent_calls = frappe.db.get_list("CRM Call Log",
-        fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+        fields=["name", "from", "to", "type", "status", "duration", "start_time", "is_cold_call"],
         filters=date_filter,
         order_by="start_time desc",
         limit=5
@@ -546,6 +546,18 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
 
     # Completed calls per business logic: (Incoming - Missed) + (Outgoing - Did Not Pick)
     completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
+
+    # Cold calls and their total duration
+    cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "is_cold_call": 1})
+    try:
+        cold_call_duration_res = frappe.db.sql(
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND is_cold_call = 1",
+            (start_date, end_date),
+        )
+        cold_call_total_duration = float(cold_call_duration_res[0][0]) if cold_call_duration_res and cold_call_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute cold_call_total_duration: {e}")
+        cold_call_total_duration = 0
 
     # Unique callers: count of NEW customers (mobile numbers) whose first call was within the date range
     unique_callers_sql = """
@@ -596,6 +608,8 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
         "did_not_picked_outgoing_duration0": did_not_picked_outgoing_duration0,
         "completed_calls": completed_calls,
         "unique_callers": unique_callers,
+        "cold_calls": cold_calls,
+        "cold_call_total_duration": cold_call_total_duration,
         "total_duration": total_duration,
         "incoming_total_duration": incoming_total_duration,
         "outgoing_total_duration": outgoing_total_duration,
@@ -1115,7 +1129,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     )
 
     recent_calls = frappe.db.get_list("CRM Call Log",
-        fields=["name", "from", "to", "type", "status", "duration", "start_time"],
+        fields=["name", "from", "to", "type", "status", "duration", "start_time", "is_cold_call"],
         filters={**date_filter, "employee": user},
         order_by="start_time desc",
         limit=5
@@ -1166,6 +1180,18 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     # Completed calls per business logic for specific user
     completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
 
+    # Cold calls for specific user
+    cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "is_cold_call": 1})
+    try:
+        cold_call_duration_res = frappe.db.sql(
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND employee = %s AND is_cold_call = 1",
+            (start_date, end_date, user),
+        )
+        cold_call_total_duration = float(cold_call_duration_res[0][0]) if cold_call_duration_res and cold_call_duration_res[0] else 0
+    except Exception as e:
+        print(f"⚠️ WARNING: Failed to compute cold_call_total_duration (user): {e}")
+        cold_call_total_duration = 0
+
     # Total duration split by call type for this user
     try:
         incoming_duration_res = frappe.db.sql(
@@ -1199,6 +1225,8 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
         "completed_calls": completed_calls,
         "unique_callers": unique_callers,
         "call_activity_pattern": call_activity_pattern,
+        "cold_calls": cold_calls,
+        "cold_call_total_duration": cold_call_total_duration,
         "incoming_total_duration": incoming_total_duration,
         "outgoing_total_duration": outgoing_total_duration
     }

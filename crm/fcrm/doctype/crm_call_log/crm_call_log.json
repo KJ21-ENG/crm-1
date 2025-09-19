@@ -15,6 +15,7 @@
    "device_call_id",
   "from",
   "status",
+  "is_cold_call",
   "duration",
   "medium",
   "start_time",
@@ -60,6 +61,13 @@
    "label": "Status",
    "options": "Initiated\nRinging\nIn Progress\nCompleted\nFailed\nBusy\nNo Answer\nQueued\nCanceled",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_cold_call",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Cold Call"
   },
   {
    "fieldname": "start_time",
