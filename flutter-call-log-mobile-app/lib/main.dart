@@ -5,8 +5,11 @@ import 'ui/home_page.dart';
 import 'ui/splash_page.dart';
 import 'ui/theme.dart';
 import 'ui/scroll_behavior.dart';
+import 'widget_bridge.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  WidgetBridge.init();
   runApp(const MyApp());
 }
 

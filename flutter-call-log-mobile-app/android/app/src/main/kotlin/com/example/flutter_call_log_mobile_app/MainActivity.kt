@@ -7,11 +7,14 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.content.Intent
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "crm/permissions"
+    private val WIDGET_CHANNEL = "crm/widget"
     private val REQUEST_READ_CALL_LOG = 10010
     private var pendingResult: MethodChannel.Result? = null
+    private var widgetChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -31,6 +34,47 @@ class MainActivity: FlutterActivity() {
                     }
                 }
                 else -> result.notImplemented()
+            }
+        }
+        // Widget channel - used to pass intents from Android widget to Flutter
+        widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        handleWidgetIntent(intent)
+    }
+
+    private fun handleWidgetIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action ?: return
+        when (action) {
+            "com.eshin.crm.ACTION_WIDGET_MANUAL_SYNC" -> {
+                try {
+                    widgetChannel?.invokeMethod("manualSync", null, object: MethodChannel.Result {
+                        override fun success(result: Any?) {}
+                        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {}
+                        override fun notImplemented() {}
+                    })
+                } catch (e: Exception) {}
+                // Close activity immediately to avoid leaving UI open when widget invoked
+                try { runOnUiThread { finish() } } catch (_: Exception) {}
+            }
+            "com.eshin.crm.ACTION_WIDGET_TOGGLE_BG" -> {
+                try {
+                    widgetChannel?.invokeMethod("toggleBackground", null, object: MethodChannel.Result {
+                        override fun success(result: Any?) {}
+                        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {}
+                        override fun notImplemented() {}
+                    })
+                } catch (e: Exception) {}
+                // Close activity immediately to avoid leaving UI open when widget invoked
+                try { runOnUiThread { finish() } } catch (_: Exception) {}
             }
         }
     }

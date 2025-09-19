@@ -57,6 +57,17 @@
         </activity>
         <receiver android:name="com.pravera.flutter_foreground_task.receiver.NotificationButtonReceiver" android:exported="true"/>
         <receiver android:name="com.pravera.flutter_foreground_task.receiver.NotificationReceiver" android:exported="true"/>
+        <!-- AppWidgetProvider for home screen widget -->
+        <receiver android:name="com.eshin.crm.widget.SyncWidgetProvider"
+                  android:label="CRM Sync Widget"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.eshin.crm.ACTION_WIDGET_MANUAL_SYNC" />
+                <action android:name="com.eshin.crm.ACTION_WIDGET_TOGGLE_BG" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/sync_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
