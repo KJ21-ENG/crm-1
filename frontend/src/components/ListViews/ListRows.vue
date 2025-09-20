@@ -21,6 +21,7 @@
           :key="row.name"
           v-slot="{ idx, column, item }"
           :row="row"
+          :class="row?.__isColdCall ? 'bg-blue-50' : ''"
         >
           <slot v-bind="{ idx, column, item, row }" />
         </ListRow>
@@ -39,6 +40,7 @@
       :key="row.name"
       v-slot="{ idx, column, item }"
       :row="row"
+      :class="row?.__isColdCall ? 'bg-blue-50' : ''"
     >
       <slot v-bind="{ idx, column, item, row }" />
     </ListRow>
