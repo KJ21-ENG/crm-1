@@ -32,7 +32,7 @@
         </Button>
       </ListHeaderItem>
     </ListHeader>
-    <ListRows
+  <ListRows
       class="mx-3 sm:mx-5"
       :rows="rows"
       v-slot="{ idx, column, item }"
@@ -51,6 +51,23 @@
           </div>
         </Tooltip>
       </div>
+      <div v-else-if="column.key === '_assign'" class="flex items-center">
+        <MultipleAvatar
+          :avatars="item"
+          size="sm"
+          @click="
+            (event) =>
+              emit('applyFilter', {
+                event,
+                idx,
+                column,
+                item,
+                firstColumn: columns[0],
+              })
+          "
+        />
+      </div>
+
       <ListRowItem v-else :item="item" :align="column.align">
         <template #prefix>
           <div v-if="column.key === 'status'">

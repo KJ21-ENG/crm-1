@@ -352,9 +352,22 @@ function parseRows(rows, columns = []) {
           timeAgo: __(timeAgo(task[row])),
         }
       } else if (row == 'assigned_to') {
+        // Backwards-compatible single-assignee support for assigned_to
         _rows[row] = {
           label: task.assigned_to && getUser(task.assigned_to).full_name,
           ...(task.assigned_to && getUser(task.assigned_to)),
+        }
+      } else if (row == '_assign') {
+        // Parse _assign JSON to expose multiple assignees similar to Leads/Tickets
+        try {
+          const assignees = JSON.parse(task._assign || '[]')
+          _rows[row] = assignees.map((user) => ({
+            name: user,
+            image: getUser(user).user_image,
+            label: getUser(user).full_name,
+          }))
+        } catch (e) {
+          _rows[row] = []
         }
       } else if (row == 'due_date') {
         // Store both original date and formatted display string

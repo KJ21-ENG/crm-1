@@ -172,8 +172,8 @@ class CRMTask(Document):
 			},
 			{
 				'label': 'Assigned To',
-				'type': 'Link',
-				'key': 'assigned_to',
+				'type': 'Text',
+				'key': '_assign',
 				'width': '10rem',
 			},
 			{
