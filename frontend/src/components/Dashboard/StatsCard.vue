@@ -1,5 +1,15 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+  <div 
+    :class="[
+      'bg-white rounded-lg shadow-sm border border-gray-200 p-4 transition-shadow',
+      clickable ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : 'hover:shadow-md'
+    ]"
+    @click="handleClick"
+    @keydown.enter.prevent="handleClick"
+    @keydown.space.prevent="handleClick"
+    :role="clickable ? 'button' : null"
+    :tabindex="clickable ? 0 : null"
+  >
     <div class="flex items-center space-x-3">
       <div 
         :class="[
@@ -30,6 +40,9 @@
           </span>
           <span class="text-sm text-gray-500 ml-1">vs last week</span>
         </div>
+      </div>
+      <div v-if="clickable" class="flex-shrink-0">
+        <FeatherIcon name="arrow-right" class="w-4 h-4 text-gray-400" />
       </div>
     </div>
   </div>
@@ -63,8 +76,24 @@ const props = defineProps({
   color: {
     type: String,
     default: 'blue'
+  },
+  clickable: {
+    type: Boolean,
+    default: false
+  },
+  target: {
+    type: String,
+    default: null
   }
 })
+
+const emit = defineEmits(['click'])
+
+const handleClick = () => {
+  if (props.clickable && props.target) {
+    emit('click', props.target)
+  }
+}
 
 const iconBgColor = computed(() => {
   const colors = {

@@ -213,7 +213,7 @@
           :aria-labelledby="`tab-analytics`"
         >
           <!-- Stats Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatsCard
               v-for="card in statsCards"
               :key="card.title"
@@ -223,6 +223,9 @@
               :icon="card.icon"
               :color="card.color"
               :change="card.change"
+              :clickable="card.clickable"
+              :target="card.target"
+              @click="handleStatsCardClick"
             />
           </div>
 
@@ -1011,6 +1014,69 @@ const handleCallLogTileNavigate = (key) => {
     router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
   } catch (error) {
     console.error('Failed to navigate to Call Logs with filters', error)
+  }
+}
+
+const handleStatsCardClick = (target) => {
+  if (!target) return
+
+  // For analytics tab, navigate without any user filters to show all data
+  if (activeTab.value === 'analytics') {
+    try {
+      if (target === 'calls') {
+        router.push({ name: 'Call Logs' })
+      } else {
+        const config = tileNavigationConfig[target]
+        if (config) {
+          router.push({ name: config.routeName })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to navigate from analytics stats card', {
+        target,
+        error,
+      })
+    }
+    return
+  }
+
+  // For other tabs (user dashboard, call log analytics), apply user-specific filters
+  const effectiveUser = session.user || ''
+  const safeUserToken = effectiveUser || '__current__'
+
+  if (target === 'calls') {
+    const callFilters = safeUserToken ? { owner: safeUserToken } : {}
+    try {
+      router.push({
+        name: 'Call Logs',
+        query: { calllogFilters: JSON.stringify(callFilters) },
+      })
+    } catch (error) {
+      console.error('Failed to navigate to Call Logs from stats card', error)
+    }
+    return
+  }
+
+  const config = tileNavigationConfig[target]
+  if (!config) return
+
+  const filters = config.buildFilters(safeUserToken)
+
+  try {
+    if (Object.keys(filters).length === 0) {
+      router.push({ name: config.routeName })
+      return
+    }
+
+    router.push({
+      name: config.routeName,
+      query: { [config.queryKey]: JSON.stringify(filters) },
+    })
+  } catch (error) {
+    console.error('Failed to navigate from stats card', {
+      target,
+      error,
+    })
   }
 }
 
