@@ -36,7 +36,14 @@
     <!-- Performance Overview Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <!-- Leads tile: main = total (owner OR in _assign), support = created (owner) and assigned (_assign) -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToLeads" @keydown.enter.prevent="navigateToLeads" role="button" tabindex="0">
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('leads')"
+        @keydown.enter.prevent="navigateTo('leads')"
+        @keydown.space.prevent="navigateTo('leads')"
+        role="button"
+        tabindex="0"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Leads</p>
@@ -61,7 +68,14 @@
       </div>
 
       <!-- Tickets tile -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTickets" @keydown.enter.prevent="navigateToTickets" role="button" tabindex="0">
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('tickets')"
+        @keydown.enter.prevent="navigateTo('tickets')"
+        @keydown.space.prevent="navigateTo('tickets')"
+        role="button"
+        tabindex="0"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tickets</p>
@@ -86,7 +100,14 @@
       </div>
 
       <!-- Tasks tile -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition" @click="navigateToTasks" @keydown.enter.prevent="navigateToTasks" role="button" tabindex="0">
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('tasks')"
+        @keydown.enter.prevent="navigateTo('tasks')"
+        @keydown.space.prevent="navigateTo('tasks')"
+        role="button"
+        tabindex="0"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Tasks</p>
@@ -110,7 +131,14 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('calls')"
+        @keydown.enter.prevent="navigateTo('calls')"
+        @keydown.space.prevent="navigateTo('calls')"
+        role="button"
+        tabindex="0"
+      >
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Calls Made</p>
@@ -410,7 +438,6 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { FeatherIcon, Badge } from 'frappe-ui'
 import ChartCard from './ChartCard.vue'
 
@@ -433,7 +460,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'navigate'])
 
 // Computed properties for user data
 const userInfo = computed(() => {
@@ -739,18 +766,9 @@ const getMostProductivePeriod = (hourlyData) => {
   return `${bestPeriod} (${maxActivity} activities)`
 }
 
-const router = useRouter()
-
-const navigateToLeads = () => {
-  router.push({ name: 'Leads' })
-}
-
-const navigateToTickets = () => {
-  router.push({ name: 'Tickets' })
-}
-
-const navigateToTasks = () => {
-  router.push({ name: 'Tasks' })
+const navigateTo = (target) => {
+  if (!target) return
+  emit('navigate', target)
 }
 
 onMounted(() => {

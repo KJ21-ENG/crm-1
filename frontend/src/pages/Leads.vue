@@ -25,7 +25,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Lead"
-    :filters="{ converted: 0 }"
+    :filters="baseFilters"
     :options="{
       allowedViews: ['list', 'group_by', 'kanban'],
     }"
@@ -316,6 +316,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
 import { permissionsStore } from '@/stores/permissions'
 import { usersStore } from '@/stores/users'
+import { sessionStore } from '@/stores/session'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -325,6 +326,7 @@ const { getLeadStatus } = statusesStore()
 
 const route = useRoute()
 const router = useRouter()
+const session = sessionStore()
 
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
@@ -363,12 +365,81 @@ const { canWrite } = permissionsStore()
 const { isAdmin } = usersStore()
 const canWriteLeads = computed(() => isAdmin() || canWrite('Leads'))
 
+const baseFilters = computed(() => ({ converted: 0 }))
+
 // leads data is loaded in the ViewControls component
 const leads = ref({})
 const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+const applyLeadFiltersFromRoute = () => {
+  const payload = route.query.leadFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const normalized = { ...baseFilters.value }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      let resolved = value
+
+      if (resolved === '__current__') {
+        resolved = session.user || ''
+      }
+
+      if (
+        resolved === null ||
+        resolved === undefined ||
+        resolved === '__unset__' ||
+        (typeof resolved === 'string' && resolved.trim() === '')
+      ) {
+        delete normalized[field]
+        return
+      }
+
+      if (Array.isArray(resolved)) {
+        normalized[field] = resolved
+        return
+      }
+
+      if (typeof resolved === 'object') {
+        normalized[field] = resolved
+        return
+      }
+
+      if (field === '_assign') {
+        normalized[field] = ['LIKE', `%${resolved}%`]
+      } else {
+        normalized[field] = resolved
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply lead filters from route', error)
+  } finally {
+    if (route.query.leadFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.leadFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.leadFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      setTimeout(() => applyLeadFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
 
 function getRow(name, field) {
   function getValue(value) {

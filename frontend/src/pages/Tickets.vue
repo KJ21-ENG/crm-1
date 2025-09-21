@@ -26,7 +26,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Ticket"
-    :filters="{}"
+    :filters="baseFilters"
     :options="{
       allowedViews: ['list', 'group_by', 'kanban'],
     }"
@@ -310,6 +310,7 @@ import { Avatar, Tooltip, Dropdown, Badge, Button, FeatherIcon } from 'frappe-ui
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, reactive, watch, onMounted, h } from 'vue'
 import { permissionsStore } from '@/stores/permissions'
+import { sessionStore } from '@/stores/session'
 // usersStore is already imported above; avoid duplicate import
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
@@ -319,6 +320,7 @@ const { getUser } = usersStore()
 
 const route = useRoute()
 const router = useRouter()
+const session = sessionStore()
 
 const ticketsListView = ref(null)
 const showTicketModal = ref(false)
@@ -356,6 +358,74 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+const baseFilters = computed(() => ({}))
+
+const applyTicketFiltersFromRoute = () => {
+  const payload = route.query.ticketFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const normalized = { ...baseFilters.value }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      let resolved = value
+
+      if (resolved === '__current__') {
+        resolved = session.user || ''
+      }
+
+      if (
+        resolved === null ||
+        resolved === undefined ||
+        resolved === '__unset__' ||
+        (typeof resolved === 'string' && resolved.trim() === '')
+      ) {
+        delete normalized[field]
+        return
+      }
+
+      if (Array.isArray(resolved)) {
+        normalized[field] = resolved
+        return
+      }
+
+      if (typeof resolved === 'object') {
+        normalized[field] = resolved
+        return
+      }
+
+      if (field === '_assign') {
+        normalized[field] = ['LIKE', `%${resolved}%`]
+      } else {
+        normalized[field] = resolved
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply ticket filters from route', error)
+  } finally {
+    if (route.query.ticketFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.ticketFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.ticketFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      setTimeout(() => applyTicketFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
 
 function getRow(name, field) {
   function getValue(value) {

@@ -448,6 +448,7 @@
             :user-dashboard-data="userDashboardData"
             :current-view="currentView"
             @refresh="refreshDashboard"
+            @navigate="handleUserDashboardNavigate"
           />
         </div>
       </div>
@@ -910,6 +911,66 @@ const callLogsTabData = computed(() => {
   }
   return (userDashboardData.value && userDashboardData.value.call_log_analytics) || {}
 })
+
+const tileNavigationConfig = {
+  leads: {
+    routeName: 'Leads',
+    queryKey: 'leadFilters',
+    buildFilters: (userToken) => (userToken ? { _assign: userToken } : {}),
+  },
+  tickets: {
+    routeName: 'Tickets',
+    queryKey: 'ticketFilters',
+    buildFilters: (userToken) => (userToken ? { _assign: userToken } : {}),
+  },
+  tasks: {
+    routeName: 'Tasks',
+    queryKey: 'taskFilters',
+    buildFilters: (userToken) => (userToken ? { _assign: userToken } : {}),
+  },
+}
+
+const handleUserDashboardNavigate = (target) => {
+  if (!target) return
+
+  const effectiveUser = selectedUserId.value || session.user || ''
+  const safeUserToken = effectiveUser || '__current__'
+
+  if (target === 'calls') {
+    const callFilters = safeUserToken ? { owner: safeUserToken } : {}
+    try {
+      router.push({
+        name: 'Call Logs',
+        query: { calllogFilters: JSON.stringify(callFilters) },
+      })
+    } catch (error) {
+      console.error('Failed to navigate to Call Logs from user dashboard tile', error)
+    }
+    return
+  }
+
+  const config = tileNavigationConfig[target]
+  if (!config) return
+
+  const filters = config.buildFilters(safeUserToken)
+
+  try {
+    if (Object.keys(filters).length === 0) {
+      router.push({ name: config.routeName })
+      return
+    }
+
+    router.push({
+      name: config.routeName,
+      query: { [config.queryKey]: JSON.stringify(filters) },
+    })
+  } catch (error) {
+    console.error('Failed to navigate from user dashboard tile', {
+      target,
+      error,
+    })
+  }
+}
 
 const handleCallLogTileNavigate = (key) => {
   if (!key) return

@@ -222,14 +222,17 @@ import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
 import { computed, ref, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { permissionsStore } from '@/stores/permissions'
+import { sessionStore } from '@/stores/session'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
 const { getUser } = usersStore()
 
+const route = useRoute()
 const router = useRouter()
+const session = sessionStore()
 const tasksListView = ref(null)
 
 // tasks data is loaded in the ViewControls component
@@ -238,6 +241,73 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+const applyTaskFiltersFromRoute = () => {
+  const payload = route.query.taskFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const normalized = { ...(defaultFilters.value || {}) }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      let resolved = value
+
+      if (resolved === '__current__') {
+        resolved = session.user || ''
+      }
+
+      if (
+        resolved === null ||
+        resolved === undefined ||
+        resolved === '__unset__' ||
+        (typeof resolved === 'string' && resolved.trim() === '')
+      ) {
+        delete normalized[field]
+        return
+      }
+
+      if (Array.isArray(resolved)) {
+        normalized[field] = resolved
+        return
+      }
+
+      if (typeof resolved === 'object') {
+        normalized[field] = resolved
+        return
+      }
+
+      if (field === '_assign') {
+        normalized[field] = ['LIKE', `%${resolved}%`]
+      } else {
+        normalized[field] = resolved
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply task filters from route', error)
+  } finally {
+    if (route.query.taskFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.taskFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.taskFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      setTimeout(() => applyTaskFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
 
 // Permissions
 const { canWrite } = permissionsStore()
