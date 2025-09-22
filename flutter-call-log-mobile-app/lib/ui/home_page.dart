@@ -296,11 +296,13 @@ class _HomePageState extends State<HomePage> {
 
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'crm_sync',
+        // Use a new channel id to ensure channel is created with LOW importance
+        channelId: 'crm_sync_low',
         channelName: 'CRM Sync',
         channelDescription: 'Syncs call logs periodically',
-        channelImportance: NotificationChannelImportance.HIGH,
-        priority: NotificationPriority.HIGH,
+        // Use LOW importance and priority so notification appears only in drawer
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
         iconData: const NotificationIconData(
           resType: ResourceType.mipmap,
           resPrefix: ResourcePrefix.ic,
