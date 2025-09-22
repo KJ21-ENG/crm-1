@@ -1,4 +1,4 @@
-package com.example.flutter_call_log_mobile_app.boot
+package com.eshin.crm.boot
 
 import android.content.BroadcastReceiver
 import android.content.Context

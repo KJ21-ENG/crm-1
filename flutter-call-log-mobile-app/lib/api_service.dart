@@ -15,7 +15,16 @@ class ApiService {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _baseUrl = prefs.getString('server_url') ?? _baseUrl;
-    _sessionId = await _secure.read(key: 'session_id');
+    try {
+      _sessionId = await _secure.read(key: 'session_id');
+    } catch (e) {
+      // If secure storage read fails (corrupted data or encryption mismatch),
+      // remove the stored value and continue without a session id.
+      try {
+        await _secure.delete(key: 'session_id');
+      } catch (_) {}
+      _sessionId = null;
+    }
     _dio.options.baseUrl = _baseUrl;
     _dio.options.headers['Accept'] = 'application/json, text/plain, */*';
     _dio.options.headers['X-Requested-With'] = 'XMLHttpRequest';

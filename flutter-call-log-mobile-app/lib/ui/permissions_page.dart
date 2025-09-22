@@ -8,7 +8,7 @@ class PermissionsPage extends StatelessWidget {
   Future<void> _openBatteryOptimization() async {
     const intent = AndroidIntent(
       action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-      data: 'package:com.example.flutter_call_log_mobile_app',
+      data: 'package:com.eshin.crm',
     );
     await intent.launch();
   }

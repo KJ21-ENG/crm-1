@@ -3,22 +3,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <application
         android:label="Eshin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <service
-            android:name="rekab.app.background_locator.IsolateHolderService"
-            android:enabled="true"
-            android:exported="false"
-            android:stopWithTask="false"
-            android:foregroundServiceType="dataSync|location"
-            tools:ignore="ForegroundServiceType"/>
+        
 
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
@@ -57,6 +51,16 @@
         </activity>
         <receiver android:name="com.pravera.flutter_foreground_task.receiver.NotificationButtonReceiver" android:exported="true"/>
         <receiver android:name="com.pravera.flutter_foreground_task.receiver.NotificationReceiver" android:exported="true"/>
+        <!-- Boot receiver to restart foreground service after device reboot -->
+        <receiver
+            android:name=".boot.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <!-- AppWidgetProvider for home screen widget -->
         <receiver android:name="com.eshin.crm.widget.SyncWidgetProvider"
                   android:label="CRM Sync Widget"

@@ -39,7 +39,7 @@ void widgetBackgroundMain() {
           iosNotificationOptions: const IOSNotificationOptions(showNotification: false),
           foregroundTaskOptions: const ForegroundTaskOptions(
             interval: 1000,
-            autoRunOnBoot: false,
+            autoRunOnBoot: true,
             allowWakeLock: true,
           ),
         );

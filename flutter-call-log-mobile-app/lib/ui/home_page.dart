@@ -226,7 +226,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _requestIgnoreBatteryOptimizations() async {
     const intent = AndroidIntent(
       action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-      data: 'package:com.example.flutter_call_log_mobile_app',
+      data: 'package:com.eshin.crm',
     );
     await intent.launch();
   }
@@ -311,7 +311,7 @@ class _HomePageState extends State<HomePage> {
       iosNotificationOptions: const IOSNotificationOptions(showNotification: false),
       foregroundTaskOptions: const ForegroundTaskOptions(
         interval: 1000,
-        autoRunOnBoot: false,
+        autoRunOnBoot: true,
         allowWakeLock: true,
       ),
     );
