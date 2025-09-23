@@ -65,3 +65,4 @@ crm.patches.v1_0.reposition_quick_entry_contact_fields # 15-08-2025
 crm.patches.v1_0.fix_marital_status_default # 15-08-2025
 crm.patches.v1_0.add_customer_personal_fields # 15-08-2025
 crm.patches.v1_0.update_customer_personal_fields # 15-08-2025
+crm.patches.v1_0.add_admin_notification_settings
