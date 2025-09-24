@@ -278,6 +278,7 @@
     :note="note"
     doctype="CRM Lead"
     :doc="docname"
+    @after="handleNoteCreated"
   />
   <TaskModal
     v-if="showTaskModal"
@@ -285,6 +286,7 @@
     :task="task"
     doctype="CRM Lead"
     :doc="docname"
+    @after="handleTaskCreated"
   />
 </template>
 
@@ -681,5 +683,21 @@ const task = ref({
 function showTask(name) {
   docname.value = name
   showTaskModal.value = true
+}
+
+function handleNoteCreated() {
+  console.log('Note created, refreshing list...')
+  // Only reload if we have a valid leads resource
+  if (leads.value && typeof leads.value.reload === 'function') {
+    leads.value.reload()
+  }
+}
+
+function handleTaskCreated() {
+  console.log('Task created, refreshing list...')
+  // Only reload if we have a valid leads resource
+  if (leads.value && typeof leads.value.reload === 'function') {
+    leads.value.reload()
+  }
 }
 </script>

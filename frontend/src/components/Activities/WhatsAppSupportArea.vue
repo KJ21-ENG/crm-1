@@ -264,6 +264,22 @@ const whatsappStatus = ref({
 })
 const extSendBtn = ref(null)
 const isHosted = typeof window !== 'undefined' && !['localhost', 'crm.localhost'].includes(window.location.hostname)
+const lastWhatsAppReloadTime = ref(0)
+
+// Debounced reload function for WhatsApp activities
+function debouncedWhatsAppReload() {
+  const now = Date.now()
+  const timeSinceLastReload = now - lastWhatsAppReloadTime.value
+  
+  // Only reload if at least 500ms have passed since the last reload
+  if (timeSinceLastReload > 500) {
+    console.log('WhatsApp: Performing debounced reload')
+    lastWhatsAppReloadTime.value = now
+    whatsappActivities.reload()
+  } else {
+    console.log('WhatsApp: Skipping reload - too soon since last reload')
+  }
+}
 
 // WhatsApp activities resource
 const whatsappActivities = createResource({
@@ -603,13 +619,13 @@ onMounted(() => {
           },
           auto: true,
           onSuccess: () => {
-            whatsappActivities.reload()
+            debouncedWhatsAppReload()
             // Trigger Activities parent to refresh via socket-like event fallback
             document.dispatchEvent(new CustomEvent('crm-activities-reload'))
           },
         })
       } catch (_) {
-        whatsappActivities.reload()
+        debouncedWhatsAppReload()
       }
     } else {
       toast.error('Failed to send support pages' + (error ? `: ${error}` : ''))
@@ -629,7 +645,7 @@ onMounted(() => {
           },
           auto: true,
           onSuccess: () => {
-            whatsappActivities.reload()
+            debouncedWhatsAppReload()
             document.dispatchEvent(new CustomEvent('crm-activities-reload'))
           },
         })

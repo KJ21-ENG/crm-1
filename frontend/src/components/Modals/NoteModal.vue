@@ -117,7 +117,10 @@ async function updateNote() {
       },
     })
     if (d.name) {
-      notes.value?.reload()
+      // Only reload if notes resource is available (e.g., when used in Notes page)
+      if (notes.value && typeof notes.value.reload === 'function') {
+        notes.value.reload()
+      }
       emit('after', d)
     }
   } else {
@@ -139,7 +142,10 @@ async function updateNote() {
     if (d.name) {
       updateOnboardingStep('create_first_note')
       capture('note_created')
-      notes.value?.reload()
+      // Only reload if notes resource is available (e.g., when used in Notes page)
+      if (notes.value && typeof notes.value.reload === 'function') {
+        notes.value.reload()
+      }
       emit('after', d, true)
     }
   }

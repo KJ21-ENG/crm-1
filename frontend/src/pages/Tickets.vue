@@ -272,6 +272,7 @@
     :note="note"
     doctype="CRM Ticket"
     :doc="docname"
+    @after="handleNoteCreated"
   />
   <TaskModal
     v-if="showTaskModal"
@@ -279,6 +280,7 @@
     :task="task"
     doctype="CRM Ticket"
     :doc="docname"
+    @after="handleTaskCreated"
   />
 </template>
 
@@ -656,6 +658,22 @@ function showTask(name) {
 function handleTicketCreated() {
   console.log('Ticket created, refreshing list...')
   tickets.value?.reload?.()
+}
+
+function handleNoteCreated() {
+  console.log('Note created, refreshing list...')
+  // Only reload if we have a valid tickets resource
+  if (tickets.value && typeof tickets.value.reload === 'function') {
+    tickets.value.reload()
+  }
+}
+
+function handleTaskCreated() {
+  console.log('Task created, refreshing list...')
+  // Only reload if we have a valid tickets resource
+  if (tickets.value && typeof tickets.value.reload === 'function') {
+    tickets.value.reload()
+  }
 }
 
 // Permissions

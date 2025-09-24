@@ -106,7 +106,7 @@
       >
         <AttachmentArea
           :attachments="activities"
-          @reload="all_activities.reload() && scroll()"
+          @reload="debouncedReload() && scroll()"
         />
       </div>
       <div
@@ -529,7 +529,7 @@
     :docname="doc.data.name"
     @after="
       () => {
-        all_activities.reload()
+        debouncedReload()
         changeTabTo('attachments')
       }
     "
@@ -626,6 +626,7 @@ const reload_email = ref(false)
 const modalRef = ref(null)
 const showFilesUploader = ref(false)
 const whatsappSupportRef = ref(null)
+const lastReloadTime = ref(0)
 const whatsappStatus = ref({
   connected: false,
   phoneNumber: null,
@@ -633,6 +634,21 @@ const whatsappStatus = ref({
 
 function updateWhatsappStatus(status) {
   whatsappStatus.value = status
+}
+
+// Debounced reload function to prevent rapid successive reloads
+function debouncedReload() {
+  const now = Date.now()
+  const timeSinceLastReload = now - lastReloadTime.value
+  
+  // Only reload if at least 500ms have passed since the last reload
+  if (timeSinceLastReload > 500) {
+    console.log('Activities: Performing debounced reload')
+    lastReloadTime.value = now
+    all_activities.reload()
+  } else {
+    console.log('Activities: Skipping reload - too soon since last reload')
+  }
 }
 
 const title = computed(() => props.tabs?.[tabIndex.value]?.name || 'Activity')
@@ -769,7 +785,9 @@ onMounted(() => {
       data.reference_doctype === props.doctype &&
       data.reference_name === doc.value.data.name
     ) {
-      all_activities.reload()
+      console.log('Activities: Socket activity_update received, reloading activities')
+      // Use debounced reload to prevent rapid successive reloads
+      debouncedReload()
     }
   })
 
@@ -1078,9 +1096,13 @@ const whatsappBox = ref(null)
 
 watch([reload, reload_email], ([reload_value, reload_email_value]) => {
   if (reload_value || reload_email_value) {
-    all_activities.reload()
-    reload.value = false
-    reload_email.value = false
+    console.log('Activities: Reloading activities due to reload trigger')
+    debouncedReload()
+    // Use nextTick to ensure the reload values are reset after the current tick
+    nextTick(() => {
+      reload.value = false
+      reload_email.value = false
+    })
   }
 })
 

@@ -256,7 +256,10 @@ async function updateTask() {
       fieldname: _task.value,
     })
     if (d.name) {
-      tasks.value?.reload()
+      // Only reload if tasks resource is available (e.g., when used in Tasks page)
+      if (tasks.value && typeof tasks.value.reload === 'function') {
+        tasks.value.reload()
+      }
       emit('after', d)
     }
   } else {
@@ -300,7 +303,10 @@ async function updateTask() {
     if (d.name) {
       updateOnboardingStep('create_first_task')
       capture('task_created')
-      tasks.value?.reload()
+      // Only reload if tasks resource is available (e.g., when used in Tasks page)
+      if (tasks.value && typeof tasks.value.reload === 'function') {
+        tasks.value.reload()
+      }
       emit('after', d, true)
     }
   }
