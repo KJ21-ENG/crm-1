@@ -536,7 +536,7 @@ async function autoFillCustomerData(mobileNumber) {
       lead.doc.organization = customerData.organization || lead.doc.organization
       lead.doc.pan_card_number = customerData.pan_card_number || lead.doc.pan_card_number
       lead.doc.aadhaar_card_number = customerData.aadhaar_card_number || lead.doc.aadhaar_card_number
-      lead.doc.referral_through = customerData.referral_code || lead.doc.referral_through
+      lead.doc.referral_through = customerData.referral_through || lead.doc.referral_through
       lead.doc.marital_status = customerData.marital_status || lead.doc.marital_status
       lead.doc.date_of_birth = customerData.date_of_birth || lead.doc.date_of_birth
       lead.doc.anniversary = customerData.anniversary || lead.doc.anniversary
