@@ -102,6 +102,29 @@
           </div>
         </div>
 
+        <!-- Task requirement (Tickets only) -->
+        <div v-if="props.doctype === 'CRM Ticket'" class="rounded-lg border p-3" :class="requiresTask ? 'border-amber-300 bg-amber-50' : 'border-ink-gray-3 bg-ink-gray-1'">
+          <div class="flex items-start gap-3">
+            <FeatherIcon :name="requiresTask ? 'alert-triangle' : 'check-circle'" class="w-4 h-4" :class="requiresTask ? 'text-amber-600' : 'text-green-600'" />
+            <div class="flex-1">
+              <p class="text-sm" :class="requiresTask ? 'text-amber-900' : 'text-ink-gray-9'">
+                <template v-if="requiresTask">
+                  {{ __('This ticket has no tasks. Please add a task before assigning.') }}
+                </template>
+                <template v-else>
+                  {{ __('This ticket already has {0} task(s). Adding another task is optional.', [linkedTasksCount]) }}
+                </template>
+              </p>
+              <div class="mt-2 flex items-center gap-2">
+                <Button size="sm" variant="solid" @click="openTaskModal">
+                  {{ __('Add Task') }}
+                </Button>
+                <span v-if="pendingTaskCreated" class="text-xs text-green-700">{{ __('Task added and will satisfy the requirement') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Role Selection -->
         <div v-if="assignmentType === 'role'">
           <label class="block text-sm font-medium text-ink-gray-9 mb-2">
@@ -200,12 +223,22 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Inline Task Modal for tickets -->
+  <TaskModal
+    v-if="props.doctype === 'CRM Ticket'"
+    v-model="showTask"
+    :doctype="'CRM Ticket'"
+    :doc="props.doc?.name"
+    @after="onTaskCreated"
+  />
 </template>
 
 <script setup>
 import UserAvatar from '@/components/UserAvatar.vue'
 import { usersStore } from '@/stores/users'
 import { createResource, call, Tooltip, FeatherIcon, Popover } from 'frappe-ui'
+import TaskModal from '@/components/Modals/TaskModal.vue'
 import { ref, computed, watch } from 'vue'
 import { formatDate } from '@/utils'
 
@@ -257,6 +290,8 @@ const dialogOptions = computed(() => ({
           label: __('Assign'),
           variant: 'solid',
           loading: isAssigning.value,
+          // Disable in UI as a hint; hard validation also exists in assignToRole()
+          disabled: props.doctype === 'CRM Ticket' && requiresTask.value,
           onClick: () => assignToRole(),
         },
   ],
@@ -290,6 +325,39 @@ const currentAssignments = createResource({
   }),
   auto: true,
 })
+
+// Linked tasks for ticket to determine requirement
+const linkedTasks = createResource({
+  url: 'frappe.client.get_list',
+  params: {
+    doctype: 'CRM Task',
+    fields: ['name'],
+  },
+  makeParams: () => ({
+    doctype: 'CRM Task',
+    fields: ['name'],
+    filters: {
+      reference_doctype: 'CRM Ticket',
+      reference_docname: props.doc?.name,
+    },
+    limit_page_length: 5,
+  }),
+  auto: props.doctype === 'CRM Ticket',
+})
+
+const linkedTasksCount = computed(() => Array.isArray(linkedTasks.data) ? linkedTasks.data.length : 0)
+const pendingTaskCreated = ref(false)
+const requiresTask = computed(() => props.doctype === 'CRM Ticket' && (linkedTasksCount.value === 0 && !pendingTaskCreated.value))
+const showTask = ref(false)
+function openTaskModal() {
+  error.value = ''
+  showTask.value = true
+}
+function onTaskCreated(d) {
+  // When a task is created from the modal, mark requirement as satisfied and refresh
+  pendingTaskCreated.value = true
+  linkedTasks.fetch()
+}
 
 // Check if all eligible users for a role have been assigned to this document
 const roleAssignmentStatus = createResource({
@@ -402,6 +470,22 @@ async function assignToRole() {
   if (assignmentType.value === 'user' && !selectedUser.value) {
     error.value = __('Please select an employee')
     return
+  }
+
+  // Enforce task requirement for tickets
+  if (props.doctype === 'CRM Ticket') {
+    try {
+      if (!Array.isArray(linkedTasks.data)) {
+        await linkedTasks.fetch()
+      }
+    } catch (e) {
+      // ignore fetch errors; we'll still validate with what we have
+    }
+    const count = Array.isArray(linkedTasks.data) ? linkedTasks.data.length : 0
+    if (count === 0 && !pendingTaskCreated.value) {
+      error.value = __('Please add at least one task to this ticket before assigning')
+      return
+    }
   }
 
   // Check if all eligible users are assigned for round-robin
