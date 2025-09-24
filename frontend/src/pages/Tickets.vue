@@ -502,22 +502,6 @@ function parseRows(rows, columns) {
         } catch (e) {
           _row[key] = []
         }
-      } else if (key === 'assigned_to') {
-        // Backwards-compatible single-assignee support for saved views
-        try {
-          const { getUser } = usersStore()
-          if (value) {
-            const user = getUser(value)
-            _row[key] = {
-              label: user?.full_name,
-              ...user,
-            }
-          } else {
-            _row[key] = parseValue(value, column)
-          }
-        } catch (e) {
-          _row[key] = parseValue(value, column)
-        }
       } else {
         _row[key] = parseValue(value, column)
       }
