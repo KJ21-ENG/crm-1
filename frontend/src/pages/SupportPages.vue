@@ -142,7 +142,9 @@
     <template #body-content>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-ink-gray-7 mb-2">{{ __('Page Name') }}</label>
+          <label class="block text-sm font-medium text-ink-gray-7 mb-2">
+            {{ __('Page Name') }} <span class="text-red-600">*</span>
+          </label>
           <TextInput 
             v-model="formData.page_name" 
             :placeholder="__('Enter page name')" 
@@ -151,7 +153,9 @@
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-ink-gray-7 mb-2">{{ __('Support Link') }}</label>
+          <label class="block text-sm font-medium text-ink-gray-7 mb-2">
+            {{ __('Support Link') }} <span class="text-red-600">*</span>
+          </label>
           <TextInput 
             v-model="formData.support_link" 
             :placeholder="__('https://example.com/support')" 
@@ -314,9 +318,10 @@ async function savePage() {
     toast.error(__('Please fill in all required fields'))
     return
   }
-  
-  if (!formData.support_link.startsWith('http://') && !formData.support_link.startsWith('https://')) {
-    toast.error(__('Support link must start with http:// or https://'))
+  // Accept http(s) URLs or domain names like xyz.com
+  const supportLinkPattern = /^(https?:\/\/[\w.-]+(?:\/\S*)?|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/
+  if (!supportLinkPattern.test(formData.support_link)) {
+    toast.error(__('Support link must be a valid URL (http://, https://) or a domain name like xyz.com'))
     return
   }
   

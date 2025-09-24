@@ -17,10 +17,11 @@ class CRMSupportPages(Document):
 	def validate(self):
 		"""Validate support link format"""
 		if self.support_link:
-			# Basic URL validation
-			if not (self.support_link.startswith('http://') or self.support_link.startswith('https://')):
-				frappe.throw("Support link must start with http:// or https://")
-				
+			# Accept http(s) URLs or domain names like xyz.com
+			import re
+			pattern = r'^(https?://[\w\.-]+(?:/\S*)?|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$'
+			if not re.match(pattern, self.support_link):
+				frappe.throw("Support link must be a valid URL (http://, https://) or a domain name like xyz.com")
 			# Check for duplicate active pages with same name
 			existing = frappe.db.exists(
 				'CRM Support Pages',
