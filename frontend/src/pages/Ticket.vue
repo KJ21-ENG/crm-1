@@ -674,6 +674,11 @@ const ticket = createResource({
       aadhaar_card_number: data.aadhaar_card_number,
       customer_id: data.customer_id
     })
+    console.log('Ticket assignment data:', {
+      _assign: data._assign,
+      owner: data.owner,
+      ticket_owner: data.ticket_owner
+    })
     errorTitle.value = ''
     errorMessage.value = ''
   },
@@ -700,6 +705,12 @@ const assignees = createResource({
   url: 'crm.api.doc.get_assigned_users',
   params: { doctype: 'CRM Ticket', name: props.ticketId },
   auto: true,
+  onSuccess: (data) => {
+    console.log('Assignees loaded:', data)
+  },
+  onError: (error) => {
+    console.error('Error loading assignees:', error)
+  }
 })
 
 const sections = createResource({
@@ -1139,12 +1150,61 @@ const { canWrite } = permissionsStore()
 const { isAdmin, getUser } = usersStore()
 const isAssignedToThisTicket = computed(() => {
   try {
-    const list = assignees?.data || []
     const sessionUser = getUser().name
-    return Array.isArray(list) && list.some((a) => a?.name === sessionUser)
+    
+    // Check assignees from separate API call
+    const assigneesList = assignees?.data || []
+    const isInAssignees = Array.isArray(assigneesList) && assigneesList.some((a) => a?.name === sessionUser)
+    
+    // Also check _assign field from ticket data
+    const ticketAssignees = ticket.data?._assign || []
+    const isInTicketAssignees = Array.isArray(ticketAssignees) && ticketAssignees.includes(sessionUser)
+    
+    const isAssigned = isInAssignees || isInTicketAssignees
+    
+    console.log('Checking assignment:', { 
+      sessionUser, 
+      assigneesList, 
+      ticketAssignees,
+      isInAssignees,
+      isInTicketAssignees,
+      isAssigned 
+    })
+    
+    return isAssigned
   } catch (e) {
+    console.error('Error checking assignment:', e)
     return false
   }
 })
-const canWriteTickets = computed(() => isAdmin() || (canWrite('Tickets') && isAssignedToThisTicket.value))
+const isOwnerOfThisTicket = computed(() => {
+  try {
+    const sessionUser = getUser().name
+    const isOwner = ticket.data?.owner === sessionUser || ticket.data?.ticket_owner === sessionUser
+    console.log('Checking ownership:', { 
+      sessionUser, 
+      owner: ticket.data?.owner, 
+      ticket_owner: ticket.data?.ticket_owner, 
+      isOwner 
+    })
+    return isOwner
+  } catch (e) {
+    console.error('Error checking ownership:', e)
+    return false
+  }
+})
+const canWriteTickets = computed(() => {
+  const result = isAdmin() || 
+    (canWrite('Tickets') && (isAssignedToThisTicket.value || isOwnerOfThisTicket.value))
+  console.log('Permission check:', {
+    isAdmin: isAdmin(),
+    canWriteTickets: canWrite('Tickets'),
+    isAssigned: isAssignedToThisTicket.value,
+    isOwner: isOwnerOfThisTicket.value,
+    finalResult: result,
+    sessionUser: getUser().name,
+    userData: getUser()
+  })
+  return result
+})
 </script> 
