@@ -830,6 +830,7 @@ def remove_assignments(doctype, name, assignees, ignore_permissions=False):
 
 @frappe.whitelist()
 def get_assigned_users(doctype, name, default_assigned_to=None):
+	# 1) Gather ToDo-based assignees (Open/Working/anything except Cancelled)
 	assigned_users = frappe.get_all(
 		"ToDo",
 		fields=["allocated_to"],
@@ -841,12 +842,43 @@ def get_assigned_users(doctype, name, default_assigned_to=None):
 		pluck="allocated_to",
 	)
 
-	users = list(set(assigned_users))
+	users = set([u for u in assigned_users if u])
 
-	# if users is empty, add default_assigned_to
+	# 2) Merge parent document's _assign JSON list (if present)
+	try:
+		_assign = frappe.db.get_value(doctype, name, "_assign")
+		if _assign:
+			_assign_list = frappe.parse_json(_assign) if isinstance(_assign, str) else _assign
+			if isinstance(_assign_list, list):
+				for u in _assign_list:
+					if isinstance(u, str) and u:
+						users.add(u)
+	except Exception:
+		pass
+
+	# 3) Merge explicit assigned_to/assign_to field from parent, if available
+	try:
+		# Many doctypes (e.g., CRM Ticket) use 'assigned_to'; some use 'assign_to'
+		assigned_to = None
+		try:
+			assigned_to = frappe.db.get_value(doctype, name, "assigned_to")
+		except Exception:
+			assigned_to = None
+		if not assigned_to:
+			try:
+				assigned_to = frappe.db.get_value(doctype, name, "assign_to")
+			except Exception:
+				assigned_to = None
+		if assigned_to:
+			users.add(assigned_to)
+	except Exception:
+		pass
+
+	# 4) Fallback: if still empty, include provided default
 	if not users and default_assigned_to:
-		users = [default_assigned_to]
-	return users
+		users.add(default_assigned_to)
+
+	return list(users)
 
 
 @frappe.whitelist()
