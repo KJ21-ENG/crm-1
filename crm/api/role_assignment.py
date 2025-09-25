@@ -317,7 +317,7 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
             if user_name not in assign_list:
                 assign_list.append(user_name)
             task_doc.assigned_to = user_name
-            task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+            task_doc.due_date = frappe.utils.now_datetime() + timedelta(hours=2)
             task_doc.save(ignore_permissions=True)
             frappe.db.set_value("CRM Task", task_doc.name, "_assign", json.dumps(assign_list))
 
@@ -368,6 +368,7 @@ def assign_to_user(lead_name, user_name, assigned_by=None):
                 "description": f"Task created for direct lead assignment to {user_name} - {first_name} {last_name}".strip(),
                 "priority": "Medium",
                 "status": "Todo",
+                "due_date": frappe.utils.now_datetime() + timedelta(hours=2),
             })
             task_doc.insert(ignore_permissions=True)
         

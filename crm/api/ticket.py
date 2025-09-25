@@ -1373,7 +1373,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_cr
                 if user_name not in assign_list:
                     assign_list.append(user_name)
                 task_doc.assigned_to = user_name
-                task_doc.due_date = frappe.utils.now_datetime() + timedelta(days=1)
+                task_doc.due_date = frappe.utils.now_datetime() + timedelta(hours=2)
                 task_doc.save(ignore_permissions=True)
                 frappe.db.set_value("CRM Task", task_doc.name, "_assign", frappe.as_json(assign_list))
             else:
@@ -1386,6 +1386,7 @@ def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_cr
                     "description": f"Task created for direct ticket assignment to {user_name} - {ticket_subject}".strip(),
                     "priority": ticket_priority,
                     "status": "Todo",
+                    "due_date": frappe.utils.now_datetime() + timedelta(hours=2),
                 })
                 task_doc.insert(ignore_permissions=True)
         
