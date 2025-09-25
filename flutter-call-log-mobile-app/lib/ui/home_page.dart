@@ -10,8 +10,10 @@ import 'package:flutter/rendering.dart';
 import '../api_service.dart';
 import '../call_log_sync_service.dart';
 import '../background_task.dart';
+import '../update_service.dart';
 import 'login_page.dart';
 import 'permissions_page.dart';
+import 'update_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -347,6 +349,58 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _checkForUpdates() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Checking for updates...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final updateInfo = await UpdateService().checkForUpdates(silent: false);
+      
+      if (updateInfo != null && mounted) {
+        // Show update dialog
+        showUpdateDialog(
+          context,
+          updateInfo: updateInfo,
+          isForceUpdate: updateInfo.isForceUpdate,
+        );
+      } else if (mounted) {
+        // No update available
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are using the latest version!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update check failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -397,6 +451,9 @@ class _HomePageState extends State<HomePage> {
                                 MaterialPageRoute(builder: (_) => const PermissionsPage()),
                               );
                               break;
+                            case 'check_update':
+                              await _checkForUpdates();
+                              break;
                             case 'logout':
                               final confirm = await showDialog<bool>(
                                 context: context,
@@ -431,6 +488,7 @@ class _HomePageState extends State<HomePage> {
                         },
                         itemBuilder: (ctx) => const [
                           PopupMenuItem(value: 'permissions', child: Text('Request Permissions')),
+                          PopupMenuItem(value: 'check_update', child: Text('Check for Updates')),
                           PopupMenuItem(value: 'logout', child: Text('Logout')),
                         ],
                       ),
