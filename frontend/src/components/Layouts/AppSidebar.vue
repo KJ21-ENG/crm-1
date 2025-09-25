@@ -69,17 +69,17 @@
               class="mx-2 my-0.5"
             />
           </nav>
+          <!-- Admin-only Requests link -->
+          <div v-if="showRequestsLink" class="flex flex-col">
+            <SidebarLink
+              :icon="'users'"
+              :label="__('Requests')"
+              :to="{ name: 'Requests' }"
+              :isCollapsed="isSidebarCollapsed"
+              class="mx-2 my-0.5"
+            />
+          </div>
         </Section>
-      </div>
-      <!-- Admin-only Requests link -->
-      <div v-if="showRequestsLink" class="mt-2">
-        <SidebarLink
-          :icon="'users'"
-          :label="__('Requests')"
-          :to="{ name: 'Requests' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-0.5"
-        />
       </div>
     </div>
     <div class="m-2 flex flex-col gap-1">
