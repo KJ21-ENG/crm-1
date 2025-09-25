@@ -121,13 +121,6 @@ function sendReply(n) {
   quickReplyText.value[n.name] = ''
 }
 
-function onKeydown(e) {
-  if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-    e.preventDefault()
-    toggle()
-  }
-}
-
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   $socket.on('crm_task_notification', (data) => {
