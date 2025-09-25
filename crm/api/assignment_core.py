@@ -175,7 +175,8 @@ def _ensure_task(parent_doctype: str, parent_name: str, assigned_user: str, role
 		if assigned_user not in assign_list:
 			assign_list.append(assigned_user)
 		task_doc.assigned_to = assigned_user
-		task_doc.due_date = now_datetime() + timedelta(days=1)
+		# Update existing task to have a sooner due date of 2 hours
+		task_doc.due_date = now_datetime() + timedelta(hours=2)
 		task_doc.save(ignore_permissions=True)
 		frappe.db.set_value("CRM Task", task_doc.name, "_assign", frappe.as_json(assign_list))
 	else:
@@ -188,16 +189,17 @@ def _ensure_task(parent_doctype: str, parent_name: str, assigned_user: str, role
 			details = frappe.db.get_value("CRM Ticket", parent_name, ["ticket_subject"], as_dict=True) or {}
 			title = f"Handle ticket: {details.get('ticket_subject') or parent_name}"
 
+		# Create new task with simple title and 2h due date, medium priority
 		task_doc = frappe.get_doc({
 			"doctype": "CRM Task",
-			"title": title,
+			"title": title or ("Ticket Task" if parent_doctype == "CRM Ticket" else "Lead Task"),
 			"assigned_to": assigned_user,
 			"reference_doctype": parent_doctype,
 			"reference_docname": parent_name,
 			"description": f"Task created for {parent_doctype.replace('CRM ', '').lower()} assignment to {role_name} role - {parent_name}",
 			"priority": "Medium",
 			"status": "Todo",
-			"due_date": now_datetime(),
+			"due_date": now_datetime() + timedelta(hours=2),
 		})
 		task_doc.insert(ignore_permissions=True)
 
