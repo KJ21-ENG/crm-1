@@ -5,6 +5,8 @@ import 'ui/home_page.dart';
 import 'ui/splash_page.dart';
 import 'ui/theme.dart';
 import 'ui/scroll_behavior.dart';
+import 'ui/update_dialog.dart';
+import 'update_service.dart';
 import 'widget_bridge.dart';
 
 void main() {
@@ -48,6 +50,33 @@ class _AuthGateState extends State<_AuthGate> {
     await ApiService.instance.init();
     final ok = await ApiService.instance.isAuthenticated();
     setState(() => _authed = ok);
+    
+    // Check for updates after authentication
+    if (ok) {
+      _checkForUpdates();
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final updateInfo = await UpdateService().checkForUpdates(silent: true);
+      if (updateInfo != null && mounted) {
+        // Check if user has dismissed this version
+        final dismissed = await UpdateService().hasUserDismissedUpdate(updateInfo.latestVersion);
+        
+        if (!dismissed) {
+          // Show update dialog
+          showUpdateDialog(
+            context,
+            updateInfo: updateInfo,
+            isForceUpdate: updateInfo.isForceUpdate,
+          );
+        }
+      }
+    } catch (e) {
+      // Silently handle update check errors
+      debugPrint('Update check failed: $e');
+    }
   }
 
   @override

@@ -12,6 +12,8 @@ class ApiService {
   String? _sessionId;
   String? lastLoginDebug;
 
+  String get baseUrl => _baseUrl;
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _baseUrl = prefs.getString('server_url') ?? _baseUrl;
