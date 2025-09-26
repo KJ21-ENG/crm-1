@@ -92,7 +92,7 @@ def get_assignable_users_public():
 
 
 @frappe.whitelist()
-def create_assignment_request(reference_doctype, reference_name, requested_user, reason=None):
+def create_assignment_request(reference_doctype, reference_name, requested_user, reason):
     if reference_doctype not in ALLOWED_REFERENCE_DOCTYPES:
         frappe.throw(_(f"Unsupported doctype for assignment request: {reference_doctype}"))
 
@@ -104,6 +104,10 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
         "User", requested_user, "enabled"
     ):
         frappe.throw(_(f"Requested user {requested_user} is not valid/enabled"))
+    
+    if not reason:
+        return {"success": False, "error": "Please enter the reason"}
+
 
     doc = frappe.get_doc(
         {
@@ -112,7 +116,7 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             "reference_name": reference_name,
             "requested_user": requested_user,
             "requested_by": frappe.session.user,
-            "reason": reason or "",
+            "reason": reason,
             "status": "Pending",
         }
     )

@@ -107,7 +107,7 @@
         <!-- Role Selection -->
         <div v-if="assignmentType === 'role'">
           <label class="block text-sm font-medium text-ink-gray-9 mb-2">
-            {{ __('Select Role for Assignment') }}
+            {{ __('Select Role for Assignment') }} <span class="text-red-600">*</span>
           </label>
           <select 
             v-model="selectedRole"
@@ -155,7 +155,7 @@
         <!-- Direct User Selection / Request Selection -->
         <div v-if="assignmentType === 'user' || assignmentType === 'request'">
           <label class="block text-sm font-medium text-ink-gray-9 mb-2">
-            {{ assignmentType === 'user' ? __('Select Employee for Direct Assignment') : __('Select Employee to Request') }}
+            {{ assignmentType === 'user' ? __('Select Employee for Direct Assignment') : __('Select Employee to Request') }} <span class="text-red-600">*</span>
           </label>
           <select 
             v-model="selectedUser"
@@ -173,7 +173,7 @@
             </option>
           </select>
           <div v-if="assignmentType === 'request'" class="mt-2">
-            <label class="block text-sm font-medium text-ink-gray-9 mb-1">{{ __('Reason (optional)') }}</label>
+            <label class="block text-sm font-medium text-ink-gray-9 mb-1">{{ __('Reason') }} <span class="text-red-600">*</span></label>
             <textarea v-model="requestReason" class="form-control w-full" rows="3" :placeholder="__('Add a note for admin...')" />
             <div class="text-xs text-amber-600 mt-1">
               {{ __('This will send a request to admins. It will be assigned only after approval.') }}
@@ -406,8 +406,13 @@ async function assignToRole() {
     return
   }
   
-  if (assignmentType.value === 'user' && !selectedUser.value) {
+  if (assignmentType.value === 'request' && !selectedUser.value) {
     error.value = __('Please select an employee')
+    return
+  }
+  
+  if (assignmentType.value === 'request' && !requestReason.value) {
+    error.value = __('Please enter the reason')
     return
   }
 
