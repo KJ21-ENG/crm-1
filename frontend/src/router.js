@@ -246,4 +246,50 @@ router.beforeEach(async (to, from, next) => {
   }
 })
 
+// Update document title based on current route
+router.afterEach((to) => {
+  let title = 'Frappe CRM'
+
+  // Build dynamic title based on route and view parameters
+  const routeTitles = {
+    'Home': 'CRM',
+    'Dashboard': 'Dashboard',
+    'Tickets': 'Tickets',
+    'Ticket': 'Ticket',
+    'Leads': 'Leads',
+    'Lead': 'Lead',
+    'Customers': 'Customers',
+    'Customer': 'Customer',
+    'Support Pages': 'Support Pages',
+    'Notes': 'Notes',
+    'Tasks': 'Tasks',
+    'Call Logs': 'Call Logs',
+    'Round Robin': 'Round Robin',
+    'Welcome': 'Welcome',
+    'Not Permitted': 'Access Denied',
+    'Invalid Page': 'Page Not Found'
+  }
+
+  const baseTitle = routeTitles[to.name] || 'CRM'
+
+  // Check if there's a view parameter to append view type
+  if (to.params.viewType && to.params.viewType !== 'list') {
+    const viewTypeMap = {
+      'kanban': 'Kanban',
+      'group_by': 'Group By',
+      'calendar': 'Calendar'
+    }
+    const viewType = viewTypeMap[to.params.viewType] || to.params.viewType
+    title = `${baseTitle} - ${viewType} - CRM`
+  } else if (to.query.view) {
+    // If there's a specific view name, use it
+    title = `${baseTitle} - ${to.query.view} - CRM`
+  } else {
+    // Default format
+    title = `${baseTitle} - CRM`
+  }
+
+  document.title = title
+})
+
 export default router
