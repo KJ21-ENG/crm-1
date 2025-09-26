@@ -89,6 +89,12 @@ class CRMAssignmentRequest(Document):
 				"width": "8rem",
 			},
 			{
+				"label": _("Reason"),
+				"type": "Data",
+				"key": "reason",
+				"width": "8rem",
+			},
+			{
 				"label": _("Approved On"),
 				"type": "Datetime",
 				"key": "approved_on",
