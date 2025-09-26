@@ -44,6 +44,15 @@
           {{ __('Reject') }}
         </Button>
       </div>
+      <div
+        v-if="column.key === 'reason'"
+        class="truncate text-base"
+        @click="(event) => emit('applyFilter', { event, idx, column, item, firstColumn: columns[0] })"
+      >
+        <Tooltip :text="item">
+          <div>{{ item }}</div>
+        </Tooltip>
+      </div>
       <ListRowItem v-else :item="item" :align="column.align">
         <template #default="{ label }">
           <div
