@@ -139,13 +139,14 @@ import { FormControl, Badge, ErrorMessage } from 'frappe-ui'
 import { getSettings } from '@/stores/settings'
 import { showSettings } from '@/composables/settings'
 
-const { _settings: settings, setupBrand } = getSettings()
+const { _settings: settings, setupBrand, updateFavicon } = getSettings()
 
 function updateSettings() {
   settings.save.submit(null, {
     onSuccess: () => {
       showSettings.value = false
       setupBrand()
+      updateFavicon()
     },
   })
 }
