@@ -121,10 +121,21 @@ class CRMCallLog(Document):
 			)
 		else:
 			if customer_phone_digits:
-				open_leads = frappe.get_all(
+				# Match against primary mobile_no
+				leads_primary = frappe.get_all(
 					"CRM Lead",
 					filters={
 						"mobile_no": ("like", f"%{customer_phone_digits}"),
+						"status": ("!=", "Account Activated"),
+					},
+					pluck="name",
+				)
+				
+				# Match against alternate_mobile_no
+				leads_alternate = frappe.get_all(
+					"CRM Lead",
+					filters={
+						"alternative_mobile_no": ("like", f"%{customer_phone_digits}"),
 						"status": ("!=", "Account Activated"),
 					},
 					pluck="name",
@@ -138,6 +149,8 @@ class CRMCallLog(Document):
 					},
 					pluck="name",
 				)
+
+		open_leads = list(set(leads_primary + leads_alternate))
 
 		for l in open_leads:
 			self.link_with_reference_doc("CRM Lead", l)
