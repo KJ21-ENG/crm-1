@@ -198,8 +198,7 @@ def prepare_call_log_document(call_log_data):
     # Apply prioritized mapping rules with original/native status taking precedence
     if call_type == 'Incoming':
         if is_incoming_rejected:
-            status = 'Canceled'
-        elif is_incoming_unanswered:
+            # Normalize rejected/canceled incoming to Missed Call to keep 3-status model
             status = 'Missed Call'
         elif duration > 0:
             status = 'Completed'
@@ -256,6 +255,12 @@ def prepare_call_log_document(call_log_data):
         if not customer_name:
             customer_name = f"Call From {customer}"
 
+    # Force duration=0 for missed/unanswered outcomes; preserve native_duration separately
+    final_duration = flt(call_log_data.get('duration', 0))
+    if status in ['Missed Call', 'Did Not Picked']:
+        # keep original via native_duration if provided or set below
+        final_duration = 0
+
     doc_data = {
         'doctype': 'CRM Call Log',
         'id': call_log_id,
@@ -263,7 +268,7 @@ def prepare_call_log_document(call_log_data):
         'to': to_number,
         'type': call_type,
         'status': status,
-        'duration': flt(call_log_data.get('duration', 0)),
+        'duration': final_duration,
         'start_time': get_datetime(call_log_data['start_time']),
         'end_time': get_datetime(call_log_data.get('end_time', call_log_data['start_time'])),
         'telephony_medium': 'Manual',  # Indicates mobile app source
@@ -289,8 +294,17 @@ def prepare_call_log_document(call_log_data):
     ]
 
     for field in optional_fields:
-        if call_log_data.get(field):
+        if call_log_data.get(field) is not None:
             doc_data[field] = call_log_data[field]
+
+    # Ensure native_duration captures original non-zero value if we zeroed duration
+    if status in ['Missed Call', 'Did Not Picked']:
+        if not doc_data.get('native_duration'):
+            try:
+                orig = flt(call_log_data.get('duration', 0))
+                doc_data['native_duration'] = orig
+            except Exception:
+                pass
     
     # Add contact/lead references if found
     if contact_info:
