@@ -94,6 +94,12 @@
           />
 
           <FormControl
+            v-model="newCustomer.alternative_mobile_no"
+            label="Alternative Mobile Number"
+            placeholder="Enter Alternate mobile number"
+          />
+
+          <FormControl
             v-model="newCustomer.marital_status"
             label="Marital Status"
             type="select"
@@ -225,6 +231,7 @@ const newCustomer = ref({
   last_name: '',
   email: '',
   mobile_no: '',
+  alternative_mobile_no: '',
   marital_status: '',
   date_of_birth: '',
   anniversary: '',
@@ -312,6 +319,7 @@ const createCustomer = async () => {
       first_name: newCustomer.value.first_name,
       last_name: newCustomer.value.last_name,
       email: newCustomer.value.email,
+      alternative_mobile_no: newCustomer.value.alternative_mobile_no,
       marital_status: newCustomer.value.marital_status,
       date_of_birth: newCustomer.value.date_of_birth || null,
       anniversary: newCustomer.value.anniversary || null,

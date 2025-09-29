@@ -89,6 +89,12 @@
    "unique": 1
   },
   {
+   "fieldname": "alternative_mobile_no",
+   "fieldtype": "Data",
+   "label": "Alternative Mobile No",
+   "unique": 1
+  },
+  {
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone"

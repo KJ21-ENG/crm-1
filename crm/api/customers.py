@@ -113,6 +113,7 @@ def process_lead_creation(lead_data):
             email=lead_data.get("email"),
             organization=lead_data.get("organization"),
             job_title=lead_data.get("job_title"),
+            alternative_mobile_no=lead_data.get("alternative_mobile_no"),
             pan_card_number=lead_data.get("pan_card_number"),
             aadhaar_card_number=lead_data.get("aadhaar_card_number"),
             referral_code=lead_data.get("referral_code"),

@@ -425,6 +425,12 @@
         />
 
         <FormControl
+          v-model="editCustomer.alternative_mobile_no"
+          label="Alternative Mobile Number"
+          placeholder="Enter alternative mobile number"
+        />
+
+        <FormControl
           v-model="editCustomer.marital_status"
           label="Marital Status"
           type="select"
@@ -752,6 +758,7 @@ function openEditDialog() {
     last_name: customer.value.data.last_name || '',
     email: customer.value.data.email || '',
     mobile_no: customer.value.data.mobile_no || '',
+    alternative_mobile_no: customer.value.data.alternative_mobile_no || '',
     organization: customer.value.data.organization || '',
     address_line_1: customer.value.data.address_line_1 || '',
     address_line_2: customer.value.data.address_line_2 || '',
