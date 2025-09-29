@@ -185,23 +185,33 @@ def prepare_call_log_document(call_log_data):
         else:
             call_type = 'Outgoing'
     
-    # Map status to frontend-compatible options prioritizing native call type
+    # Map status to frontend-compatible options prioritizing native/original status
     duration = flt(call_log_data.get('duration', 0))
-    original_status = call_log_data.get('status', 'Completed')
+    original_status = call_log_data.get('status', '').strip() or call_log_data.get('native_call_status', '').strip() or 'Completed'
 
-    # Prioritize native call type information for accurate status determination
-    if original_status in ['No Answer', 'Canceled']:
-        # Keep the original status if it was determined by native call type
-        status = original_status
-    elif duration > 0:
-        # Calls with duration > 0 are generally completed, but check for edge cases
-        status = 'Completed'
-    else:
-        # Zero duration calls: determine based on call type
-        if call_type == 'Outgoing':
-            status = 'Did Not Picked'
-        else:  # Incoming
+    # Normalize original/native status keywords
+    orig_norm = original_status.lower()
+    is_incoming_unanswered = orig_norm in ['missed', 'no answer', 'no_answer']
+    is_incoming_rejected = orig_norm in ['rejected', 'canceled', 'cancelled', 'declined']
+    is_outgoing_unanswered = orig_norm in ['no answer', 'no_answer', 'did not pick', 'did_not_pick', 'canceled', 'cancelled']
+
+    # Apply prioritized mapping rules with original/native status taking precedence
+    if call_type == 'Incoming':
+        if is_incoming_rejected:
+            status = 'Canceled'
+        elif is_incoming_unanswered:
             status = 'Missed Call'
+        elif duration > 0:
+            status = 'Completed'
+        else:
+            status = 'Missed Call'
+    else:  # Outgoing
+        if is_outgoing_unanswered:
+            status = 'Did Not Picked'
+        elif duration > 0:
+            status = 'Completed'
+        else:
+            status = 'Did Not Picked'
 
     # Validate against allowed statuses (including new ones)
     valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled', 'Did Not Picked', 'Missed Call']
@@ -275,7 +285,7 @@ def prepare_call_log_document(call_log_data):
     optional_fields = [
         'device_call_id', 'contact_name', 'recording_url',
         'reference_doctype', 'reference_docname', 'native_call_type',
-        'native_duration', 'method'
+        'native_call_status', 'native_duration', 'method'
     ]
 
     for field in optional_fields:
@@ -487,7 +497,7 @@ def get_user_call_logs(limit=50, offset=0, from_date=None, to_date=None):
             'name', 'from', 'to', 'type', 'status', 'duration', 'native_duration',
             'start_time', 'end_time', 'telephony_medium', 'medium', 'method',
             'employee', 'customer', 'customer_name', 'is_cold_call', 'native_call_type',
-            'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
+            'native_call_status', 'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
         ]
         
         call_logs = frappe.get_list(

@@ -59,6 +59,9 @@ crm.patches.v1_0.add_method_and_native_duration_fields
 # Fix existing call log records where native call type was not properly prioritized
 crm.patches.v1_0.fix_call_log_statuses_native_call_type_priority
 
+# Add native call status field and backfill values
+crm.patches.v1_0.add_native_call_status_field
+
 crm.patches.v1_0.restructure_referral_system # 27-01-2025
 crm.patches.v1_0.update_lead_form_fields # 27-01-2025
 crm.patches.v1_0.fix_lead_modal_referral_fields # 27-01-2025

@@ -102,7 +102,20 @@ Map<String, dynamic> toCrmCallLog(CallLogEntry e, String userMobile) {
     'start_time': fmt(ts),
     'end_time': fmt(endTs),
     'device_call_id': deviceId,
-    'native_call_type': callTypeHint(e.callType),  // Store original native call type
+    'native_call_type': callTypeHint(e.callType),  // legacy
+    'native_call_status': (() {
+      switch (e.callType) {
+        case CallType.missed:
+          return 'missed';
+        case CallType.rejected:
+          return 'rejected';
+        case CallType.outgoing:
+          return duration > 0 ? 'completed' : 'no_answer';
+        case CallType.incoming:
+        default:
+          return duration > 0 ? 'completed' : 'missed';
+      }
+    })(),
     'native_duration': duration,  // Store original native duration
     'method': 'Mobile',  // Indicate this came from mobile app
     'source': 'Mobile App',

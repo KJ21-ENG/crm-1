@@ -70,6 +70,12 @@
     "description": "Original duration from device call log (seconds)"
    },
   {
+   "fieldname": "native_call_status",
+   "fieldtype": "Data",
+   "label": "Native Call Status",
+   "description": "Original call status from device (e.g., missed, rejected, no answer, canceled, completed)"
+  },
+  {
    "fieldname": "from",
    "fieldtype": "Data",
    "in_list_view": 1,
