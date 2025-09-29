@@ -1130,18 +1130,42 @@ def update_customer_reference_fields(customer_name, unlinked_doctype, unlinked_d
     try:
         customer_doc = frappe.get_doc("CRM Customer", customer_name)
 
-        # Business rule: when unlinking a lead or ticket from a customer,
-        # always clear the corresponding created_from_* field on the customer
+        # Find other linked leads/tickets for this customer (excluding the one being unlinked)
+        next_lead = None
+        next_ticket = None
+
         if unlinked_doctype == "CRM Lead":
-            customer_doc.created_from_lead = None
+            leads = frappe.db.sql(
+                """
+                SELECT name FROM `tabCRM Lead`
+                WHERE customer_id = %s AND name != %s
+                ORDER BY modified DESC
+                LIMIT 1
+                """,
+                (customer_name, unlinked_docname),
+                as_dict=True,
+            )
+            next_lead = leads[0].name if leads else None
+            customer_doc.created_from_lead = next_lead
         elif unlinked_doctype == "CRM Ticket":
-            customer_doc.created_from_ticket = None
+            tickets = frappe.db.sql(
+                """
+                SELECT name FROM `tabCRM Ticket`
+                WHERE customer_id = %s AND name != %s
+                ORDER BY modified DESC
+                LIMIT 1
+                """,
+                (customer_name, unlinked_docname),
+                as_dict=True,
+            )
+            next_ticket = tickets[0].name if tickets else None
+            customer_doc.created_from_ticket = next_ticket
 
         customer_doc.save(ignore_permissions=True)
 
         return {
             "success": True,
-            "message": "Customer reference fields cleared successfully",
+            "message": "Customer reference fields updated successfully",
             "updated_fields": {
                 "created_from_lead": customer_doc.created_from_lead,
                 "created_from_ticket": customer_doc.created_from_ticket,

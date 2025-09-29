@@ -44,6 +44,15 @@ class CRMLead(Document):
 		
 		# Create or update customer record
 		self.create_or_update_customer()
+		# If a customer is linked and their created_from_lead is empty, set it to this lead
+		try:
+			if getattr(self, "customer_id", None):
+				current_val = frappe.db.get_value("CRM Customer", self.customer_id, "created_from_lead")
+				if not current_val:
+					frappe.db.set_value("CRM Customer", self.customer_id, "created_from_lead", self.name)
+		except Exception:
+			# non-fatal
+			pass
 		
 		emit_activity_update("CRM Lead", self.name)
 		
