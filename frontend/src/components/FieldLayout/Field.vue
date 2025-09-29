@@ -242,7 +242,7 @@
       @click="field.onClick && field.onClick()"
       class="mt-1"
     />
-    <FormControl
+    <!-- <FormControl
       v-else
       type="text"
       :placeholder="getPlaceholder(field)"
@@ -250,7 +250,31 @@
       :disabled="Boolean(field.read_only)"
       :description="field.description"
       @change="fieldChange($event.target.value, field)"
-    />
+    /> -->
+    <div v-else class="flex items-center gap-2 w-full">
+      <FormControl
+        class="flex-1"
+        type="text"
+        :placeholder="getPlaceholder(field)"
+        :value="getDataValue(data[field.fieldname], field)"
+        :disabled="Boolean(field.read_only)"
+        :description="field.description"
+        @change="fieldChange($event.target.value, field)"
+      />
+
+      <!-- Only show Swap for mobile_no -->
+      <Tooltip text="Swap Mobile with Alternate">
+        <Button
+          v-if="field.fieldname === 'mobile_no'"
+          size="sm"
+          variant="outline"
+          @click="$emit('swap')"
+        >
+          <FeatherIcon name="repeat" class="h-2 w-2" />
+        </Button>
+      </Tooltip>
+    </div>
+
   </div>
 </template>
 <script setup>

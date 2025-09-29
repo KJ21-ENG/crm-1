@@ -19,6 +19,7 @@
               :data-name="section.name"
               :modelValue="modelValue"
               @update:modelValue="$emit('update:modelValue', $event)"
+              @swap="$emit('swap')" 
             />
           </template>
         </div>

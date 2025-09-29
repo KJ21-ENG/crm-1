@@ -248,6 +248,7 @@ class CRMLead(Document):
 				email=self.email,
 				organization=self.organization,
 				job_title=self.job_title,
+				alternative_mobile_no=self.alternative_mobile_no,
 				pan_card_number=self.pan_card_number,
 				aadhaar_card_number=self.aadhaar_card_number,
 				referral_through=self.referral_through,

@@ -29,7 +29,13 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Lead Form (Left Side) -->
           <div class="lg:col-span-2">
-            <FieldLayout v-if="tabs.data" :tabs="tabs.data" v-model="lead.doc" :doctype="'CRM Lead'" />
+            <FieldLayout
+              v-if="tabs.data"
+              :tabs="tabs.data"
+              v-model="lead.doc"
+              :doctype="'CRM Lead'"
+              @swap="swapNumbers"
+            />
 
             <!-- Assign Task Button Section -->
             <div class="mt-4 flex items-center gap-3 rounded-lg border border-ink-gray-4 bg-ink-gray-1 p-3">
@@ -344,6 +350,7 @@ onMounted(async () => {
     last_name: '',
     email: '',
     mobile_no: '',
+    alternative_mobile_no: '',
     pan_card_number: '', // Identity document field
     aadhaar_card_number: '', // Identity document field
     lead_category: 'Direct', // Set default lead category (Direct/Indirect)
@@ -428,6 +435,15 @@ watch([() => lead.doc?.mobile_no, () => lead.doc?.email], ([mobile, email]) => {
     referralHistory.reload()
   }
 }, { immediate: false })
+
+function swapNumbers() {
+  const mobile = lead.doc.mobile_no
+  const altMobile = lead.doc.alternative_mobile_no
+
+  // simple swap
+  lead.doc.mobile_no = altMobile
+  lead.doc.alternative_mobile_no = mobile
+}
 
 function getStatusColor(status) {
   const colors = {
@@ -798,6 +814,28 @@ const tabs = createResource({
                 // Auto-fill will be triggered by the watcher above
                 console.log('🔍 [LEAD] Mobile number field changed:', lead.doc.mobile_no)
               }
+              // Add input handler to restrict to numbers only
+              field.onInput = (event) => {
+                // Remove non-numeric characters
+                const value = event.target.value.replace(/[^0-9]/g, '')
+                // Limit to 10 digits
+                if (value.length > 10) {
+                  event.target.value = value.substring(0, 10)
+                  lead.doc.mobile_no = value.substring(0, 10)
+                } else {
+                  lead.doc.mobile_no = value
+                }
+              }
+            }
+
+            // Configure contact information fields
+            if (field.fieldname == 'alternative_mobile_no') {
+              field.fieldtype = 'Data'
+              field.label = 'Alternative Mobile No'
+              field.maxlength = 10
+              field.description = ''
+              field.placeholder = 'Mobile No'
+              field.read_only = 0
               // Add input handler to restrict to numbers only
               field.onInput = (event) => {
                 // Remove non-numeric characters

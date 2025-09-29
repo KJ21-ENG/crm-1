@@ -26,7 +26,7 @@
         <template v-for="rowIndex in rowCount" :key="rowIndex">
           <template v-for="colIndex in (section.columns || []).length" :key="colIndex">
             <div>
-              <Field v-if="getFieldAt(colIndex-1, rowIndex-1)" :field="getFieldAt(colIndex-1, rowIndex-1)" />
+              <Field v-if="getFieldAt(colIndex-1, rowIndex-1)" :field="getFieldAt(colIndex-1, rowIndex-1)" @swap="$emit('swap')"/>
             </div>
           </template>
         </template>
