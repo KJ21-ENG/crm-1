@@ -207,9 +207,15 @@ class CRMCallLog(Document):
 			},
 			{
 				"label": "Customer Phone",
-				"type": "Data", 
+				"type": "Data",
 				"key": "customer",
 				"width": "9rem",
+			},
+			{
+				"label": "Method",
+				"type": "Select",
+				"key": "method",
+				"width": "6rem",
 			},
 			{
 				"label": "Type",
@@ -242,6 +248,7 @@ class CRMCallLog(Document):
 			"employee",
 			"customer_name",
 			"customer",
+			"method",
 			"type",
 			"status",
 			"duration",

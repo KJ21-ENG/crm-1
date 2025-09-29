@@ -943,6 +943,20 @@ const quickFilterList = computed(() => {
             { label: __('Completed'), value: 'Completed' },
             { label: __('Did Not Picked'), value: 'Did Not Picked' },
             { label: __('Missed Call'), value: 'Missed Call' },
+            { label: __('Busy'), value: 'Busy' },
+            { label: __('Failed'), value: 'Failed' },
+            { label: __('Canceled'), value: 'Canceled' },
+            { label: __('No Answer'), value: 'No Answer' },
+            { label: __('In Progress'), value: 'In Progress' },
+            { label: __('Initiated'), value: 'Initiated' },
+            { label: __('Queued'), value: 'Queued' },
+            { label: __('Ringing'), value: 'Ringing' },
+          ]
+        } else if (props.doctype === 'CRM Call Log' && key === 'method') {
+          options = [
+            { label: '', value: '' },
+            { label: __('Mobile'), value: 'Mobile' },
+            { label: __('Manual'), value: 'Manual' },
           ]
         } else if (props.doctype === 'CRM Assignment Request' && key === 'status') {
           // Assignment Requests Status options

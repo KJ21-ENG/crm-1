@@ -185,18 +185,28 @@ def prepare_call_log_document(call_log_data):
         else:
             call_type = 'Outgoing'
     
-    # Map status to valid options
-    status = call_log_data.get('status', 'Completed')
-    valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled']
+    # Map status to frontend-compatible options prioritizing native call type
+    duration = flt(call_log_data.get('duration', 0))
+    original_status = call_log_data.get('status', 'Completed')
+
+    # Prioritize native call type information for accurate status determination
+    if original_status in ['No Answer', 'Canceled']:
+        # Keep the original status if it was determined by native call type
+        status = original_status
+    elif duration > 0:
+        # Calls with duration > 0 are generally completed, but check for edge cases
+        status = 'Completed'
+    else:
+        # Zero duration calls: determine based on call type
+        if call_type == 'Outgoing':
+            status = 'Did Not Picked'
+        else:  # Incoming
+            status = 'Missed Call'
+
+    # Validate against allowed statuses (including new ones)
+    valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled', 'Did Not Picked', 'Missed Call']
     if status not in valid_statuses:
-        if status in ['Missed']:
-            status = 'No Answer'
-        elif status in ['Rejected']:
-            status = 'Canceled'
-        elif status in ['Blocked']:
-            status = 'Failed'
-        else:
-            status = 'Completed'
+        status = 'Completed'  # Fallback
 
     # Determine employee and customer based on call type
     employee = current_user  # The mobile app user is always the employee
@@ -248,6 +258,7 @@ def prepare_call_log_document(call_log_data):
         'end_time': get_datetime(call_log_data.get('end_time', call_log_data['start_time'])),
         'telephony_medium': 'Manual',  # Indicates mobile app source
         'medium': 'Mobile App',
+        'method': 'Mobile',  # Indicate this came from mobile app
         'owner': current_user,
         
         # New employee/customer fields
@@ -263,9 +274,10 @@ def prepare_call_log_document(call_log_data):
     # Add optional fields
     optional_fields = [
         'device_call_id', 'contact_name', 'recording_url',
-        'reference_doctype', 'reference_docname'
+        'reference_doctype', 'reference_docname', 'native_call_type',
+        'native_duration', 'method'
     ]
-    
+
     for field in optional_fields:
         if call_log_data.get(field):
             doc_data[field] = call_log_data[field]
@@ -472,9 +484,9 @@ def get_user_call_logs(limit=50, offset=0, from_date=None, to_date=None):
                 filters['start_time'] = ['<=', get_datetime(to_date)]
         
         fields = [
-            'name', 'from', 'to', 'type', 'status', 'duration',
-            'start_time', 'end_time', 'telephony_medium', 'medium',
-            'employee', 'customer', 'customer_name', 'is_cold_call',
+            'name', 'from', 'to', 'type', 'status', 'duration', 'native_duration',
+            'start_time', 'end_time', 'telephony_medium', 'medium', 'method',
+            'employee', 'customer', 'customer_name', 'is_cold_call', 'native_call_type',
             'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
         ]
         

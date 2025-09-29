@@ -79,18 +79,10 @@ export function getCallLogDetail(row, log, columns = []) {
       icon: incoming ? 'phone-incoming' : 'phone-outgoing',
     }
   } else if (row === 'status') {
-    // Derive status label with strong precedence to duration
-    const rawStatus = log.status
-    const type = log.type // 'Incoming' | 'Outgoing'
-    const dur = parseDurationToSeconds(log.duration ?? log._duration, 0)
-
-    // Override everything with the requested logic
-    if (dur > 0) {
-      return { label: 'Completed', color: 'green', name: rawStatus || 'Completed', raw: rawStatus }
-    }
-
-    const zeroDurLabel = type === 'Outgoing' ? 'Did Not Picked' : 'Missed Call'
-    return { label: zeroDurLabel, color: 'red', name: rawStatus || 'No Answer', raw: rawStatus }
+    // Use the status directly from database (now stores correct values)
+    const status = log.status || 'Completed'
+    const color = statusColorMap[status] || 'gray'
+    return { label: status, color: color, name: status, raw: status }
   } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
       label: formatDate(log[row]),
@@ -133,6 +125,8 @@ export const statusLabelMap = {
 
 export const statusColorMap = {
   Completed: 'green',
+  'Did Not Picked': 'red',
+  'Missed Call': 'red',
   Busy: 'orange',
   Failed: 'red',
   Initiated: 'gray',

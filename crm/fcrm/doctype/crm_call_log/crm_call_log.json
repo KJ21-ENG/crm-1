@@ -48,6 +48,27 @@
     "label": "Device Call ID",
     "unique": 1
    },
+   {
+    "fieldname": "native_call_type",
+    "fieldtype": "Data",
+    "label": "Native Call Type",
+    "description": "Original call type from device call log (missed, rejected, incoming, outgoing)"
+   },
+   {
+    "fieldname": "method",
+    "fieldtype": "Select",
+    "in_list_view": 1,
+    "label": "Method",
+    "options": "Mobile\nManual",
+    "default": "Manual",
+    "description": "How the call log was created - Mobile (synced from app) or Manual (created in CRM)"
+   },
+   {
+    "fieldname": "native_duration",
+    "fieldtype": "Duration",
+    "label": "Native Duration",
+    "description": "Original duration from device call log (seconds)"
+   },
   {
    "fieldname": "from",
    "fieldtype": "Data",
@@ -59,7 +80,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Initiated\nRinging\nIn Progress\nCompleted\nFailed\nBusy\nNo Answer\nQueued\nCanceled",
+   "options": "Initiated\nRinging\nIn Progress\nCompleted\nFailed\nBusy\nNo Answer\nQueued\nCanceled\nDid Not Picked\nMissed Call",
    "reqd": 1
   },
   {

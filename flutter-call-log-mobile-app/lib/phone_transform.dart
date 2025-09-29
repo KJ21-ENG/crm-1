@@ -37,11 +37,30 @@ Map<String, dynamic> toCrmCallLog(CallLogEntry e, String userMobile) {
   }
 
   String status = 'Completed';
-  if (e.callType == CallType.missed || duration == 0) {
-    status = 'No Answer';
-  }
-  if (e.callType == CallType.rejected) {
-    status = 'Canceled';
+
+  // Prioritize native call type over duration for accurate status determination
+  switch (e.callType) {
+    case CallType.missed:
+      status = 'No Answer';  // Native missed calls should be No Answer regardless of duration
+      break;
+    case CallType.rejected:
+      status = 'Canceled';   // Native rejected calls should be Canceled regardless of duration
+      break;
+    case CallType.outgoing:
+      // Outgoing calls with duration = 0 are unanswered
+      if (duration == 0) {
+        status = 'No Answer';
+      }
+      // Outgoing calls with duration > 0 are completed
+      break;
+    case CallType.incoming:
+    default:
+      // Incoming calls with duration = 0 are missed
+      if (duration == 0) {
+        status = 'No Answer';
+      }
+      // Incoming calls with duration > 0 are completed
+      break;
   }
 
   final userDigits = _digits(userMobile);
@@ -83,6 +102,9 @@ Map<String, dynamic> toCrmCallLog(CallLogEntry e, String userMobile) {
     'start_time': fmt(ts),
     'end_time': fmt(endTs),
     'device_call_id': deviceId,
+    'native_call_type': callTypeHint(e.callType),  // Store original native call type
+    'native_duration': duration,  // Store original native duration
+    'method': 'Mobile',  // Indicate this came from mobile app
     'source': 'Mobile App',
   };
 }

@@ -47,6 +47,18 @@ crm.patches.v1_0.remove_client_id_from_lead_quick_entry_layout
 # Mobile sync alignment: add device_call_id field to CRM Call Log for duplicate detection
 crm.patches.v1_0.add_device_call_id_to_crm_call_log
 
+# Update call log statuses for frontend compatibility (remove frontend override logic)
+crm.patches.v1_0.update_call_log_statuses_for_frontend_compatibility
+
+# Add native call type field for debugging purposes
+crm.patches.v1_0.add_native_call_type_field
+
+# Add method and native_duration fields for better debugging
+crm.patches.v1_0.add_method_and_native_duration_fields
+
+# Fix existing call log records where native call type was not properly prioritized
+crm.patches.v1_0.fix_call_log_statuses_native_call_type_priority
+
 crm.patches.v1_0.restructure_referral_system # 27-01-2025
 crm.patches.v1_0.update_lead_form_fields # 27-01-2025
 crm.patches.v1_0.fix_lead_modal_referral_fields # 27-01-2025

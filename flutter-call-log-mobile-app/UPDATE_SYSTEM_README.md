@@ -44,8 +44,8 @@ This document explains the in-app update system implemented for the Eshin CRM Fl
 def get_app_version():
     """Returns current app version information"""
     return {
-        'version': '1.1.0',
-        'build_number': 3,
+        'version': '1.2.0',
+        'build_number': 4,
         'download_url': 'https://eshin.in/api/method/crm.api.whatsapp_setup.download_eshen_app_apk',
         'release_notes': 'Bug fixes and improvements',
         'force_update': False,
@@ -91,7 +91,7 @@ In `apps/crm/crm/api/app_update.py`, modify `_should_force_update()`:
 
 ```python
 def _should_force_update(current_version, current_build):
-    """Force update if version is below 1.1.0"""
+    """Force update if version is below 1.2.0"""
     try:
         version_parts = current_version.split('.')
         major = int(version_parts[0])
@@ -110,9 +110,10 @@ Add release notes in `_get_release_notes()`:
 ```python
 release_notes_map = {
     "1.2.0": """
-• New feature: Enhanced call logging
-• Improved sync performance
+• Enhanced call logging capabilities
+• Improved sync performance and reliability
 • Bug fixes and stability improvements
+• Updated app versioning system
     """.strip(),
     "1.1.0": """
 • Improved call log synchronization

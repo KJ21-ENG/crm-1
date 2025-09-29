@@ -189,10 +189,10 @@ class _UpdateTestPageState extends State<UpdateTestPage> {
 /// Mock UpdateInfo for testing
 class MockUpdateInfo extends UpdateInfo {
   MockUpdateInfo() : super(
-    currentVersion: '1.0.0',
-    currentBuildNumber: 1,
-    latestVersion: '1.1.0',
-    latestBuildNumber: 2,
+    currentVersion: '1.1.0',
+    currentBuildNumber: 3,
+    latestVersion: '1.2.0',
+    latestBuildNumber: 4,
     downloadUrl: 'https://example.com/app.apk',
     releaseNotes: 'Test update with new features',
     isForceUpdate: false,

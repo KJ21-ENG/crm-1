@@ -524,28 +524,21 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming"})
     outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing"})
 
-    # Missed calls per spec: incoming calls with duration == 0 OR duration IS NULL
-    missed_incoming_sql = """
-        SELECT COUNT(*) FROM `tabCRM Call Log`
-        WHERE creation BETWEEN %s AND %s
-        AND `type` = 'Incoming'
-        AND (duration = 0 OR duration IS NULL)
-    """
-    missed_incoming_res = frappe.db.sql(missed_incoming_sql, (start_date, end_date))
-    missed_incoming_duration0 = missed_incoming_res[0][0] if missed_incoming_res else 0
+    # Get call counts by status directly from database (now that statuses are stored correctly)
+    missed_calls = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "status": "Missed Call"
+    })
 
-    # Did not picked per spec: outgoing calls with duration == 0 OR duration IS NULL
-    did_not_picked_sql = """
-        SELECT COUNT(*) FROM `tabCRM Call Log`
-        WHERE creation BETWEEN %s AND %s
-        AND `type` = 'Outgoing'
-        AND (duration = 0 OR duration IS NULL)
-    """
-    did_not_picked_res = frappe.db.sql(did_not_picked_sql, (start_date, end_date))
-    did_not_picked_outgoing_duration0 = did_not_picked_res[0][0] if did_not_picked_res else 0
+    did_not_picked = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "status": "Did Not Picked"
+    })
 
-    # Completed calls per business logic: (Incoming - Missed) + (Outgoing - Did Not Pick)
-    completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
+    completed_calls = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "status": "Completed"
+    })
 
     # Cold calls and their total duration
     cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "is_cold_call": 1})
