@@ -241,7 +241,7 @@
                   <Tooltip :text="__('Delete')">
                     <div>
                       <Button
-                        @click="deleteTicketWithModal(ticket.data.name)"
+                        @click="showDeleteLinkedDocModal = true"
                         variant="subtle"
                         theme="red"
                         icon="trash-2"
@@ -566,6 +566,13 @@
       }
     "
     />
+  <DeleteLinkedDocModal
+    v-if="showDeleteLinkedDocModal"
+    v-model="showDeleteLinkedDocModal"
+    :doctype="'CRM Ticket'"
+    :docname="props.ticketId"
+    name="Tickets"
+  />
 </template>
 
 <script setup>
@@ -643,6 +650,7 @@ const router = useRouter()
 const showCloseTicketModal = ref(false)
 const showCreateTaskModal = ref(false)
 const showFilesUploader = ref(false)
+const showDeleteLinkedDocModal = ref(false)
 const showEscalateModal = ref(false)
 const showDepartmentMetrics = ref(false)
 const resolutionText = ref('')
@@ -1002,6 +1010,40 @@ function deleteTicketWithModal(ticketName) {
         theme: 'red',
         onClick: async (close) => {
           try {
+            // First, validate what's blocking deletion
+            const validation = await call('crm.api.doc.validate_deletion', {
+              doctype: 'CRM Ticket',
+              name: ticketName
+            })
+            
+            console.log('🔍 Deletion validation:', validation)
+            
+            if (!validation.can_delete) {
+              toast.error(`Cannot delete ticket: ${validation.permission_reason}`)
+              close()
+              return
+            }
+            
+            if (!validation.summary.can_proceed) {
+              const errorLinks = validation.problematic_links.filter(link => link.severity === 'error')
+              
+              if (errorLinks.length > 0) {
+                toast.error(`Cannot delete ticket: Found ${errorLinks.length} blocking links: ${errorLinks.map(link => `${link.doctype} ${link.name}`).join(', ')}`)
+                close()
+                return
+              }
+            }
+            
+            // Show detailed info about what will be affected
+            if (validation.total_linked_docs > 0) {
+              const message = `This will affect ${validation.total_linked_docs} linked items. Proceed?`
+              if (!confirm(message)) {
+                close()
+                return
+              }
+            }
+            
+            // Proceed with deletion
             await call('frappe.client.delete', {
               doctype: 'CRM Ticket',
               name: ticketName
@@ -1010,7 +1052,8 @@ function deleteTicketWithModal(ticketName) {
             router.push({ name: 'Tickets' })
             close()
           } catch (error) {
-            toast.error(__('Error deleting ticket'))
+            console.error('❌ Deletion error:', error)
+            toast.error(error?.messages?.[0] || error?.message || __('Error deleting ticket'))
           }
         },
       },

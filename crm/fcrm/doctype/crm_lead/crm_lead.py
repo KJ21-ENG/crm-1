@@ -165,6 +165,72 @@ class CRMLead(Document):
 			elif user != agent:
 				frappe.share.remove(self.doctype, self.name, user)
 
+	def on_trash(self):
+		"""Custom delete logic to handle customer unlinking before deletion"""
+		try:
+			# Log all linked documents before deletion
+			self._log_deletion_blockers()
+			
+			# Unlink customer before deletion to prevent LinkExistsError
+			if self.customer_id:
+				frappe.db.set_value("CRM Lead", self.name, "customer_id", None)
+				frappe.db.commit()
+				frappe.logger().info(f"✅ Unlinked customer {self.customer_id} from lead {self.name}")
+			else:
+				frappe.logger().info(f"ℹ️ No customer linked to lead {self.name}")
+				
+		except Exception as e:
+			frappe.log_error(f"❌ Error unlinking customer from lead {self.name}: {str(e)}")
+			# Don't raise the exception, let deletion continue
+
+	def _log_deletion_blockers(self):
+		"""Log all potential blockers for deletion"""
+		try:
+			from crm.utils import get_linked_docs, get_dynamic_linked_docs
+			
+			# Get all linked documents
+			linked_docs = get_linked_docs(self) + get_dynamic_linked_docs(self)
+			
+			frappe.logger().info(f"🔍 Checking deletion blockers for lead {self.name}:")
+			
+			if not linked_docs:
+				frappe.logger().info("✅ No linked documents found - deletion should proceed")
+				return
+			
+			# Group by doctype
+			blockers_by_type = {}
+			for doc in linked_docs:
+				doctype = doc.get("reference_doctype") or doc.get("link_dt")
+				if doctype not in blockers_by_type:
+					blockers_by_type[doctype] = []
+				blockers_by_type[doctype].append(doc)
+			
+			# Log each type of blocker
+			for doctype, docs in blockers_by_type.items():
+				frappe.logger().info(f"📋 Found {len(docs)} {doctype} documents linked to lead {self.name}")
+				for doc in docs[:5]:  # Show first 5
+					docname = doc.get("reference_docname") or doc.get("doc")
+					frappe.logger().info(f"   - {doctype}: {docname}")
+				if len(docs) > 5:
+					frappe.logger().info(f"   ... and {len(docs) - 5} more")
+			
+			# Check for specific problematic links
+			problematic_links = []
+			for doc in linked_docs:
+				doctype = doc.get("reference_doctype") or doc.get("link_dt")
+				if doctype in ["CRM Customer"]:
+					problematic_links.append(f"{doctype} (will be unlinked)")
+				elif doctype not in ["Communication", "Comment", "File", "FCRM Note", "CRM Task", "CRM Notification", "CRM Assignment Request", "CRM Call Log", "WhatsApp Message"]:
+					problematic_links.append(f"{doctype} (may block deletion)")
+			
+			if problematic_links:
+				frappe.logger().warning(f"⚠️ Potentially problematic links: {', '.join(problematic_links)}")
+			else:
+				frappe.logger().info("✅ All linked documents are safe to delete/unlink")
+				
+		except Exception as e:
+			frappe.log_error(f"Error checking deletion blockers for lead {self.name}: {str(e)}")
+
 	def create_or_update_customer(self):
 		"""Create or update customer record based on lead data"""
 		if not self.mobile_no:

@@ -219,6 +219,46 @@ def _is_system_manager(user: Optional[str]) -> bool:
         return "System Manager" in roles
     except Exception:
         return False
+@frappe.whitelist()
+def can_delete_doc(doctype: str, name: str, user: Optional[str] = None) -> Dict[str, bool]:
+    """Return { allowed: bool } if user can delete the given document.
+
+    Rule: For `CRM Lead` and `CRM Ticket`, only System Manager/admins or assigned users are allowed.
+    For other doctypes, rely on Frappe's has_permission("delete").
+    """
+    try:
+        user = user or frappe.session.user
+        # Special rule for core CRM parents
+        if doctype in {"CRM Lead", "CRM Ticket"}:
+            if _is_system_manager(user):
+                return {"allowed": True}
+            # Allow if user is assigned
+            if _is_user_assigned_to_doc(doctype, name, user):
+                return {"allowed": True}
+            # Allow if user is document owner or explicit owner field
+            try:
+                _doc = frappe.get_value(doctype, name, ["owner", "lead_owner", "ticket_owner"], as_dict=True)
+                if _doc:
+                    if _doc.get("owner") == user:
+                        return {"allowed": True}
+                    # Permit per-doctype explicit owner
+                    if doctype == "CRM Lead" and _doc.get("lead_owner") == user:
+                        return {"allowed": True}
+                    if doctype == "CRM Ticket" and _doc.get("ticket_owner") == user:
+                        return {"allowed": True}
+            except Exception:
+                pass
+            return {"allowed": False}
+
+        # Fallback to standard permission for other doctypes
+        try:
+            doc = frappe.get_doc(doctype, name)
+            allowed = bool(doc.has_permission("delete", user=user))
+        except Exception:
+            allowed = False
+        return {"allowed": allowed}
+    except Exception:
+        return {"allowed": False}
 
 
 @frappe.whitelist()
@@ -259,7 +299,26 @@ def doctype_has_permission(doc=None, ptype: str = "read", user: Optional[str] = 
         else:
             module = _map_doctype_to_module(dt)
 
-        # First, evaluate the existing module-level permission gate (if mapped)
+        # Enforce strict delete permissions for core CRM parents (assignment or admin only)
+        # Requirement: Only assigned users and admins can delete Leads and Tickets
+        ptype_normalized = (ptype or "read").lower()
+        if ptype_normalized in {"delete", "cancel", "amend"}:
+            try:
+                target_dt = dt
+                target_name = getattr(doc, "name", None)
+                # When only a doctype string is passed, we cannot evaluate record-level
+                if target_dt in {"CRM Lead", "CRM Ticket"} and target_name:
+                    # System manager/admin bypass
+                    if not _is_system_manager(user):
+                        if not _is_user_assigned_to_doc(target_dt, target_name, user):
+                            return False
+                    # At this point, user is allowed by assignment/admin rules, so allow regardless of module gate
+                    return True
+            except Exception:
+                # Fail safe: if we cannot determine, disallow destructive ops
+                return False
+
+        # For non-destructive ops, apply module-level gate as usual
         if module and not user_has_module_permission(module, ptype, user):
             return False
 

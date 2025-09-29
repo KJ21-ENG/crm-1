@@ -772,11 +772,49 @@ function handleTimestampError(error, operation) {
 }
 
 async function deleteLead(name) {
-  await call('frappe.client.delete', {
-    doctype: 'CRM Lead',
-    name,
-  })
-  router.push({ name: 'Leads' })
+  try {
+    // First, validate what's blocking deletion
+    const validation = await call('crm.api.doc.validate_deletion', {
+      doctype: 'CRM Lead',
+      name,
+    })
+    
+    console.log('🔍 Deletion validation:', validation)
+    
+    if (!validation.can_delete) {
+      toast.error(`Cannot delete lead: ${validation.permission_reason}`)
+      return
+    }
+    
+    if (!validation.summary.can_proceed) {
+      const problematicCount = validation.summary.problematic_count
+      const errorLinks = validation.problematic_links.filter(link => link.severity === 'error')
+      
+      if (errorLinks.length > 0) {
+        toast.error(`Cannot delete lead: Found ${errorLinks.length} blocking links: ${errorLinks.map(link => `${link.doctype} ${link.name}`).join(', ')}`)
+        return
+      }
+    }
+    
+    // Show detailed info about what will be affected
+    if (validation.total_linked_docs > 0) {
+      const message = `This will affect ${validation.total_linked_docs} linked items. Proceed?`
+      if (!confirm(message)) {
+        return
+      }
+    }
+    
+    // Proceed with deletion
+    await call('frappe.client.delete', {
+      doctype: 'CRM Lead',
+      name,
+    })
+    toast.success(__('Lead deleted successfully'))
+    router.push({ name: 'Leads' })
+  } catch (error) {
+    console.error('❌ Deletion error:', error)
+    toast.error(error.messages?.[0] || error.message || __('Error deleting lead'))
+  }
 }
 
 async function deleteLeadWithModal(name) {

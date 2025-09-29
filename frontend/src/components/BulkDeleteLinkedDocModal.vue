@@ -91,6 +91,7 @@
 <script setup>
 import { call } from 'frappe-ui'
 import { ref } from 'vue'
+import { toast } from 'frappe-ui'
 
 const show = defineModel()
 const props = defineProps({
@@ -137,18 +138,40 @@ const confirmUnlink = () => {
   }
 }
 
-const deleteDocs = () => {
-  call('crm.api.doc.delete_bulk_docs', {
-    items: props.items,
-    doctype: props.doctype,
-    delete_linked: confirmDeleteInfo.value.delete,
-  }).then(() => {
-    confirmDeleteInfo.value = {
-      show: false,
-      title: '',
+const deleteDocs = async () => {
+  try {
+    const result = await call('crm.api.doc.delete_bulk_docs', {
+      items: props.items,
+      doctype: props.doctype,
+      delete_linked: confirmDeleteInfo.value.delete,
+    })
+    
+    console.log('🔍 Bulk deletion result:', result)
+    
+    if (result.success) {
+      // Show success message
+      if (result.failed_count > 0) {
+        toast.warning(result.message)
+        if (result.failed_deletions) {
+          console.warn('Failed deletions:', result.failed_deletions)
+        }
+      } else {
+        toast.success(result.message)
+      }
+      
+      // Close modal and reload
+      confirmDeleteInfo.value = {
+        show: false,
+        title: '',
+      }
+      show.value = false
+      props.reload()
+    } else {
+      toast.error(result.message || 'Bulk deletion failed')
     }
-    show.value = false
-    props.reload()
-  })
+  } catch (error) {
+    console.error('❌ Bulk deletion error:', error)
+    toast.error(error.messages?.[0] || error.message || 'Bulk deletion failed')
+  }
 }
 </script>

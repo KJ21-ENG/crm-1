@@ -13,6 +13,20 @@ from crm.api.views import get_views
 from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
 from crm.utils import get_dynamic_linked_docs, get_linked_docs
 
+# Doctypes that are safe to delete as part of cascade (fully dependent on parent)
+ALLOWED_CASCADE_DELETE = {
+    "Communication",
+    "Comment",
+    "File",
+    "FCRM Note",
+    "CRM Task",
+    "CRM Task Notification",
+    "CRM Notification",
+    "CRM Assignment Request",
+    "CRM Call Log",
+    "WhatsApp Message",
+}
+
 
 @frappe.whitelist()
 def sort_options(doctype: str):
@@ -960,16 +974,140 @@ def get_linked_docs_of_document(doctype, docname):
 	return docs_data
 
 
-def remove_doc_link(doctype, docname):
-	linked_doc_data = frappe.get_doc(doctype, docname)
-	linked_doc_data.update(
-		{
-			"reference_doctype": None,
-			"reference_docname": None,
-		}
-	)
-	linked_doc_data.save(ignore_permissions=True)
+def _unlink_customer_from_parent(parent_doctype: str, parent_name: str, customer_name: str):
+    """Unlink customer from parent document by clearing the customer_id field and updating customer reference fields."""
+    try:
+        # Update customer reference fields BEFORE unlinking
+        if parent_doctype in ["CRM Lead", "CRM Ticket"]:
+            update_customer_reference_fields(customer_name, parent_doctype, parent_name)
+        
+        # Clear the customer_id field from the parent document
+        frappe.db.set_value(parent_doctype, parent_name, "customer_id", None)
+        frappe.db.commit()
+        
+        frappe.logger().info(f"Successfully unlinked customer {customer_name} from {parent_doctype} {parent_name}")
+    except Exception as e:
+        frappe.log_error(f"Failed to unlink customer {customer_name} from {parent_doctype} {parent_name}: {e}")
+        # Try alternative approach - get the doc and update it
+        try:
+            # Update customer reference fields BEFORE unlinking
+            if parent_doctype in ["CRM Lead", "CRM Ticket"]:
+                update_customer_reference_fields(customer_name, parent_doctype, parent_name)
+                
+            doc = frappe.get_doc(parent_doctype, parent_name)
+            doc.customer_id = None
+            doc.save(ignore_permissions=True)
+            frappe.db.commit()
+                
+            frappe.logger().info(f"Successfully unlinked customer {customer_name} from {parent_doctype} {parent_name} using doc.save()")
+        except Exception as e2:
+            frappe.log_error(f"Failed to unlink customer {customer_name} from {parent_doctype} {parent_name} using doc.save(): {e2}")
 
+
+def _unlink_generic_reference(doctype: str, docname: str):
+    """Best-effort unlink for commonly linked doctypes.
+
+    Handles different field conventions:
+    - reference_doctype + reference_docname (Tasks, Notes, many CRM doctypes)
+    - reference_doctype + reference_name (Communication)
+    - attached_to_doctype + attached_to_name (File)
+    - customer_id (CRM Lead, CRM Ticket)
+    Silently skips if no known reference fields are present.
+    """
+    doc = frappe.get_doc(doctype, docname)
+    meta = frappe.get_meta(doctype)
+
+    def _has(field: str) -> bool:
+        try:
+            return bool(meta.get_field(field))
+        except Exception:
+            return False
+
+    # Special handling for CRM Assignment Request - delete instead of unlink
+    if doctype == "CRM Assignment Request":
+        # Assignment requests can't be unlinked due to mandatory fields, so delete them
+        frappe.delete_doc(doctype, docname, ignore_permissions=True)
+        return
+
+    # Special handling for CRM Lead and CRM Ticket - unlink customer_id
+    if doctype in ["CRM Lead", "CRM Ticket"] and _has("customer_id"):
+        doc.update({"customer_id": None})
+        doc.save(ignore_permissions=True)
+        return
+
+    # Prefer explicit CRM-style reference fields
+    if _has("reference_doctype") and _has("reference_docname"):
+        doc.update({"reference_doctype": None, "reference_docname": None})
+        doc.save(ignore_permissions=True)
+        return
+
+    # Communication uses reference_name instead of reference_docname
+    if _has("reference_doctype") and _has("reference_name"):
+        doc.update({"reference_doctype": None, "reference_name": None})
+        doc.save(ignore_permissions=True)
+        return
+
+    # File attachments
+    if _has("attached_to_doctype") and _has("attached_to_name"):
+        doc.update({"attached_to_doctype": None, "attached_to_name": None})
+        doc.save(ignore_permissions=True)
+        return
+
+    # Fallback: try CRM-style fields even if not declared (won't persist if not present)
+    try:
+        doc.update({"reference_doctype": None, "reference_docname": None})
+        doc.save(ignore_permissions=True)
+    except Exception:
+        # No known reference fields; ignore
+        pass
+
+
+def _safe_delete(doctype: str, name: str):
+    """Delete a document and recursively delete its immediate blockers if they are simple link holders.
+    This prevents failures like: CRM Task -> CRM Task Notification.
+    We only recurse into known lightweight doctypes to avoid accidental data loss.
+    """
+    try:
+        # Proactively delete allowed dependent links first to avoid LinkExistsError
+        try:
+            doc = frappe.get_doc(doctype, name)
+            linked = get_linked_docs(doc) + get_dynamic_linked_docs(doc)
+            seen = set()
+            for row in linked:
+                rdt = row.get("reference_doctype")
+                rname = row.get("reference_docname")
+                key = (rdt, rname)
+                if not rdt or not rname or key in seen:
+                    continue
+                seen.add(key)
+                if rdt in ALLOWED_CASCADE_DELETE:
+                    _safe_delete(rdt, rname)
+        except Exception:
+            pass
+
+        frappe.delete_doc(doctype, name, ignore_permissions=True)
+    except Exception as ex:
+        msg = str(ex)
+        # Detect a simple LinkExistsError pattern and try to delete the blocking doc first
+        # Example message contains: "is linked with <Doctype> <name>"
+        if " is linked with " in msg:
+            try:
+                marker = " is linked with "
+                tail = msg.split(marker, 1)[1].strip()
+                parts = tail.split(" ")
+                if len(parts) >= 2:
+                    block_name = parts[-1]
+                    block_dt = " ".join(parts[:-1])
+                    # Allow cascade for known secondary notif/log doctypes
+                    allowed = {"CRM Task Notification", "CRM Notification", "CRM Assignment Request"}
+                    if block_dt in allowed:
+                        _safe_delete(block_dt, block_name)
+                        frappe.delete_doc(doctype, name, ignore_permissions=True)
+                        return
+            except Exception:
+                pass
+        # if not handled, rethrow
+        raise
 
 def remove_contact_link(doctype, docname):
 	linked_doc_data = frappe.get_doc(doctype, docname)
@@ -983,46 +1121,323 @@ def remove_contact_link(doctype, docname):
 
 
 @frappe.whitelist()
-def remove_linked_doc_reference(items, remove_contact=None, delete=False):
-	if isinstance(items, str):
-		items = frappe.parse_json(items)
+def update_customer_reference_fields(customer_name, unlinked_doctype, unlinked_docname):
+    """
+    Update customer's created_from_lead or created_from_ticket field when unlinking.
+    If there are other leads/tickets linked to the customer, set to the next available one.
+    Otherwise, set to null.
+    """
+    try:
+        customer_doc = frappe.get_doc("CRM Customer", customer_name)
 
-	for item in items:
-		if remove_contact:
-			remove_contact_link(item["doctype"], item["docname"])
-		else:
-			remove_doc_link(item["doctype"], item["docname"])
+        # Business rule: when unlinking a lead or ticket from a customer,
+        # always clear the corresponding created_from_* field on the customer
+        if unlinked_doctype == "CRM Lead":
+            customer_doc.created_from_lead = None
+        elif unlinked_doctype == "CRM Ticket":
+            customer_doc.created_from_ticket = None
 
-		if delete:
-			frappe.delete_doc(item["doctype"], item["docname"])
+        customer_doc.save(ignore_permissions=True)
 
-	return "success"
+        return {
+            "success": True,
+            "message": "Customer reference fields cleared successfully",
+            "updated_fields": {
+                "created_from_lead": customer_doc.created_from_lead,
+                "created_from_ticket": customer_doc.created_from_ticket,
+            },
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Failed to update customer reference fields: {str(e)}")
+        frappe.throw(_("Failed to update customer reference fields: {0}").format(str(e)))
+
+
+@frappe.whitelist()
+def remove_linked_doc_reference(items, remove_contact=None, delete=False, delete_lead_ticket=False, parent_doctype: str = None, parent_name: str = None):
+    if isinstance(items, str):
+        items = frappe.parse_json(items)
+
+    failed_deletions = []
+    try:
+        for item in items or []:
+            doctype = item.get("doctype")
+            docname = item.get("docname")
+            if not (doctype and docname):
+                continue
+
+            # If the selected item is the Customer row shown inside a Lead/Ticket, we must
+            # clear the parent document's customer_id field instead of touching the Customer doc
+            if doctype == "CRM Customer" and parent_doctype and parent_name:
+                try:
+                    _unlink_customer_from_parent(parent_doctype, parent_name, docname)
+                except Exception as e:
+                    frappe.log_error(f"Failed to unlink customer from {parent_doctype} {parent_name}: {e}")
+                    raise
+                # Once the customer is unlinked from parent, skip the rest of the loop for this item
+                continue
+
+            # Get customer_id before unlinking (for CRM Lead/Ticket)
+            customer_id = None
+            if doctype in ["CRM Lead", "CRM Ticket"] and not delete:
+                customer_id = frappe.db.get_value(doctype, docname, "customer_id")
+                # Update customer reference fields BEFORE unlinking
+                if customer_id:
+                    update_customer_reference_fields(customer_id, doctype, docname)
+
+            if remove_contact:
+                remove_contact_link(doctype, docname)
+            else:
+                _unlink_generic_reference(doctype, docname)
+
+            # If requested by client, and the linked doc is a Lead/Ticket, delete it after unlinking
+            if delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}:
+                try:
+                    cascade_delete_document(doctype, docname)
+                except Exception as delete_error:
+                    frappe.log_error(f"Failed to cascade delete {doctype} {docname}: {delete_error}")
+            
+            if delete and not (delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}):
+                # Only delete if doctype is fully dependent; otherwise, just unlink
+                if doctype in ALLOWED_CASCADE_DELETE:
+                    try:
+                        _safe_delete(doctype, docname)
+                    except Exception as delete_error:
+                        # Log the error but continue with other items
+                        frappe.log_error(f"Failed to delete {doctype} {docname}: {delete_error}")
+                        failed_deletions.append(f"{doctype} {docname}")
+                        # Try to unlink instead of failing completely
+                        try:
+                            _unlink_generic_reference(doctype, docname)
+                        except Exception:
+                            pass
+                else:
+                    _unlink_generic_reference(doctype, docname)
+
+        if failed_deletions:
+            frappe.msgprint(_("Some linked documents could not be deleted: {0}. They have been unlinked instead.").format(", ".join(failed_deletions)))
+        
+        return {"success": True}
+    except Exception as e:
+        frappe.log_error(f"remove_linked_doc_reference failed: {e}")
+        # Surface a clean error to client
+        frappe.throw(_(str(e)))
+
+
+@frappe.whitelist()
+def cascade_delete_document(doctype: str, name: str) -> dict:
+    """Delete a document after removing/deleting all of its linked items.
+
+    Rules:
+    - Only allowed for CRM Lead and CRM Ticket (to keep behavior scoped).
+    - Requires assignment/admin permission (enforced via permissions.can_delete_doc).
+    - For linked docs:
+        * If linked doctype is in ALLOWED_CASCADE_DELETE, delete it (and its lightweight blockers).
+        * Otherwise, just unlink its reference to the parent.
+    """
+    from crm.api.permissions import can_delete_doc
+
+    if doctype not in {"CRM Lead", "CRM Ticket"}:
+        frappe.throw(_("Cascade delete is only supported for CRM Lead and CRM Ticket."))
+
+    allowed = can_delete_doc(doctype, name)
+    if not allowed or not getattr(allowed, "get", None) or not allowed.get("allowed"):
+        frappe.throw(_("Not permitted to delete this document."))
+
+    # First, unlink customer if present (this must be done before any other operations)
+    try:
+        # Check if the document has a customer_id field and unlink it
+        customer_id = frappe.db.get_value(doctype, name, "customer_id")
+        if customer_id:
+            _unlink_customer_from_parent(doctype, name, customer_id)
+    except Exception:
+        pass
+
+    # Fetch once; if there are many, user can retry to catch late arrivals
+    linked_docs = get_linked_docs_of_document(doctype, name)
+
+    # First pass: process linked docs
+    for ld in linked_docs or []:
+        ref_dt = ld.get("reference_doctype")
+        ref_name = ld.get("reference_docname")
+        if not (ref_dt and ref_name):
+            continue
+
+        if ref_dt in ALLOWED_CASCADE_DELETE:
+            # delete with safe cascade for lightweight blockers
+            _safe_delete(ref_dt, ref_name)
+        elif ref_dt == "CRM Customer":
+            # Special handling for Customer - unlink the customer_id field from the parent document
+            try:
+                _unlink_customer_from_parent(doctype, name, ref_name)
+            except Exception:
+                # ignore unlink failures for safety
+                pass
+        else:
+            # unlink only for other master records
+            try:
+                _unlink_generic_reference(ref_dt, ref_name)
+            except Exception:
+                # ignore unlink failures for safety
+                pass
+
+    # Finally delete the parent document itself
+    _safe_delete(doctype, name)
+
+    return {"success": True}
+
+
+@frappe.whitelist()
+def validate_deletion(doctype: str, name: str) -> dict:
+	"""
+	Comprehensive validation to identify what's blocking deletion.
+	Returns detailed information about all linked documents and potential blockers.
+	"""
+	try:
+		from crm.utils import get_linked_docs, get_dynamic_linked_docs
+		
+		# Get the document
+		doc = frappe.get_doc(doctype, name)
+		
+		# Get all linked documents
+		linked_docs = get_linked_docs(doc) + get_dynamic_linked_docs(doc)
+		
+		# Group by doctype
+		blockers_by_type = {}
+		problematic_links = []
+		safe_links = []
+		
+		for doc_info in linked_docs:
+			doctype_linked = doc_info.get("reference_doctype") or doc_info.get("link_dt")
+			docname_linked = doc_info.get("reference_docname") or doc_info.get("doc")
+			
+			if doctype_linked not in blockers_by_type:
+				blockers_by_type[doctype_linked] = []
+			blockers_by_type[doctype_linked].append({
+				"name": docname_linked,
+				"doctype": doctype_linked
+			})
+			
+			# Categorize links
+			if doctype_linked in ["CRM Customer"]:
+				problematic_links.append({
+					"doctype": doctype_linked,
+					"name": docname_linked,
+					"reason": "Customer link (will be unlinked)",
+					"severity": "warning"
+				})
+			elif doctype_linked in ["Communication", "Comment", "File", "FCRM Note", "CRM Task", "CRM Notification", "CRM Assignment Request", "CRM Call Log", "WhatsApp Message"]:
+				safe_links.append({
+					"doctype": doctype_linked,
+					"name": docname_linked,
+					"reason": "Safe to delete/unlink",
+					"severity": "info"
+				})
+			else:
+				problematic_links.append({
+					"doctype": doctype_linked,
+					"name": docname_linked,
+					"reason": "Unknown link type (may block deletion)",
+					"severity": "error"
+				})
+		
+		# Check permissions
+		permission_check = can_delete_doc(doctype, name)
+		
+		return {
+			"can_delete": permission_check.get("allowed", False),
+			"permission_reason": permission_check.get("reason", "Unknown"),
+			"total_linked_docs": len(linked_docs),
+			"blockers_by_type": {k: len(v) for k, v in blockers_by_type.items()},
+			"problematic_links": problematic_links,
+			"safe_links": safe_links,
+			"summary": {
+				"total_links": len(linked_docs),
+				"problematic_count": len(problematic_links),
+				"safe_count": len(safe_links),
+				"can_proceed": len(problematic_links) == 0 or all(link["severity"] != "error" for link in problematic_links)
+			}
+		}
+		
+	except Exception as e:
+		frappe.log_error(f"Error validating deletion for {doctype} {name}: {str(e)}")
+		return {
+			"error": str(e),
+			"can_delete": False,
+			"summary": {"can_proceed": False}
+		}
 
 
 @frappe.whitelist()
 def delete_bulk_docs(doctype, items, delete_linked=False):
-	from frappe.desk.reportview import delete_bulk
-
-	items = frappe.parse_json(items)
-	for doc in items:
-		linked_docs = get_linked_docs_of_document(doctype, doc)
-		for linked_doc in linked_docs:
-			remove_linked_doc_reference(
-				[
-					{
-						"doctype": linked_doc["reference_doctype"],
-						"docname": linked_doc["reference_docname"],
-					}
-				],
-				remove_contact=doctype == "Contact",
-				delete=delete_linked,
-			)
-
-	if len(items) > 10:
-		frappe.enqueue("frappe.desk.reportview.delete_bulk", doctype=doctype, items=items)
-	else:
-		delete_bulk(doctype, items)
-	return "success"
+	"""Delete multiple documents with proper validation and error handling"""
+	try:
+		items = frappe.parse_json(items)
+		deleted_count = 0
+		failed_deletions = []
+		
+		for doc_name in items:
+			try:
+				# Validate deletion for each document
+				validation = validate_deletion(doctype, doc_name)
+				
+				if not validation.get("can_delete", False):
+					failed_deletions.append(f"{doctype} {doc_name}: {validation.get('permission_reason', 'Permission denied')}")
+					continue
+				
+				if not validation.get("summary", {}).get("can_proceed", True):
+					error_links = validation.get("problematic_links", [])
+					error_count = len([link for link in error_links if link.get("severity") == "error"])
+					if error_count > 0:
+						failed_deletions.append(f"{doctype} {doc_name}: {error_count} blocking links")
+						continue
+				
+				# Handle linked documents if delete_linked is True
+				if delete_linked:
+					linked_docs = get_linked_docs_of_document(doctype, doc_name)
+					for linked_doc in linked_docs:
+						remove_linked_doc_reference(
+							[
+								{
+									"doctype": linked_doc["reference_doctype"],
+									"docname": linked_doc["reference_docname"],
+								}
+							],
+							remove_contact=doctype == "Contact",
+							delete=delete_linked,
+						)
+				
+				# Delete the document
+				frappe.delete_doc(doctype, doc_name, ignore_permissions=True)
+				deleted_count += 1
+				
+			except Exception as e:
+				frappe.log_error(f"Error deleting {doctype} {doc_name}: {str(e)}")
+				failed_deletions.append(f"{doctype} {doc_name}: {str(e)}")
+		
+		# Return results
+		result = {
+			"success": True,
+			"deleted_count": deleted_count,
+			"total_count": len(items),
+			"failed_count": len(failed_deletions)
+		}
+		
+		if failed_deletions:
+			result["failed_deletions"] = failed_deletions
+			result["message"] = f"Deleted {deleted_count} of {len(items)} documents. {len(failed_deletions)} failed."
+		else:
+			result["message"] = f"Successfully deleted {deleted_count} documents."
+		
+		return result
+		
+	except Exception as e:
+		frappe.log_error(f"Error in delete_bulk_docs: {str(e)}")
+		return {
+			"success": False,
+			"error": str(e),
+			"message": "Bulk deletion failed"
+		}
 
 
 def get_ticket_list_with_customer_data(rows, filters, order_by, page_length, start):

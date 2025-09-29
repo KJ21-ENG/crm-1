@@ -8,7 +8,7 @@
               {{
                 linkedDocs?.length == 0
                   ? __('Delete')
-                  : __('Delete or unlink linked documents')
+                  : __('Unlink linked documents')
               }}
             </h3>
           </div>
@@ -21,7 +21,7 @@
             <span class="text-ink-gray-5 text-base">
               {{
                 __(
-                  'Delete or unlink these linked documents before deleting this document',
+                  'Unlink these linked documents from the customer before deleting this document',
                 )
               }}
             </span>
@@ -62,23 +62,11 @@
             v-if="linkedDocs?.length > 0"
             :label="
               viewControls?.selections?.length == 0
-                ? __('Delete all')
-                : __('Delete {0} item(s)', [viewControls?.selections?.length])
-            "
-            theme="red"
-            variant="solid"
-            icon-left="trash-2"
-            @click="confirmDelete()"
-          />
-          <Button
-            v-if="linkedDocs?.length > 0"
-            :label="
-              viewControls?.selections?.length == 0
                 ? __('Unlink all')
                 : __('Unlink {0} item(s)', [viewControls?.selections?.length])
             "
-            variant="subtle"
-            theme="gray"
+            variant="solid"
+            theme="blue"
             icon-left="unlock"
             @click="confirmUnlink()"
           />
@@ -109,14 +97,18 @@
         <div class="text-ink-gray-5 text-base">
           {{ confirmDeleteInfo.message }}
         </div>
+        <div v-if="confirmDeleteInfo.error" class="mt-3 text-red-600 text-sm">
+          {{ confirmDeleteInfo.error }}
+        </div>
         <div class="flex justify-end gap-2 mt-6">
           <Button variant="ghost" @click="cancel()">
             {{ __('Cancel') }}
           </Button>
           <Button
             variant="solid"
-            :label="confirmDeleteInfo.title"
-            @click="removeDocLinks()"
+            :label="confirmDeleteInfo.loading ? __('Working...') : confirmDeleteInfo.title"
+            :loading="confirmDeleteInfo.loading"
+            @click="onConfirmAction()"
             theme="red"
           />
         </div>
@@ -126,7 +118,7 @@
 </template>
 
 <script setup>
-import { createResource, call } from 'frappe-ui'
+import { createResource, call, toast } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import { computed, ref } from 'vue'
 
@@ -159,6 +151,9 @@ const viewControls = ref({
 const confirmDeleteInfo = ref({
   show: false,
   title: '',
+  message: '',
+  error: '',
+  loading: false,
 })
 
 const linkedDocsResource = createResource({
@@ -189,7 +184,7 @@ const cancel = () => {
   viewControls.value.updateSelections([])
 }
 
-const unlinkLinkedDoc = (doc) => {
+const unlinkLinkedDoc = async (doc) => {
   let selectedDocs = []
   if (viewControls.value.selections.length > 0) {
     Array.from(viewControls.value.selections).forEach((selection) => {
@@ -206,31 +201,25 @@ const unlinkLinkedDoc = (doc) => {
     }))
   }
 
-  call('crm.api.doc.remove_linked_doc_reference', {
+  try {
+    await call('crm.api.doc.remove_linked_doc_reference', {
     items: selectedDocs,
     remove_contact: props.doctype == 'Contact',
     delete: doc.delete,
-  }).then(() => {
+    delete_lead_ticket: true,
+      parent_doctype: props.doctype,
+      parent_name: props.docname,
+    })
     linkedDocsResource.reload()
-    confirmDeleteInfo.value = {
-      show: false,
-      title: '',
-    }
-  })
-}
-
-const confirmDelete = () => {
-  const items =
-    viewControls.value.selections.length == 0
-      ? 'all'
-      : viewControls.value.selections.length
-  confirmDeleteInfo.value = {
-    show: true,
-    title: __('Delete linked item'),
-    message: __('Are you sure you want to delete {0} linked item(s)?', [items]),
-    delete: true,
+    confirmDeleteInfo.value = { show: false, title: '', message: '', error: '', loading: false }
+  } catch (e) {
+    const msg = e?.messages?.[0] || e?.message || __('Unlink failed')
+    confirmDeleteInfo.value.error = msg
+    confirmDeleteInfo.value.loading = false
+    throw e
   }
 }
+
 
 const confirmUnlink = () => {
   const items =
@@ -242,24 +231,67 @@ const confirmUnlink = () => {
     title: __('Unlink linked item'),
     message: __('Are you sure you want to unlink {0} linked item(s)?', [items]),
     delete: false,
+    error: '',
+    loading: false,
   }
 }
 
-const removeDocLinks = () => {
-  unlinkLinkedDoc({
-    reference_doctype: props.doctype,
-    reference_docname: props.docname,
+const removeDocLinks = async () => {
+  await unlinkLinkedDoc({
     delete: confirmDeleteInfo.value.delete,
   })
   viewControls.value.updateSelections([])
 }
 
+
+const onConfirmAction = async () => {
+  try {
+    confirmDeleteInfo.value.loading = true
+    await removeDocLinks()
+    confirmDeleteInfo.value.show = false
+  } catch (e) {
+    // error already set in unlink function; keep modal open
+  } finally {
+    confirmDeleteInfo.value.loading = false
+  }
+}
+
 const deleteDoc = async () => {
-  await call('frappe.client.delete', {
-    doctype: props.doctype,
-    name: props.docname,
-  })
-  router.push({ name: props.name })
-  props?.reload?.()
+  try {
+    // First, unlink any customer relationships if this is a lead or ticket
+    if (['CRM Lead', 'CRM Ticket'].includes(props.doctype)) {
+      const customer_id = await call('frappe.client.get_value', {
+        doctype: props.doctype,
+        name: props.docname,
+        fieldname: 'customer_id'
+      })
+      
+      if (customer_id && customer_id.message) {
+        // Unlink the customer relationship first
+        await call('crm.api.doc.remove_linked_doc_reference', {
+          items: [{
+            doctype: props.doctype,
+            docname: props.docname
+          }],
+          remove_contact: false,
+          delete: false,
+          delete_lead_ticket: true
+        })
+      }
+    }
+    
+    // Now delete the document
+    await call('frappe.client.delete', {
+      doctype: props.doctype,
+      name: props.docname,
+    })
+    
+    toast.success(`${props.doctype} deleted successfully`)
+    router.push({ name: props.name })
+    props?.reload?.()
+  } catch (error) {
+    console.error('❌ Deletion error:', error)
+    toast.error(error.messages?.[0] || error.message || `Error deleting ${props.doctype}`)
+  }
 }
 </script>

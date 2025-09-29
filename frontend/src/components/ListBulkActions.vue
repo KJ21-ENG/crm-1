@@ -284,12 +284,7 @@ function bulkActions(selections, unselectAll) {
     })
   }
 
-  if (!props.options.hideDelete) {
-    actions.push({
-      label: __('Delete'),
-      onClick: () => deleteValues(selections, unselectAll),
-    })
-  }
+  // Delete removed from bulk actions to avoid conflicts
 
   if (!props.options.hideAssign) {
     actions.push({
