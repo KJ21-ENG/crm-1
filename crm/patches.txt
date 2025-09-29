@@ -79,3 +79,6 @@ crm.patches.v1_0.add_customer_personal_fields # 15-08-2025
 crm.patches.v1_0.update_customer_personal_fields # 15-08-2025
 crm.patches.v1_0.add_admin_notification_settings
 crm.patches.v1_0.create_home_folder
+
+#add alternative mobile number in Lead form for quick view
+crm.patches.v1_0.add_alternative_mobile_no_quick_entry #29-09-2025
