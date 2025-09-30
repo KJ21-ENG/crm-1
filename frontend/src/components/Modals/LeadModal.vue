@@ -443,6 +443,24 @@ function swapNumbers() {
   // simple swap
   lead.doc.mobile_no = altMobile
   lead.doc.alternative_mobile_no = mobile
+
+  toggleAdditionalContactSection()
+}
+
+function toggleAdditionalContactSection() {
+  if (!tabs.data?.length) return
+
+  let targetState
+
+  tabs.data.forEach((tab) => {
+    const section = tab.sections?.find((s) => s.name === 'additional_contact_info')
+    if (section) {
+      if (targetState === undefined) {
+        targetState = !section.opened
+      }
+      section.opened = targetState
+    }
+  })
 }
 
 function getStatusColor(status) {
