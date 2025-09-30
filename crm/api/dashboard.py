@@ -416,6 +416,17 @@ def get_lead_analytics(view='daily', custom_start_date=None, custom_end_date=Non
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
+    # Count leads with specific statuses
+    account_opened = frappe.db.count("CRM Lead", filters={
+        **date_filter,
+        "status": "Account Opened"
+    })
+    
+    account_activated = frappe.db.count("CRM Lead", filters={
+        **date_filter,
+        "status": "Account Activated"
+    })
+    
     return {
         "status_distribution": frappe.db.get_list("CRM Lead", 
             fields=["status", "count(name) as count"],
@@ -435,7 +446,9 @@ def get_lead_analytics(view='daily', custom_start_date=None, custom_end_date=Non
             filters=date_filter,
             order_by="creation desc",
             limit=5
-        )
+        ),
+        "account_opened": account_opened,
+        "account_activated": account_activated
     }
 
 
@@ -524,17 +537,22 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming"})
     outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing"})
 
-    # Get call counts by status directly from database (now that statuses are stored correctly)
-    missed_calls = frappe.db.count("CRM Call Log", filters={
+    # Get call counts by status directly from database (refactored to use status field consistently)
+    # Missed Calls: Incoming calls with status 'Missed Call'
+    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={
         **date_filter,
+        "type": "Incoming",
         "status": "Missed Call"
     })
 
-    did_not_picked = frappe.db.count("CRM Call Log", filters={
+    # Did Not Pick: Outgoing calls with status 'Did Not Picked'
+    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={
         **date_filter,
+        "type": "Outgoing",
         "status": "Did Not Picked"
     })
 
+    # Completed calls: All calls with status 'Completed'
     completed_calls = frappe.db.count("CRM Call Log", filters={
         **date_filter,
         "status": "Completed"
@@ -1023,6 +1041,19 @@ def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_e
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
+    # Count leads with specific statuses for this user
+    account_opened = frappe.db.count("CRM Lead", filters={
+        **date_filter,
+        "lead_owner": user,
+        "status": "Account Opened"
+    })
+    
+    account_activated = frappe.db.count("CRM Lead", filters={
+        **date_filter,
+        "lead_owner": user,
+        "status": "Account Activated"
+    })
+    
     return {
         "status_distribution": frappe.db.get_list("CRM Lead", 
             fields=["status", "count(name) as count"],
@@ -1042,7 +1073,9 @@ def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_e
             filters={**date_filter, "lead_owner": user},
             group_by="source",
             order_by="count desc"
-        )
+        ),
+        "account_opened": account_opened,
+        "account_activated": account_activated
     }
 
 
@@ -1131,26 +1164,22 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming"})
     outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing"})
 
-    # User-specific missed/did-not-pick: include NULL durations
-    missed_incoming_user_sql = """
-        SELECT COUNT(*) FROM `tabCRM Call Log`
-        WHERE creation BETWEEN %s AND %s
-        AND `type` = 'Incoming'
-        AND employee = %s
-        AND (duration = 0 OR duration IS NULL)
-    """
-    missed_incoming_user_res = frappe.db.sql(missed_incoming_user_sql, (start_date, end_date, user))
-    missed_incoming_duration0 = missed_incoming_user_res[0][0] if missed_incoming_user_res else 0
+    # User-specific missed/did-not-pick: Refactored to use status field consistently
+    # Missed Calls: Incoming calls with status 'Missed Call'
+    missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "employee": user,
+        "type": "Incoming",
+        "status": "Missed Call"
+    })
 
-    did_not_picked_user_sql = """
-        SELECT COUNT(*) FROM `tabCRM Call Log`
-        WHERE creation BETWEEN %s AND %s
-        AND `type` = 'Outgoing'
-        AND employee = %s
-        AND (duration = 0 OR duration IS NULL)
-    """
-    did_not_picked_user_res = frappe.db.sql(did_not_picked_user_sql, (start_date, end_date, user))
-    did_not_picked_outgoing_duration0 = did_not_picked_user_res[0][0] if did_not_picked_user_res else 0
+    # Did Not Pick: Outgoing calls with status 'Did Not Picked'
+    did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "employee": user,
+        "type": "Outgoing",
+        "status": "Did Not Picked"
+    })
 
     # Unique callers for this user: count of NEW customers (mobile numbers) whose first call to this user was within the date range
     unique_callers_sql = """
@@ -1170,8 +1199,12 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     # 24-hour calling pattern for specific user in range
     call_activity_pattern = _build_call_activity_pattern(start_date, end_date, user)
 
-    # Completed calls per business logic for specific user
-    completed_calls = max(incoming_calls - missed_incoming_duration0, 0) + max(outgoing_calls - did_not_picked_outgoing_duration0, 0)
+    # Completed calls: Use status field directly instead of calculation
+    completed_calls = frappe.db.count("CRM Call Log", filters={
+        **date_filter,
+        "employee": user,
+        "status": "Completed"
+    })
 
     # Cold calls for specific user
     cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "is_cold_call": 1})

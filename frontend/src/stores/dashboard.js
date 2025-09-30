@@ -260,6 +260,7 @@ export function useDashboard() {
     console.log('StatsCards computed - overview.value:', overview.value)
     console.log('StatsCards computed - total_leads:', overview.value.total_leads)
     console.log('StatsCards computed - total_tickets:', overview.value.total_tickets)
+    console.log('StatsCards computed - leadAnalytics:', leadAnalytics.value)
     
     return [
       { title: 'Total Leads', value: overview.value.total_leads || 0, icon: 'user-plus', color: 'blue', change: null, clickable: true, target: 'leads' },
@@ -274,6 +275,26 @@ export function useDashboard() {
         change: null,
         clickable: true,
         target: 'calls'
+      },
+      { 
+        title: 'Account Opened', 
+        value: leadAnalytics.value.account_opened || 0, 
+        subtitle: 'Leads converted to accounts',
+        icon: 'user-check', 
+        color: 'teal', 
+        change: null,
+        clickable: true,
+        target: 'leads'
+      },
+      { 
+        title: 'Account Activated', 
+        value: leadAnalytics.value.account_activated || 0, 
+        subtitle: 'Active customer accounts',
+        icon: 'check-circle', 
+        color: 'indigo', 
+        change: null,
+        clickable: true,
+        target: 'leads'
       }
     ]
   })

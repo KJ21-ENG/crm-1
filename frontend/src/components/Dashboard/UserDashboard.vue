@@ -34,7 +34,7 @@
     </div>
 
     <!-- Performance Overview Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       <!-- Leads tile: main = total (owner OR in _assign), support = created (owner) and assigned (_assign) -->
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
@@ -147,6 +147,48 @@
           </div>
           <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
             <FeatherIcon name="phone" class="h-5 w-5 text-purple-600" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Opened tile -->
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('leads')"
+        @keydown.enter.prevent="navigateTo('leads')"
+        @keydown.space.prevent="navigateTo('leads')"
+        role="button"
+        tabindex="0"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Account Opened</p>
+            <p class="text-2xl font-bold text-gray-900">{{ userLeadAnalytics.account_opened || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Leads converted to accounts</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+            <FeatherIcon name="user-check" class="h-5 w-5 text-teal-600" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Activated tile -->
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
+        @click="navigateTo('leads')"
+        @keydown.enter.prevent="navigateTo('leads')"
+        @keydown.space.prevent="navigateTo('leads')"
+        role="button"
+        tabindex="0"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Account Activated</p>
+            <p class="text-2xl font-bold text-gray-900">{{ userLeadAnalytics.account_activated || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Active customer accounts</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <FeatherIcon name="check-circle" class="h-5 w-5 text-indigo-600" />
           </div>
         </div>
       </div>
