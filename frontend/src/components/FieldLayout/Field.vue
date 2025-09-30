@@ -264,14 +264,16 @@
 
       <!-- Only show Swap for mobile_no -->
       <Tooltip text="Swap Mobile with Alternate">
-        <Button
-          v-if="field.fieldname === 'mobile_no'"
-          size="sm"
-          variant="outline"
-          @click="$emit('swap')"
-        >
-          <FeatherIcon name="repeat" class="h-2 w-2" />
-        </Button>
+        <div @click="$emit('swap')" class="inline-flex">
+          <Button
+            v-if="field.fieldname === 'mobile_no'"
+            size="sm"
+            variant="outline"
+            class="!p-1"
+          >
+            <FeatherIcon name="repeat" class="h-2 w-2" />
+          </Button>
+        </div>
       </Tooltip>
     </div>
 
