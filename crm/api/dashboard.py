@@ -411,6 +411,42 @@ def get_overview_stats(view='daily', custom_start_date=None, custom_end_date=Non
     }
 
 
+@frappe.whitelist()
+def get_lead_analytics_details(view='daily', custom_start_date=None, custom_end_date=None, metric_type=None):
+    """Get detailed list of leads for account opened/activated metrics"""
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
+
+    if metric_type == 'account_opened':
+        leads = frappe.get_all("CRM Lead",
+            filters={
+                "account_opened_on": ["between", [start_date, end_date]]
+            },
+            fields=["name", "lead_name", "customer_id", "account_opened_on", "status"],
+            order_by="account_opened_on desc"
+        )
+        return {
+            "leads": leads,
+            "total_count": len(leads),
+            "metric_type": "Account Opened"
+        }
+
+    elif metric_type == 'account_activated':
+        leads = frappe.get_all("CRM Lead",
+            filters={
+                "account_activated_on": ["between", [start_date, end_date]]
+            },
+            fields=["name", "lead_name", "customer_id", "account_activated_on", "status"],
+            order_by="account_activated_on desc"
+        )
+        return {
+            "leads": leads,
+            "total_count": len(leads),
+            "metric_type": "Account Activated"
+        }
+
+    return {"leads": [], "total_count": 0, "metric_type": "Unknown"}
+
+
 def get_lead_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get lead-related analytics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
@@ -1033,6 +1069,44 @@ def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_e
             "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
             "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
         }
+
+
+@frappe.whitelist()
+def get_user_lead_analytics_details(user, view='daily', custom_start_date=None, custom_end_date=None, metric_type=None):
+    """Get detailed list of leads for user-specific account opened/activated metrics"""
+    start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
+
+    if metric_type == 'account_opened':
+        leads = frappe.get_all("CRM Lead",
+            filters={
+                "account_opened_on": ["between", [start_date, end_date]],
+                "lead_owner": user
+            },
+            fields=["name", "lead_name", "customer_id", "account_opened_on", "status"],
+            order_by="account_opened_on desc"
+        )
+        return {
+            "leads": leads,
+            "total_count": len(leads),
+            "metric_type": "Account Opened"
+        }
+
+    elif metric_type == 'account_activated':
+        leads = frappe.get_all("CRM Lead",
+            filters={
+                "account_activated_on": ["between", [start_date, end_date]],
+                "lead_owner": user
+            },
+            fields=["name", "lead_name", "customer_id", "account_activated_on", "status"],
+            order_by="account_activated_on desc"
+        )
+        return {
+            "leads": leads,
+            "total_count": len(leads),
+            "metric_type": "Account Activated"
+        }
+
+    return {"leads": [], "total_count": 0, "metric_type": "Unknown"}
 
 
 def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):

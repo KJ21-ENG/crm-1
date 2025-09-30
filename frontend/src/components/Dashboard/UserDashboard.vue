@@ -161,13 +161,75 @@
         tabindex="0"
       >
         <div class="flex items-center justify-between">
-          <div>
+          <div class="flex-1">
             <p class="text-sm font-medium text-gray-600">Account Opened</p>
             <p class="text-2xl font-bold text-gray-900">{{ userLeadAnalytics.account_opened || 0 }}</p>
             <p class="text-sm text-gray-500 mt-1">Leads converted to accounts</p>
           </div>
-          <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
-            <FeatherIcon name="user-check" class="h-5 w-5 text-teal-600" />
+          <div class="flex-shrink-0 flex items-center space-x-2">
+            <!-- Tooltip button -->
+            <div class="relative">
+              <button
+                :data-tooltip-button="`account_opened_${props.currentView}`"
+                class="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                @mouseenter="toggleTooltip('account_opened')"
+                @mouseleave="showTooltip[`account_opened_${props.currentView}`] = false"
+              >
+                <FeatherIcon name="info" class="w-4 h-4 text-gray-400 hover:text-gray-600" />
+              </button>
+
+              <!-- Tooltip -->
+              <div
+                v-if="showTooltip[`account_opened_${props.currentView}`] && tooltipData[`account_opened_${props.currentView}`]"
+                :data-tooltip="`account_opened_${props.currentView}`"
+                class="absolute bottom-full right-0 mb-2 z-50 w-80 bg-white border border-gray-200 text-gray-900 text-sm rounded-lg shadow-lg p-3"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="font-medium text-gray-900">{{ tooltipData[`account_opened_${props.currentView}`].metric_type }}</h4>
+                  <button
+                    class="text-gray-400 hover:text-gray-600"
+                    @click="showTooltip[`account_opened_${props.currentView}`] = false"
+                  >
+                    <FeatherIcon name="x" class="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div v-if="tooltipLoading[`account_opened_${props.currentView}`]" class="text-center py-4">
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mx-auto"></div>
+                  <p class="mt-2 text-gray-600">Loading...</p>
+                </div>
+
+                <div v-else-if="tooltipData[`account_opened_${props.currentView}`].leads?.length">
+                  <p class="mb-2 text-gray-900">{{ tooltipData[`account_opened_${props.currentView}`].total_count }} leads</p>
+                  <div class="max-h-40 overflow-y-auto space-y-2">
+                    <div
+                      v-for="lead in tooltipData[`account_opened_${props.currentView}`].leads.slice(0, 10)"
+                      :key="lead.name"
+                      class="flex justify-between items-center py-1 border-b border-gray-200 last:border-b-0"
+                    >
+                      <div>
+                        <p class="font-medium">{{ lead.lead_name || lead.name }}</p>
+                        <p class="text-xs text-gray-600">{{ lead.customer_id }}</p>
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        {{ formatDateTime(lead.account_opened_on) }}
+                      </div>
+                    </div>
+                    <div v-if="tooltipData[`account_opened_${props.currentView}`].total_count > 10" class="text-center py-1 text-gray-400 text-xs">
+                      ... and {{ tooltipData[`account_opened_${props.currentView}`].total_count - 10 }} more
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="text-center py-4 text-gray-400">
+                  No leads found
+                </div>
+              </div>
+            </div>
+
+            <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+              <FeatherIcon name="user-check" class="h-5 w-5 text-teal-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -182,13 +244,75 @@
         tabindex="0"
       >
         <div class="flex items-center justify-between">
-          <div>
+          <div class="flex-1">
             <p class="text-sm font-medium text-gray-600">Account Activated</p>
             <p class="text-2xl font-bold text-gray-900">{{ userLeadAnalytics.account_activated || 0 }}</p>
             <p class="text-sm text-gray-500 mt-1">Active customer accounts</p>
           </div>
-          <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-            <FeatherIcon name="check-circle" class="h-5 w-5 text-indigo-600" />
+          <div class="flex-shrink-0 flex items-center space-x-2">
+            <!-- Tooltip button -->
+            <div class="relative">
+              <button
+                :data-tooltip-button="`account_activated_${props.currentView}`"
+                class="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                @mouseenter="toggleTooltip('account_activated')"
+                @mouseleave="showTooltip[`account_activated_${props.currentView}`] = false"
+              >
+                <FeatherIcon name="info" class="w-4 h-4 text-gray-400 hover:text-gray-600" />
+              </button>
+
+              <!-- Tooltip -->
+              <div
+                v-if="showTooltip[`account_activated_${props.currentView}`] && tooltipData[`account_activated_${props.currentView}`]"
+                :data-tooltip="`account_activated_${props.currentView}`"
+                class="absolute bottom-full right-0 mb-2 z-50 w-80 bg-white border border-gray-200 text-gray-900 text-sm rounded-lg shadow-lg p-3"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="font-medium text-gray-900">{{ tooltipData[`account_activated_${props.currentView}`].metric_type }}</h4>
+                  <button
+                    class="text-gray-400 hover:text-gray-600"
+                    @click="showTooltip[`account_activated_${props.currentView}`] = false"
+                  >
+                    <FeatherIcon name="x" class="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div v-if="tooltipLoading[`account_activated_${props.currentView}`]" class="text-center py-4">
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mx-auto"></div>
+                  <p class="mt-2 text-gray-600">Loading...</p>
+                </div>
+
+                <div v-else-if="tooltipData[`account_activated_${props.currentView}`].leads?.length">
+                  <p class="mb-2 text-gray-900">{{ tooltipData[`account_activated_${props.currentView}`].total_count }} leads</p>
+                  <div class="max-h-40 overflow-y-auto space-y-2">
+                    <div
+                      v-for="lead in tooltipData[`account_activated_${props.currentView}`].leads.slice(0, 10)"
+                      :key="lead.name"
+                      class="flex justify-between items-center py-1 border-b border-gray-200 last:border-b-0"
+                    >
+                      <div>
+                        <p class="font-medium">{{ lead.lead_name || lead.name }}</p>
+                        <p class="text-xs text-gray-600">{{ lead.customer_id }}</p>
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        {{ formatDateTime(lead.account_activated_on) }}
+                      </div>
+                    </div>
+                    <div v-if="tooltipData[`account_activated_${props.currentView}`].total_count > 10" class="text-center py-1 text-gray-400 text-xs">
+                      ... and {{ tooltipData[`account_activated_${props.currentView}`].total_count - 10 }} more
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="text-center py-4 text-gray-400">
+                  No leads found
+                </div>
+              </div>
+            </div>
+
+            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+              <FeatherIcon name="check-circle" class="h-5 w-5 text-indigo-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -306,7 +430,7 @@
           </div>
           
           <div v-else-if="!userPeakHours || !userPeakHours.hourly_data" class="text-center py-6 text-gray-500">
-            <FeatherIcon name="clock" class="h-10 w-10 mx-auto mb-2 text-gray-300" />
+            <FeatherIcon name="clock" class="h-10 w-10 mx-auto mb-2 text-gray-600" />
             <p class="text-sm">No activity data available</p>
           </div>
           
@@ -345,7 +469,7 @@
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                       <div class="text-center">
                         <div class="font-semibold">{{ hourData.hour }}</div>
-                        <div class="text-gray-300">{{ hourData.total_activity }} activities</div>
+                        <div class="text-gray-600">{{ hourData.total_activity }} activities</div>
                       </div>
                       <!-- Arrow -->
                       <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-gray-900"></div>
@@ -379,7 +503,7 @@
           </div>
           
           <div v-else-if="!userRecentActivities || userRecentActivities.length === 0" class="text-center py-4 text-gray-500">
-            <FeatherIcon name="clock" class="h-8 w-8 mx-auto mb-2 text-gray-300" />
+            <FeatherIcon name="clock" class="h-8 w-8 mx-auto mb-2 text-gray-600" />
             <p class="text-sm">No recent activities</p>
           </div>
           
@@ -428,7 +552,7 @@
           </div>
           
           <div v-else-if="!userGoals || userGoals.length === 0" class="text-center py-8 text-gray-500">
-            <FeatherIcon name="flag" class="h-12 w-12 mx-auto mb-3 text-gray-300" />
+            <FeatherIcon name="flag" class="h-12 w-12 mx-auto mb-3 text-gray-600" />
             <p>No goals set for this period</p>
             <p class="text-sm">Set goals to track your progress!</p>
           </div>
@@ -479,8 +603,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { FeatherIcon, Badge } from 'frappe-ui'
+import { frappeRequest } from 'frappe-ui'
 import ChartCard from './ChartCard.vue'
 
 const props = defineProps({
@@ -503,6 +628,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['refresh', 'navigate'])
+
+// Tooltip functionality for account metrics
+const tooltipData = ref({})
+const tooltipLoading = ref({})
+const showTooltip = ref({})
 
 // Computed properties for user data
 const userInfo = computed(() => {
@@ -527,6 +657,90 @@ const userTicketAnalytics = computed(() => {
   const analytics = props.userDashboardData.ticket_analytics || {}
   console.log('🔍 DEBUG: UserDashboard - userTicketAnalytics computed:', analytics)
   return analytics
+})
+
+// Tooltip functions
+const fetchTooltipData = async (metricType) => {
+  // Check if we already have data for this metric and view
+  const cacheKey = `${metricType}_${props.currentView}`
+  if (tooltipData.value[cacheKey]) {
+    return tooltipData.value[cacheKey]
+  }
+
+  tooltipLoading.value[cacheKey] = true
+
+  try {
+    const params = {
+      user: props.userDashboardData.user_info?.name || '',
+      view: props.currentView,
+      metric_type: metricType,
+      _t: Date.now()
+    }
+
+    const response = await frappeRequest({
+      url: '/api/method/crm.api.dashboard.get_user_lead_analytics_details',
+      params,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
+
+    tooltipData.value[cacheKey] = response
+    return response
+  } catch (error) {
+    console.error('Error fetching tooltip data:', error)
+    tooltipData.value[cacheKey] = { leads: [], total_count: 0, metric_type: metricType }
+    return tooltipData.value[cacheKey]
+  } finally {
+    tooltipLoading.value[cacheKey] = false
+  }
+}
+
+const toggleTooltip = async (metricType) => {
+  const tooltipKey = `${metricType}_${props.currentView}`
+
+  if (showTooltip.value[tooltipKey]) {
+    showTooltip.value[tooltipKey] = false
+    return
+  }
+
+  if (!tooltipData.value[tooltipKey]) {
+    tooltipLoading.value[tooltipKey] = true
+    try {
+      tooltipData.value[tooltipKey] = await fetchTooltipData(metricType)
+    } catch (error) {
+      console.error('Error fetching tooltip data:', error)
+    } finally {
+      tooltipLoading.value[tooltipKey] = false
+    }
+  }
+  showTooltip.value[tooltipKey] = true
+}
+
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return ''
+  const date = new Date(dateTime)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return `${day}/${month}/${year} ${time}`
+}
+
+// Close tooltip when clicking outside
+const handleClickOutside = (event) => {
+  const tooltipButtons = event.target.closest('[data-tooltip-button]')
+  const tooltips = event.target.closest('[data-tooltip]')
+
+  if (!tooltipButtons && !tooltips) {
+    showTooltip.value = {}
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
 })
 
 const userTaskAnalytics = computed(() => {

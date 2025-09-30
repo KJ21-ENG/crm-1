@@ -225,6 +225,7 @@
               :change="card.change"
               :clickable="card.clickable"
               :target="card.target"
+              :tooltip="card.tooltip"
               @click="handleStatsCardClick"
             />
           </div>

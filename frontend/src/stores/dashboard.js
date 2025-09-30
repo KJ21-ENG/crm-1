@@ -13,6 +13,54 @@ export function useDashboard() {
   // Track which user id the latest user-specific fetch returned for ('' = current user)
   const lastFetchedUserId = ref('')
 
+  // Tooltip functionality for account metrics
+  const tooltipData = ref({})
+  const tooltipLoading = ref({})
+
+  const fetchTooltipData = async (metricType, view = 'daily', customStartDate = null, customEndDate = null) => {
+    // Check if we already have data for this metric and view
+    const cacheKey = `${metricType}_${view}_${customStartDate || ''}_${customEndDate || ''}`
+    if (tooltipData.value[cacheKey]) {
+      return tooltipData.value[cacheKey]
+    }
+
+    tooltipLoading.value[cacheKey] = true
+
+    try {
+      const params = { view, metric_type: metricType, _t: Date.now() }
+
+      if (view === 'custom' && customStartDate && customEndDate) {
+        params.custom_start_date = customStartDate
+        params.custom_end_date = customEndDate
+      }
+
+      const response = await frappeRequest({
+        url: '/api/method/crm.api.dashboard.get_lead_analytics_details',
+        params,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+
+      // unwrap frappe response shape
+      tooltipData.value[cacheKey] = response?.message ?? response
+      return response
+    } catch (error) {
+      console.error('Error fetching tooltip data:', error)
+      tooltipData.value[cacheKey] = { leads: [], total_count: 0, metric_type: metricType }
+      return tooltipData.value[cacheKey]
+    } finally {
+      tooltipLoading.value[cacheKey] = false
+    }
+  }
+
+  const clearTooltipCache = () => {
+    tooltipData.value = {}
+    tooltipLoading.value = {}
+  }
+
   const fetchDashboardData = async (view = 'daily', customStartDate = null, customEndDate = null) => {
     loading.value = true
     error.value = null
@@ -276,25 +324,33 @@ export function useDashboard() {
         clickable: true,
         target: 'calls'
       },
-      { 
-        title: 'Account Opened', 
-        value: leadAnalytics.value.account_opened || 0, 
+      {
+        title: 'Account Opened',
+        value: leadAnalytics.value.account_opened || 0,
         subtitle: 'Leads converted to accounts',
-        icon: 'user-check', 
-        color: 'teal', 
+        icon: 'user-check',
+        color: 'teal',
         change: null,
         clickable: true,
-        target: 'leads'
+        target: 'leads',
+        tooltip: {
+          enabled: true,
+          fetchData: () => fetchTooltipData('account_opened', currentView.value, customDateRange.value.start, customDateRange.value.end)
+        }
       },
-      { 
-        title: 'Account Activated', 
-        value: leadAnalytics.value.account_activated || 0, 
+      {
+        title: 'Account Activated',
+        value: leadAnalytics.value.account_activated || 0,
         subtitle: 'Active customer accounts',
-        icon: 'check-circle', 
-        color: 'indigo', 
+        icon: 'check-circle',
+        color: 'indigo',
         change: null,
         clickable: true,
-        target: 'leads'
+        target: 'leads',
+        tooltip: {
+          enabled: true,
+          fetchData: () => fetchTooltipData('account_activated', currentView.value, customDateRange.value.start, customDateRange.value.end)
+        }
       }
     ]
   })
@@ -367,10 +423,14 @@ export function useDashboard() {
     lastUpdated,
     currentView,
     customDateRangeFormatted,
-    
+    tooltipData,
+    tooltipLoading,
+
     // Actions
     fetchDashboardData,
     fetchUserDashboardData,
+    fetchTooltipData,
+    clearTooltipCache,
     refreshData,
     refreshUserData,
     refreshDashboard,
