@@ -416,15 +416,14 @@ def get_lead_analytics(view='daily', custom_start_date=None, custom_end_date=Non
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
-    # Count leads with specific statuses
+    # Count leads based on when they reached each status (regardless of current status)
+    # This ensures leads are counted in both tiles if they have both timestamps
     account_opened = frappe.db.count("CRM Lead", filters={
-        **date_filter,
-        "status": "Account Opened"
+        "account_opened_on": ["between", [start_date, end_date]]
     })
     
     account_activated = frappe.db.count("CRM Lead", filters={
-        **date_filter,
-        "status": "Account Activated"
+        "account_activated_on": ["between", [start_date, end_date]]
     })
     
     return {
@@ -1041,17 +1040,16 @@ def get_user_lead_analytics(user, view='daily', custom_start_date=None, custom_e
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
     
-    # Count leads with specific statuses for this user
+    # Count leads based on when they reached each status (regardless of current status)
+    # This ensures leads are counted in both tiles if they have both timestamps
     account_opened = frappe.db.count("CRM Lead", filters={
-        **date_filter,
-        "lead_owner": user,
-        "status": "Account Opened"
+        "account_opened_on": ["between", [start_date, end_date]],
+        "lead_owner": user
     })
     
     account_activated = frappe.db.count("CRM Lead", filters={
-        **date_filter,
-        "lead_owner": user,
-        "status": "Account Activated"
+        "account_activated_on": ["between", [start_date, end_date]],
+        "lead_owner": user
     })
     
     return {

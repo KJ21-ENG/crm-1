@@ -111,15 +111,28 @@ def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
             update_modified=False
         )
 
-        # If status changed to Account Opened, set account_open_date
+        # Set timestamps for account status changes
         try:
+            from frappe.utils import now_datetime
+            
             if new_status == 'Account Opened':
-                frappe.db.set_value(
-                    'CRM Lead', lead_name, 'account_open_date', nowdate(), update_modified=False
-                )
-        except Exception:
-            # Non-critical
-            pass
+                # Check if timestamp is already set (don't overwrite)
+                existing_timestamp = frappe.db.get_value('CRM Lead', lead_name, 'account_opened_on')
+                if not existing_timestamp:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_opened_on', now_datetime(), update_modified=False
+                    )
+            
+            if new_status == 'Account Activated':
+                # Check if timestamp is already set (don't overwrite)
+                existing_timestamp = frappe.db.get_value('CRM Lead', lead_name, 'account_activated_on')
+                if not existing_timestamp:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_activated_on', now_datetime(), update_modified=False
+                    )
+        except Exception as e:
+            # Non-critical - log but don't fail the status update
+            frappe.log_error(f"Failed to set timestamp for {new_status}: {str(e)}")
 
         # Commit the transaction
         frappe.db.commit()

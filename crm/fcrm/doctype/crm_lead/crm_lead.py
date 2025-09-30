@@ -34,6 +34,8 @@ class CRMLead(Document):
 			self.assign_agent(self.lead_owner)
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
+		# Always check and set timestamps (not just when status changes)
+		self.set_account_status_timestamps()
 		
 		# 🔔 Send lead assignment notification for lead owner changes
 		handle_lead_assignment_change(self, method="validate")
@@ -524,6 +526,21 @@ class CRMLead(Document):
 		sla = frappe.get_last_doc("CRM Service Level Agreement", {"name": self.sla})
 		if sla:
 			sla.apply(self)
+
+	def set_account_status_timestamps(self):
+		"""
+		Set timestamps when account status changes to 'Account Opened' or 'Account Activated'.
+		Only set timestamp once when status first changes to that value.
+		"""
+		from frappe.utils import now_datetime
+		
+		# Set Account Opened timestamp
+		if self.status == "Account Opened" and not self.account_opened_on:
+			self.account_opened_on = now_datetime()
+		
+		# Set Account Activated timestamp
+		if self.status == "Account Activated" and not self.account_activated_on:
+			self.account_activated_on = now_datetime()
 
 	def convert_to_deal(self, deal=None):
 		return convert_to_deal(lead=self.name, doc=self, deal=deal)

@@ -46,6 +46,8 @@
   "phone",
   "column_break_dbsv",
   "status",
+  "account_opened_on",
+  "account_activated_on",
   "no_of_employees",
   "annual_revenue",
   "image",
@@ -158,6 +160,18 @@
    "options": "CRM Lead Status",
    "reqd": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "account_opened_on",
+   "fieldtype": "Datetime",
+   "label": "Account Opened On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "account_activated_on",
+   "fieldtype": "Datetime",
+   "label": "Account Activated On",
+   "read_only": 1
   },
   {
    "fieldname": "email",
