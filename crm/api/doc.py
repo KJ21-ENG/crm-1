@@ -10,6 +10,7 @@ from frappe.utils import make_filter_tuple
 from pypika import Criterion
 
 from crm.api.views import get_views
+from contextlib import contextmanager
 from crm.fcrm.doctype.crm_form_script.crm_form_script import get_form_script
 from crm.utils import get_dynamic_linked_docs, get_linked_docs
 
@@ -26,6 +27,25 @@ ALLOWED_CASCADE_DELETE = {
     "CRM Call Log",
     "WhatsApp Message",
 }
+
+
+@contextmanager
+def _atomic_block(savepoint_name: str = "crm_atomic_sp"):
+    """Atomic block using DB savepoint; rolls back on error, lets request handler commit on success."""
+    try:
+        frappe.db.savepoint(savepoint_name)
+    except Exception:
+        # If savepoints unsupported, run without explicit savepoint
+        savepoint_name = None
+    try:
+        yield
+    except Exception:
+        try:
+            if savepoint_name:
+                frappe.db.rollback(save_point=savepoint_name)
+        except Exception:
+            pass
+        raise
 
 
 @frappe.whitelist()
@@ -983,7 +1003,7 @@ def _unlink_customer_from_parent(parent_doctype: str, parent_name: str, customer
         
         # Clear the customer_id field from the parent document
         frappe.db.set_value(parent_doctype, parent_name, "customer_id", None)
-        frappe.db.commit()
+        # no explicit commit; allow outer transaction/request to commit
         
         frappe.logger().info(f"Successfully unlinked customer {customer_name} from {parent_doctype} {parent_name}")
     except Exception as e:
@@ -997,7 +1017,7 @@ def _unlink_customer_from_parent(parent_doctype: str, parent_name: str, customer
             doc = frappe.get_doc(parent_doctype, parent_name)
             doc.customer_id = None
             doc.save(ignore_permissions=True)
-            frappe.db.commit()
+            # no explicit commit; allow outer transaction/request to commit
                 
             frappe.logger().info(f"Successfully unlinked customer {customer_name} from {parent_doctype} {parent_name} using doc.save()")
         except Exception as e2:
@@ -1184,8 +1204,8 @@ def remove_linked_doc_reference(items, remove_contact=None, delete=False, delete
 
     failed_deletions = []
     try:
-        # Wrap entire operation in atomic transaction
-        with frappe.db.transaction():
+        # Atomic block via savepoint (compatible with MariaDB connector)
+        with _atomic_block("unlink_txn"):
             for item in items or []:
                 doctype = item.get("doctype")
                 docname = item.get("docname")
@@ -1271,8 +1291,8 @@ def cascade_delete_document(doctype: str, name: str) -> dict:
     if not allowed or not getattr(allowed, "get", None) or not allowed.get("allowed"):
         frappe.throw(_("Not permitted to delete this document."))
 
-    # Wrap entire cascade delete in atomic transaction
-    with frappe.db.transaction():
+    # Wrap entire cascade delete in atomic block (savepoint)
+    with _atomic_block("cascade_delete_txn"):
         # First, unlink customer if present (this must be done before any other operations)
         try:
             # Check if the document has a customer_id field and unlink it
