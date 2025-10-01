@@ -1184,59 +1184,62 @@ def remove_linked_doc_reference(items, remove_contact=None, delete=False, delete
 
     failed_deletions = []
     try:
-        for item in items or []:
-            doctype = item.get("doctype")
-            docname = item.get("docname")
-            if not (doctype and docname):
-                continue
+        # Wrap entire operation in atomic transaction
+        with frappe.db.transaction():
+            for item in items or []:
+                doctype = item.get("doctype")
+                docname = item.get("docname")
+                if not (doctype and docname):
+                    continue
 
-            # If the selected item is the Customer row shown inside a Lead/Ticket, we must
-            # clear the parent document's customer_id field instead of touching the Customer doc
-            if doctype == "CRM Customer" and parent_doctype and parent_name:
-                try:
-                    _unlink_customer_from_parent(parent_doctype, parent_name, docname)
-                except Exception as e:
-                    frappe.log_error(f"Failed to unlink customer from {parent_doctype} {parent_name}: {e}")
-                    raise
-                # Once the customer is unlinked from parent, skip the rest of the loop for this item
-                continue
-
-            # Get customer_id before unlinking (for CRM Lead/Ticket)
-            customer_id = None
-            if doctype in ["CRM Lead", "CRM Ticket"] and not delete:
-                customer_id = frappe.db.get_value(doctype, docname, "customer_id")
-                # Update customer reference fields BEFORE unlinking
-                if customer_id:
-                    update_customer_reference_fields(customer_id, doctype, docname)
-
-            if remove_contact:
-                remove_contact_link(doctype, docname)
-            else:
-                _unlink_generic_reference(doctype, docname)
-
-            # If requested by client, and the linked doc is a Lead/Ticket, delete it after unlinking
-            if delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}:
-                try:
-                    cascade_delete_document(doctype, docname)
-                except Exception as delete_error:
-                    frappe.log_error(f"Failed to cascade delete {doctype} {docname}: {delete_error}")
-            
-            if delete and not (delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}):
-                # Only delete if doctype is fully dependent; otherwise, just unlink
-                if doctype in ALLOWED_CASCADE_DELETE:
+                # If the selected item is the Customer row shown inside a Lead/Ticket, we must
+                # clear the parent document's customer_id field instead of touching the Customer doc
+                if doctype == "CRM Customer" and parent_doctype and parent_name:
                     try:
-                        _safe_delete(doctype, docname)
-                    except Exception as delete_error:
-                        # Log the error but continue with other items
-                        frappe.log_error(f"Failed to delete {doctype} {docname}: {delete_error}")
-                        failed_deletions.append(f"{doctype} {docname}")
-                        # Try to unlink instead of failing completely
-                        try:
-                            _unlink_generic_reference(doctype, docname)
-                        except Exception:
-                            pass
+                        _unlink_customer_from_parent(parent_doctype, parent_name, docname)
+                    except Exception as e:
+                        frappe.log_error(f"Failed to unlink customer from {parent_doctype} {parent_name}: {e}")
+                        raise
+                    # Once the customer is unlinked from parent, skip the rest of the loop for this item
+                    continue
+
+                # Get customer_id before unlinking (for CRM Lead/Ticket)
+                customer_id = None
+                if doctype in ["CRM Lead", "CRM Ticket"] and not delete:
+                    customer_id = frappe.db.get_value(doctype, docname, "customer_id")
+                    # Update customer reference fields BEFORE unlinking
+                    if customer_id:
+                        update_customer_reference_fields(customer_id, doctype, docname)
+
+                if remove_contact:
+                    remove_contact_link(doctype, docname)
                 else:
                     _unlink_generic_reference(doctype, docname)
+
+                # If requested by client, and the linked doc is a Lead/Ticket, delete it after unlinking
+                if delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}:
+                    try:
+                        cascade_delete_document(doctype, docname)
+                    except Exception as delete_error:
+                        frappe.log_error(f"Failed to cascade delete {doctype} {docname}: {delete_error}")
+                        raise  # Re-raise to trigger rollback
+                
+                if delete and not (delete_lead_ticket and doctype in {"CRM Lead", "CRM Ticket"}):
+                    # Only delete if doctype is fully dependent; otherwise, just unlink
+                    if doctype in ALLOWED_CASCADE_DELETE:
+                        try:
+                            _safe_delete(doctype, docname)
+                        except Exception as delete_error:
+                            # Log the error but continue with other items
+                            frappe.log_error(f"Failed to delete {doctype} {docname}: {delete_error}")
+                            failed_deletions.append(f"{doctype} {docname}")
+                            # Try to unlink instead of failing completely
+                            try:
+                                _unlink_generic_reference(doctype, docname)
+                            except Exception:
+                                pass
+                    else:
+                        _unlink_generic_reference(doctype, docname)
 
         if failed_deletions:
             frappe.msgprint(_("Some linked documents could not be deleted: {0}. They have been unlinked instead.").format(", ".join(failed_deletions)))
@@ -1268,45 +1271,47 @@ def cascade_delete_document(doctype: str, name: str) -> dict:
     if not allowed or not getattr(allowed, "get", None) or not allowed.get("allowed"):
         frappe.throw(_("Not permitted to delete this document."))
 
-    # First, unlink customer if present (this must be done before any other operations)
-    try:
-        # Check if the document has a customer_id field and unlink it
-        customer_id = frappe.db.get_value(doctype, name, "customer_id")
-        if customer_id:
-            _unlink_customer_from_parent(doctype, name, customer_id)
-    except Exception:
-        pass
+    # Wrap entire cascade delete in atomic transaction
+    with frappe.db.transaction():
+        # First, unlink customer if present (this must be done before any other operations)
+        try:
+            # Check if the document has a customer_id field and unlink it
+            customer_id = frappe.db.get_value(doctype, name, "customer_id")
+            if customer_id:
+                _unlink_customer_from_parent(doctype, name, customer_id)
+        except Exception:
+            pass
 
-    # Fetch once; if there are many, user can retry to catch late arrivals
-    linked_docs = get_linked_docs_of_document(doctype, name)
+        # Fetch once; if there are many, user can retry to catch late arrivals
+        linked_docs = get_linked_docs_of_document(doctype, name)
 
-    # First pass: process linked docs
-    for ld in linked_docs or []:
-        ref_dt = ld.get("reference_doctype")
-        ref_name = ld.get("reference_docname")
-        if not (ref_dt and ref_name):
-            continue
+        # First pass: process linked docs
+        for ld in linked_docs or []:
+            ref_dt = ld.get("reference_doctype")
+            ref_name = ld.get("reference_docname")
+            if not (ref_dt and ref_name):
+                continue
 
-        if ref_dt in ALLOWED_CASCADE_DELETE:
-            # delete with safe cascade for lightweight blockers
-            _safe_delete(ref_dt, ref_name)
-        elif ref_dt == "CRM Customer":
-            # Special handling for Customer - unlink the customer_id field from the parent document
-            try:
-                _unlink_customer_from_parent(doctype, name, ref_name)
-            except Exception:
-                # ignore unlink failures for safety
-                pass
-        else:
-            # unlink only for other master records
-            try:
-                _unlink_generic_reference(ref_dt, ref_name)
-            except Exception:
-                # ignore unlink failures for safety
-                pass
+            if ref_dt in ALLOWED_CASCADE_DELETE:
+                # delete with safe cascade for lightweight blockers
+                _safe_delete(ref_dt, ref_name)
+            elif ref_dt == "CRM Customer":
+                # Special handling for Customer - unlink the customer_id field from the parent document
+                try:
+                    _unlink_customer_from_parent(doctype, name, ref_name)
+                except Exception:
+                    # ignore unlink failures for safety
+                    pass
+            else:
+                # unlink only for other master records
+                try:
+                    _unlink_generic_reference(ref_dt, ref_name)
+                except Exception:
+                    # ignore unlink failures for safety
+                    pass
 
-    # Finally delete the parent document itself
-    _safe_delete(doctype, name)
+        # Finally delete the parent document itself
+        _safe_delete(doctype, name)
 
     return {"success": True}
 
