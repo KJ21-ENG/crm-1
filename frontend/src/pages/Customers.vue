@@ -1,22 +1,26 @@
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <!-- Header -->
-    <div class="border-b bg-white px-5 py-4">
-      <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold text-ink-900">Customers</h1>
+    <LayoutHeader>
+      <template #left-header>
+        <ViewBreadcrumbs v-model="viewControls" routeName="Customers" />
+      </template>
+      <template #right-header>
+        <CustomActions
+          v-if="customersListView?.customListActions"
+          :actions="customersListView.customListActions"
+        />
         <Button
           v-if="canWriteCustomers"
           variant="solid"
-          label="New Customer"
+          :label="__('New Customer')"
           @click="showCreateDialog = true"
         >
           <template #prefix>
             <FeatherIcon name="plus" class="h-4" />
           </template>
         </Button>
-      </div>
-      
-    </div>
+      </template>
+    </LayoutHeader>
 
     <!-- Customer List (standard paginated list like other pages) -->
     <ViewControls
@@ -28,6 +32,7 @@
       doctype="CRM Customer"
     />
     <CustomersListView
+      ref="customersListView"
       v-if="customersList.data && rows.length"
       v-model="customersList.data.page_length_count"
       v-model:list="customersList"
@@ -201,17 +206,17 @@
 
 <script setup>
 import { 
-  Avatar,
   Button,
-  Badge,
   Dialog,
   FormControl,
-  LoadingIndicator,
   FeatherIcon,
   call,
   toast
 } from 'frappe-ui'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import LayoutHeader from '@/components/LayoutHeader.vue'
+import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
+import CustomActions from '@/components/CustomActions.vue'
 import ViewControls from '@/components/ViewControls.vue'
 import CustomersListView from '@/components/ListViews/CustomersListView.vue'
 import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
@@ -243,7 +248,8 @@ const newCustomer = ref({
   pincode: '',
   pan_card_number: '',
   aadhaar_card_number: '',
-  referral_code: ''
+  referral_code: '',
+  referral_through: ''
 })
 
 // Standard list wiring (pagination handled by ViewControls)
@@ -252,6 +258,7 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+const customersListView = ref(null)
 
 // Computed
 const rows = computed(() => {
@@ -357,8 +364,8 @@ const createCustomer = async () => {
       pincode: '',
       pan_card_number: '',
       aadhaar_card_number: '',
-      referral_code: ''
-      ,referral_through: ''
+      referral_code: '',
+      referral_through: ''
     }
     
     showCreateDialog.value = false
@@ -371,6 +378,4 @@ const createCustomer = async () => {
     creating.value = false
   }
 }
-
-onMounted(() => {})
 </script> 

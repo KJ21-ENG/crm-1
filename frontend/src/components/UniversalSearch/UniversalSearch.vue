@@ -1,17 +1,22 @@
 <template>
-  <div class="flex items-center">
-    <Button
-      variant="ghost"
-      class="flex items-center gap-2 rounded-md px-2 py-1 text-ink-gray-5 hover:text-ink-gray-9"
+  <div class="flex items-center order-first">
+    <button
+      type="button"
+      class="group flex items-center gap-2 rounded-lg border border-transparent bg-surface-gray-1 px-3 py-2 text-sm text-ink-gray-5 transition-colors hover:border-ink-gray-3 hover:bg-surface-white hover:text-ink-gray-9 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-gray-4 focus-visible:ring-offset-2"
       :title="shortcutLabel"
       @click="openSearch"
     >
-      <FeatherIcon name="search" class="h-4 w-4" />
-      <span class="hidden lg:inline text-sm font-medium text-ink-gray-6">{{ __('Search') }}</span>
+      <FeatherIcon
+        name="search"
+        class="h-4 w-4 text-ink-gray-5 transition-colors group-hover:text-ink-gray-7"
+      />
+      <span class="hidden lg:inline text-sm font-medium text-ink-gray-6 group-hover:text-ink-gray-8">
+        {{ __('Search CRM') }}
+      </span>
       <KeyboardShortcut class="hidden md:flex" :meta="isMac" :ctrl="!isMac" bg>
         <span>K</span>
       </KeyboardShortcut>
-    </Button>
+    </button>
     <Dialog v-model="show" :options="dialogOptions">
       <template #body>
         <div class="overflow-hidden rounded-lg bg-surface-white">
@@ -203,7 +208,7 @@
 
 <script setup>
 import KeyboardShortcut from '@/components/KeyboardShortcut.vue'
-import { createResource, FeatherIcon, Button, TextInput, Spinner, Badge } from 'frappe-ui'
+import { createResource, FeatherIcon, TextInput, Spinner, Badge } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
