@@ -8,18 +8,74 @@
  "show_title_field_in_link": 1,
  "editable_grid": 0,
  "fields": [
-  { "fieldname": "account_type", "fieldtype": "Data", "label": "Account Type", "reqd": 1, "unique": 1 },
-  { "fieldname": "description", "fieldtype": "Small Text", "label": "Description" },
-  { "fieldname": "is_active", "fieldtype": "Check", "label": "Is Active", "default": "1" }
+  {
+   "fieldname": "account_type",
+   "fieldtype": "Data",
+   "label": "Account Type",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1"
+  }
  ],
-  "permissions": [
-   { "role": "System Manager", "read": 1, "create": 1, "write": 1, "delete": 1 },
-   { "role": "Sales User", "read": 1, "create": 1, "write": 1, "delete": 1 },
-   { "role": "Sales Manager", "read": 1, "create": 1, "write": 1, "delete": 1 },
-   { "role": "Support User", "read": 1, "create": 1, "write": 1, "delete": 1 },
-   { "role": "Support Manager", "read": 1, "create": 1, "write": 1, "delete": 1 },
-   { "role": "CRM User", "read": 1 },
-   { "role": "CRM Manager", "read": 1, "delete": 1 }
-  ]
+ "permissions": [
+  {
+   "role": "Sales User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "Support User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  },
+  {
+   "role": "CRM User",
+   "read": 1
+  },
+  {
+   "role": "CRM Manager",
+   "read": 1,
+   "delete": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
+  }
+ ]
 }
-
