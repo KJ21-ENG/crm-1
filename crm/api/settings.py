@@ -273,3 +273,58 @@ def download_backup(filename: str):
     except Exception as e:
         frappe.log_error(f"Error serving backup file {filename}: {str(e)}")
         frappe.throw(str(e))
+
+
+@frappe.whitelist()
+def create_manual_backup(include_files: int = 0):
+    """Create a manual backup for the current site and return created files.
+
+    Args:
+        include_files: Optional flag (truthy) to include public/private files.
+    """
+    from frappe.utils.backups import new_backup
+
+    try:
+        include_files_flag = bool(int(include_files)) if include_files is not None else False
+
+        # Generate a fresh backup; force=True ensures a new copy even if one exists
+        backup = new_backup(force=True, ignore_files=not include_files_flag)
+
+        created_files = []
+
+        def add_file(path, ftype):
+            if not path or not os.path.exists(path):
+                return
+            stat = os.stat(path)
+            created_files.append(
+                {
+                    "type": ftype,
+                    "path": path,
+                    "name": os.path.basename(path),
+                    "size": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                }
+            )
+
+        add_file(getattr(backup, "backup_path_db", None), "database")
+        add_file(getattr(backup, "backup_path_files", None), "public_files")
+        add_file(getattr(backup, "backup_path_private_files", None), "private_files")
+        add_file(getattr(backup, "backup_path_conf", None), "site_config")
+
+        # Refresh list for caller convenience
+        status = get_backup_status()
+
+        # Prefer returning the db backup filename for easy access
+        database_backup = next((item for item in created_files if item["type"] == "database"), None)
+
+        return {
+            "success": True,
+            "site": frappe.local.site,
+            "created_files": created_files,
+            "database_backup": database_backup,
+            "status": status,
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Manual backup failed: {str(e)}")
+        frappe.throw(str(e))

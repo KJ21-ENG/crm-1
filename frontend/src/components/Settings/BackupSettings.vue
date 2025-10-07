@@ -3,6 +3,10 @@
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-semibold text-ink-gray-9">{{ __('Backup Status') }}</h2>
       <div class="text-sm text-ink-gray-6 flex items-center gap-2">
+        <Button size="sm" :loading="manualBackup.loading" @click="triggerManualBackup" class="flex items-center gap-1">
+          <FeatherIcon name="save" class="w-4 h-4" />
+          <span>{{ __('Backup Now') }}</span>
+        </Button>
         <Button :loading="loading" size="sm" @click="refresh" class="flex items-center">
           <FeatherIcon name="refresh-ccw" class="w-4 h-4 mr-1" />
           {{ __('Refresh') }}
@@ -75,8 +79,8 @@
 </template>
 
 <script setup>
-import { createResource, Alert, Button, FeatherIcon } from 'frappe-ui'
-import { ref, computed } from 'vue'
+import { createResource, Alert, Button, FeatherIcon, toast } from 'frappe-ui'
+import { computed } from 'vue'
 
 const currentHost = window?.location?.host || 'crm.localhost'
 
@@ -85,12 +89,39 @@ const api = createResource({
   auto: true,
 })
 
+const manualBackup = createResource({
+  url: 'crm.api.settings.create_manual_backup',
+  auto: false,
+  makeParams() {
+    return {
+      include_files: 0,
+    }
+  },
+  onSuccess(res) {
+    toast.success(__('Backup created successfully'))
+    api.reload()
+    const filename = res?.database_backup?.name
+    if (filename) {
+      download(filename)
+    }
+  },
+  onError(err) {
+    const message = err?.messages?.[0] || err?.message || __('Backup failed')
+    toast.error(message)
+  },
+})
+
 const loading = computed(() => api.loading)
 const data = computed(() => api.data)
 const error = computed(() => api.error?.message || api.error)
 
 function refresh() {
   api.reload()
+}
+
+async function triggerManualBackup() {
+  if (manualBackup.loading) return
+  await manualBackup.submit()
 }
 
 function prettySize(bytes) {
@@ -146,5 +177,3 @@ async function download(filename) {
 
 <style scoped>
 </style>
-
-
