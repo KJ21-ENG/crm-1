@@ -112,7 +112,7 @@
                   <p class="text-ink-gray-12">{{ customer.data.aadhaar_card_number }}</p>
                 </div>
                 <div v-if="customer.data.referral_code">
-                  <label class="text-sm text-ink-gray-7">Referral Code</label>
+                  <label class="text-sm text-ink-gray-7">Client ID</label>
                   <p class="text-ink-gray-12">{{ customer.data.referral_code }}</p>
                 </div>
                 <div v-if="customer.data.referral_through">
@@ -483,7 +483,7 @@
         </div>
         
         <div class="grid grid-cols-2 gap-4 mt-2">
-          <FormControl v-model="editCustomer.referral_code" label="Referral Code" />
+          <FormControl v-model="editCustomer.referral_code" label="Client ID" />
           <FormControl v-model="editCustomer.referral_through" label="Referral Through" />
         </div>
         

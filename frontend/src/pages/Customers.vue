@@ -180,8 +180,8 @@
           <div class="grid grid-cols-2 gap-4">
             <FormControl
               v-model="newCustomer.referral_code"
-              label="Referral Code"
-              placeholder="Enter referral code (optional)"
+              label="Client ID"
+              placeholder="Enter client ID (optional)"
             />
             <FormControl
               v-model="newCustomer.referral_through"

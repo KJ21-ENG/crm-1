@@ -176,7 +176,7 @@
   {
    "fieldname": "referral_code",
    "fieldtype": "Data",
-   "label": "Referral Code",
+   "label": "Client ID",
    "description": "Referral/Client ID (optional)"
   },
   {
