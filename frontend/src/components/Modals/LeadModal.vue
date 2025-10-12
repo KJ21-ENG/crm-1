@@ -479,9 +479,7 @@ function getStatusColor(status) {
 watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
   // Only trigger if mobile number changed and is not empty
   if (newMobile !== oldMobile) {
-    // Clear customer related fields to avoid stale data
-    clearCustomerFields()
-    // Also clear linked history context
+    // Clear linked history context
     lead.doc.customer_id = ''
     referralHistory.clear?.()
     customerHistory.clear?.()
@@ -599,6 +597,7 @@ async function autoFillCustomerData(mobileNumber) {
       referralHistory.reload()
     } else {
       console.log('ℹ️ [LEAD AUTO-FILL] No existing customer found for mobile:', mobileNumber)
+      // Keep the mobile number field as it is, don't clear other fields
       // Ensure histories are cleared for non-existing numbers
       lead.doc.customer_id = ''
       referralHistory.clear?.()
