@@ -73,34 +73,39 @@ def get_top_referrers(limit=10, date_from=None, date_to=None, account_type=None,
 def get_referral_source_table(date_from=None, date_to=None, account_type=None, lead_category=None, branch=None):
     """Get referral source table with detailed information"""
     try:
+        # Get default referral code and brand name from settings
+        default_referral_code = get_default_referral_code()
+        settings = frappe.get_single('FCRM Settings')
+        brand_name = settings.brand_name or 'CRM'
+
         # Build filters - show all referrals, not just Account Opened
         filters = "1=1"
         params = []
-        
+
         if date_from:
             filters += " AND l.modified >= %s"
             params.append(date_from)
-        
+
         if date_to:
             filters += " AND l.modified <= %s"
             params.append(date_to)
-        
+
         if account_type:
             filters += " AND l.account_type = %s"
             params.append(account_type)
-            
+
         if lead_category:
             filters += " AND l.lead_category = %s"
             params.append(lead_category)
-            
+
         if branch:
             filters += " AND l.branch = %s"
             params.append(branch)
-        
+
         # Aggregate by referrer (customer). Combine all referral codes that belong to the same referrer
         # and show them together in one row. For unknown referrers, fall back to grouping by the code itself.
         query = f"""
-            SELECT 
+            SELECT
                 COALESCE(
                     referrer.customer_name,
                     CONCAT('Referrer (', l.referral_through, ')')
@@ -119,16 +124,25 @@ def get_referral_source_table(date_from=None, date_to=None, account_type=None, l
                 MIN(l.modified) as first_referral_date
             FROM `tabCRM Lead` l
             LEFT JOIN `tabCRM Customer` referrer ON (
-                referrer.referral_code = l.referral_through 
+                referrer.referral_code = l.referral_through
                 OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
             )
             WHERE {filters} AND l.referral_through IS NOT NULL AND l.referral_through != ''
             GROUP BY COALESCE(referrer.name, l.referral_through)
             ORDER BY total_referrals DESC, last_referral_date DESC
         """
-        
+
         results = frappe.db.sql(query, params, as_dict=True)
-        
+
+        # Post-process results to handle default referral code
+        for result in results:
+            # Check if this row contains the default referral code
+            referral_codes = result.get('referral_code', '').split(', ')
+            if default_referral_code in referral_codes:
+                # This is the default referral code row - use brand name and hide mobile
+                result['referrer_name'] = brand_name
+                result['referrer_mobile'] = None
+
         return results
         
     except Exception as e:

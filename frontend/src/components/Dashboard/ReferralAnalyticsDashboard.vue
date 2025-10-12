@@ -180,7 +180,7 @@
                   <td class="px-4 py-3 whitespace-nowrap">
                     <div>
                       <p class="text-sm font-medium text-ink-gray-9">{{ source.referrer_name || 'Unknown' }}</p>
-                      <p class="text-xs text-ink-gray-6">{{ source.referrer_mobile || 'No mobile' }}</p>
+                      <p v-if="source.referrer_mobile" class="text-xs text-ink-gray-6">{{ source.referrer_mobile }}</p>
                     </div>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-ink-gray-9">
