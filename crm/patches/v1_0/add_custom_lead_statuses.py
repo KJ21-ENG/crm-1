@@ -20,7 +20,7 @@ def execute():
             "color": "blue",
             "position": 4,
         },
-        "Sent to Bangalore": {
+        "Sent to HO": {
             "color": "purple",
             "position": 5,
         },

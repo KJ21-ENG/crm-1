@@ -357,6 +357,11 @@ def validate_lead_for_status_change(lead_name, target_status):
             if not lead.rejection_reason:
                 errors.append('Rejection reason is required for this status')
         
+        # Check if status requires pod_id
+        if target_status in ['Sent to HO']:
+            if not lead.pod_id:
+                errors.append('POD ID is required for this status')
+        
         # Check for other required fields based on status
         if target_status in ['Account Opened', 'Account Activated']:
             if not lead.first_name:
@@ -383,42 +388,55 @@ def validate_lead_for_status_change(lead_name, target_status):
 @frappe.whitelist()
 def bulk_insert_pod_id(doctype, docnames, pod_id):
     """
-    Bulk insert POD ID to multiple leads
+    Bulk insert POD ID to multiple leads with validation:
+    - If a lead already has a POD ID, skip it (don't overwrite)
+    - If a lead did not have a POD ID and we set it now, automatically set status to 'Sent to HO'
+    Returns a detailed summary of updates and skips.
     """
     try:
         if not doctype or not docnames or not pod_id:
             frappe.throw("Missing required parameters")
-        
+
         if doctype != "CRM Lead":
             frappe.throw("This function is only available for CRM Lead doctype")
-        
+
         # Convert docnames to list if it's a string
         if isinstance(docnames, str):
             docnames = frappe.parse_json(docnames)
-        
+
         if not isinstance(docnames, list):
             frappe.throw("Invalid docnames format")
-        
+
         # Validate POD ID
         pod_id = str(pod_id).strip()
         if not pod_id:
             frappe.throw("POD ID cannot be empty")
-        
+
         # Check permissions
         if not frappe.has_permission("CRM Lead", "write"):
             frappe.throw("Insufficient permissions to update leads")
-        
+
         updated_count = 0
+        skipped_with_existing_pod = []
         failed_leads = []
-        
+
         for lead_name in docnames:
             try:
                 # Check if lead exists
                 if not frappe.db.exists("CRM Lead", lead_name):
                     failed_leads.append(f"{lead_name} (not found)")
                     continue
-                
-                # Update POD ID
+
+                current_values = frappe.db.get_value(
+                    "CRM Lead", lead_name, ["pod_id", "status"], as_dict=True
+                )
+
+                # If already has a POD ID, skip updating
+                if current_values and current_values.get("pod_id"):
+                    skipped_with_existing_pod.append(lead_name)
+                    continue
+
+                # Set POD ID
                 frappe.db.set_value(
                     'CRM Lead',
                     lead_name,
@@ -426,37 +444,137 @@ def bulk_insert_pod_id(doctype, docnames, pod_id):
                     pod_id,
                     update_modified=False
                 )
+
+                # If we just set a POD ID, auto set status to 'Sent to HO'
+                frappe.db.set_value(
+                    'CRM Lead',
+                    lead_name,
+                    'status',
+                    'Sent to HO',
+                    update_modified=False
+                )
+
                 updated_count += 1
-                
+
             except Exception as e:
                 failed_leads.append(f"{lead_name} ({str(e)})")
                 frappe.log_error(f"Error updating POD ID for lead {lead_name}: {str(e)}")
-        
+
         # Commit all changes
         frappe.db.commit()
-        
+
         # Prepare response
         result = {
             "success": True,
-            "message": f"POD ID '{pod_id}' inserted successfully for {updated_count} lead(s)",
+            "message": (
+                f"Processed {len(docnames)} lead(s): set POD ID for {updated_count}, "
+                f"skipped {len(skipped_with_existing_pod)} with existing POD ID, "
+                f"failed {len(failed_leads)}"
+            ),
             "data": {
                 "pod_id": pod_id,
                 "total_leads": len(docnames),
                 "updated_count": updated_count,
+                "skipped_existing_count": len(skipped_with_existing_pod),
+                "skipped_existing": skipped_with_existing_pod,
                 "failed_count": len(failed_leads),
-                "failed_leads": failed_leads
-            }
+                "failed_leads": failed_leads,
+            },
         }
-        
+
         # Log the operation
         frappe.logger().info(f"Bulk POD ID insertion: {result['message']}")
-        
+
         return result
-        
+
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(f"Error in bulk_insert_pod_id: {str(e)}")
         return {
             "success": False,
             "error": str(e)
-        } 
+        }
+
+@frappe.whitelist()
+def update_lead_status_with_pod_id(lead_name, new_status, pod_id=None):
+    """
+    Update lead status with POD ID validation for 'Sent to HO' status
+    """
+    try:
+        if not lead_name or not new_status:
+            frappe.throw("Lead name and new status are required")
+        
+        # Get the lead document
+        lead = frappe.get_doc('CRM Lead', lead_name)
+        
+        # Debug logging
+        frappe.logger().info(f"Updating lead {lead_name} to status '{new_status}', POD ID: {pod_id}")
+        frappe.logger().info(f"Current lead POD ID: {lead.pod_id}")
+        
+        # Check if status requires POD ID
+        if new_status == 'Sent to HO':
+            # Check if POD ID is already present in the lead
+            if not lead.pod_id and not pod_id:
+                frappe.throw("POD ID is required for 'Sent to HO' status")
+            
+            # Update POD ID if provided
+            if pod_id:
+                lead.pod_id = pod_id
+        
+        # Update the status
+        lead.status = new_status
+        lead.save()
+        
+        frappe.db.commit()
+        
+        frappe.logger().info(f"Successfully updated lead {lead_name} to status '{new_status}'")
+        
+        return {
+            "success": True,
+            "message": f"Lead status updated to '{new_status}' successfully",
+            "data": {
+                "lead_name": lead_name,
+                "new_status": new_status,
+                "pod_id": lead.pod_id if new_status == 'Sent to HO' else None
+            }
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating lead status with POD ID: {str(e)}")
+        frappe.logger().error(f"Error updating lead {lead_name} to status '{new_status}': {str(e)}")
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@frappe.whitelist()
+def save_pod_id_without_validation(lead_name, pod_id):
+    """
+    Save POD ID to lead without triggering validation
+    This is used when POD ID is provided through modal before status change
+    """
+    try:
+        if not lead_name or not pod_id:
+            frappe.throw("Lead name and POD ID are required")
+        
+        # Update POD ID directly in database to avoid validation
+        frappe.db.set_value('CRM Lead', lead_name, 'pod_id', pod_id.strip())
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "message": f"POD ID '{pod_id}' saved successfully",
+            "data": {
+                "lead_name": lead_name,
+                "pod_id": pod_id.strip()
+            }
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error saving POD ID: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

@@ -152,6 +152,10 @@
                   {{ title }}
                 </div>
               </Tooltip>
+              <div v-if="lead.data.pod_id" class="text-sm text-ink-gray-6">
+                <span class="font-medium">POD ID:</span>
+                <span class="ml-1 select-all">{{ lead.data.pod_id }}</span>
+              </div>
               <div class="flex gap-1.5">
                 <Tooltip v-if="callEnabled" :text="__('Make a call')">
                   <div>
@@ -376,6 +380,13 @@
     :targetStatus="pendingStatusChange?.value"
     :onSuccess="handleRejectionReasonSubmit"
   />
+  <PodIdModal
+    v-if="showPodIdModal"
+    v-model="showPodIdModal"
+    :leadId="lead.data.name"
+    :targetStatus="pendingStatusChange?.value"
+    :onSuccess="handlePodIdSubmit"
+  />
   
 
 </template>
@@ -450,6 +461,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
 import ClientIdModal from '@/components/Modals/ClientIdModal.vue'
 import RejectionReasonModal from '@/components/Modals/RejectionReasonModal.vue'
+import PodIdModal from '@/components/Modals/PodIdModal.vue'
 import { permissionsStore } from '@/stores/permissions'
 
 
@@ -842,6 +854,9 @@ const testExpireLoading = ref(false)
 // Rejection Reason Modal state
 const showRejectionReasonModal = ref(false)
 
+// POD ID Modal state
+const showPodIdModal = ref(false)
+
 // Check if status change requires Client ID
 function shouldRequireClientId(status) {
   return ['Account Opened', 'Account Active', 'Account Activated'].includes(status)
@@ -850,6 +865,11 @@ function shouldRequireClientId(status) {
 // Check if status change requires Rejection Reason
 function shouldRequireRejectionReason(status) {
   return status === 'Rejected - Follow-up Required'
+}
+
+// Check if status change requires POD ID
+function shouldRequirePodId(status) {
+  return status === 'Sent to HO'
 }
 
 // Handle Client ID submission
@@ -928,6 +948,45 @@ function handleRejectionReasonCancel() {
   pendingStatusChange.value = null
 }
 
+// Handle POD ID submission
+async function handlePodIdSubmit() {
+  isUpdating.value = true
+  
+  try {
+    // Now proceed with the pending status change using custom API
+    if (pendingStatusChange.value) {
+      const result = await call('crm.api.lead_operations.update_lead_status_with_pod_id', {
+        lead_name: props.leadId,
+        new_status: pendingStatusChange.value.value,
+        pod_id: null // POD ID already saved by modal
+      })
+      
+      if (result.success) {
+        console.log('✅ Status updated successfully after POD ID submission')
+        // Reload the document to reflect changes
+        await document.reload()
+        await lead.reload()
+        toast.success(__('Lead status updated successfully'))
+      } else {
+        throw new Error(result.message)
+      }
+    }
+  } catch (error) {
+    console.error('Error updating status after POD ID submission:', error)
+    console.error('Error details:', error)
+    toast.error(error.message || error.error || __('Failed to update lead status'))
+  } finally {
+    isUpdating.value = false
+    pendingStatusChange.value = null
+  }
+}
+
+// Handle POD ID modal cancellation
+function handlePodIdCancel() {
+  showPodIdModal.value = false
+  pendingStatusChange.value = null
+}
+
 // Custom function to handle status changes with Client ID and Rejection Reason checks
 async function handleStatusChange(fieldname, value) {
   if (fieldname === 'status' && !isUpdating.value) {
@@ -947,6 +1006,14 @@ async function handleStatusChange(fieldname, value) {
       // Store the pending status change
       pendingStatusChange.value = { fieldname, value }
       showRejectionReasonModal.value = true
+      return
+    }
+    
+    // Check if the new status requires POD ID
+    if (shouldRequirePodId(newStatus) && !document.doc.pod_id) {
+      // Store the pending status change
+      pendingStatusChange.value = { fieldname, value }
+      showPodIdModal.value = true
       return
     }
     
@@ -981,6 +1048,30 @@ async function handleStatusChange(fieldname, value) {
           lead_name: props.leadId,
           new_status: newStatus,
           rejection_reason: document.doc.rejection_reason
+        })
+        
+        if (result.success) {
+          await document.reload()
+          await lead.reload()
+          toast.success(__('Lead status updated successfully'))
+        } else {
+          throw new Error(result.message)
+        }
+        return
+      } catch (error) {
+        console.error('Error updating status:', error)
+        toast.error(error.message || __('Failed to update lead status'))
+        return
+      }
+    }
+    
+    // For status changes that require POD ID, use custom API to avoid validation issues
+    if (shouldRequirePodId(newStatus)) {
+      try {
+        const result = await call('crm.api.lead_operations.update_lead_status_with_pod_id', {
+          lead_name: props.leadId,
+          new_status: newStatus,
+          pod_id: document.doc.pod_id
         })
         
         if (result.success) {

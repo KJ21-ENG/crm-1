@@ -167,6 +167,8 @@ export const statusesStore = defineStore('crm-statuses', () => {
       const requiresClientId = ['Account Opened', 'Account Active', 'Account Activated'].includes(newStatus)
       // Check if status requires Rejection Reason
       const requiresRejectionReason = newStatus === 'Rejected - Follow-up Required'
+      // Check if status requires POD ID
+      const requiresPodId = newStatus === 'Sent to HO'
       
       if (requiresClientId && !document.doc.client_id) {
         // This will trigger the Client ID modal in the Lead.vue component
@@ -178,6 +180,13 @@ export const statusesStore = defineStore('crm-statuses', () => {
       if (requiresRejectionReason && !document.doc.rejection_reason) {
         // This will trigger the Rejection Reason modal in the Lead.vue component
         // The modal will handle the status change after Rejection Reason is provided
+        await triggerOnChange?.('status', newStatus)
+        return
+      }
+      
+      if (requiresPodId && !document.doc.pod_id) {
+        // This will trigger the POD ID modal in the Lead.vue component
+        // The modal will handle the status change after POD ID is provided
         await triggerOnChange?.('status', newStatus)
         return
       }
@@ -207,6 +216,24 @@ export const statusesStore = defineStore('crm-statuses', () => {
           lead_name: document.doc.name,
           new_status: newStatus,
           rejection_reason: document.doc.rejection_reason
+        })
+        
+        if (result.success) {
+          // Reload the document to reflect changes
+          await document.reload()
+          // Show success message
+          const { toast } = await import('frappe-ui')
+          toast.success('Lead status updated successfully')
+        } else {
+          throw new Error(result.message)
+        }
+      } else if (requiresPodId) {
+        // For status changes that require POD ID, use custom API to avoid validation issues
+        const { call } = await import('frappe-ui')
+        const result = await call('crm.api.lead_operations.update_lead_status_with_pod_id', {
+          lead_name: document.doc.name,
+          new_status: newStatus,
+          pod_id: document.doc.pod_id
         })
         
         if (result.success) {
