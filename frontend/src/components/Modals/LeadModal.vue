@@ -321,6 +321,7 @@ const show = defineModel()
 const router = useRouter()
 const error = ref(null)
 const isLeadCreating = ref(false)
+const isSwappingNumbers = ref(false) // Flag to track swap operations
 
 // Task Modal state
 const showTaskModal = ref(false)
@@ -380,8 +381,8 @@ onMounted(async () => {
     await autoFillCustomerData(mobileNumber)
   }
   
-  // Set default referral code from settings
-  await setDefaultReferralCode()
+  // Ensure referral_through is never empty
+  await setDefaultReferralThrough()
   
   // Set default account type
   setDefaultAccountType()
@@ -440,11 +441,26 @@ function swapNumbers() {
   const mobile = lead.doc.mobile_no
   const altMobile = lead.doc.alternative_mobile_no
 
+  // Set flag to indicate we're in a swap operation
+  isSwappingNumbers.value = true
+
   // simple swap
   lead.doc.mobile_no = altMobile
   lead.doc.alternative_mobile_no = mobile
 
+  // Clear customer fields when swapping to alternate mobile
+  // This ensures the mobile field is cleared as expected
+  clearCustomerFields()
+  lead.doc.customer_id = ''
+  referralHistory.clear?.()
+  customerHistory.clear?.()
+
   toggleAdditionalContactSection()
+
+  // Reset the flag after a short delay to allow the watch to process
+  setTimeout(() => {
+    isSwappingNumbers.value = false
+  }, 100)
 }
 
 function toggleAdditionalContactSection() {
@@ -479,16 +495,40 @@ function getStatusColor(status) {
 watch(() => lead.doc?.mobile_no, async (newMobile, oldMobile) => {
   // Only trigger if mobile number changed and is not empty
   if (newMobile !== oldMobile) {
+    // If we're in a swap operation, don't restore field values
+    if (isSwappingNumbers.value) {
+      console.log('🔄 [LEAD AUTO-FILL] Swap operation detected, skipping field restoration')
+      return
+    }
+
+    // Store current field values before clearing (to restore if customer not found)
+    const currentFieldValues = storeCurrentFieldValues()
+    
     // Clear customer related fields to avoid stale data
     clearCustomerFields()
     // Also clear linked history context
     lead.doc.customer_id = ''
     referralHistory.clear?.()
     customerHistory.clear?.()
+    
     if (newMobile && newMobile.length >= 10) {
       console.log('🔍 [LEAD AUTO-FILL] Mobile number changed, triggering auto-fill:', newMobile)
-      await autoFillCustomerData(newMobile)
+      const customerFound = await autoFillCustomerData(newMobile)
+      
+      // If no customer found in database, restore the previously filled values
+      if (!customerFound && currentFieldValues.hasData) {
+        console.log('🔄 [LEAD AUTO-FILL] No customer found, restoring previous field values')
+        await restoreFieldValues(currentFieldValues)
+      }
     }
+  }
+}, { immediate: false })
+
+// 🆕 REFERRAL THROUGH: Watch for referral_through field to ensure it's never empty
+watch(() => lead.doc?.referral_through, async (newReferralThrough) => {
+  if (!newReferralThrough || newReferralThrough.trim() === '') {
+    console.log('🔄 [REFERRAL] Referral Through field is empty, setting default')
+    await setDefaultReferralThrough()
   }
 }, { immediate: false })
 
@@ -516,11 +556,13 @@ watch(() => lead.doc?.lead_category, (newLeadCategory, oldLeadCategory) => {
 
 // Set default referral code from settings for Direct leads
 async function setDefaultReferralThrough() {
-  if (lead.doc.lead_category === 'Direct' && !lead.doc.referral_through) {
+  // Always ensure referral_through is not empty
+  if (!lead.doc.referral_through) {
     try {
       const defaultCode = await call('crm.api.referral_analytics.get_default_referral_code')
       if (defaultCode) {
         lead.doc.referral_through = defaultCode
+        console.log('🔄 [REFERRAL] Set default referral code:', defaultCode)
       }
     } catch (error) {
       console.error('Error getting default referral code:', error)
@@ -593,21 +635,82 @@ async function autoFillCustomerData(mobileNumber) {
       
       console.log('✅ [LEAD AUTO-FILL] Lead form auto-filled successfully')
       console.log('🔍 [LEAD AUTO-FILL] Final lead.doc:', JSON.stringify(lead.doc, null, 2))
+      // Ensure referral_through is never empty after auto-fill
+      if (!lead.doc.referral_through) {
+        await setDefaultReferralThrough()
+      }
+      
       // Refresh customer history using customer_id for accuracy
       customerHistory.reload()
       // Also reload referral history after auto-fill
       referralHistory.reload()
+      
+      return true // Customer found
     } else {
       console.log('ℹ️ [LEAD AUTO-FILL] No existing customer found for mobile:', mobileNumber)
       // Ensure histories are cleared for non-existing numbers
       lead.doc.customer_id = ''
       referralHistory.clear?.()
       customerHistory.clear?.()
+      
+      return false // Customer not found
     }
   } catch (error) {
     console.error('❌ [LEAD AUTO-FILL] Error looking up customer data:', error)
     console.error('❌ [LEAD AUTO-FILL] Error details:', error.message, error.stack)
+    return false // Error occurred, treat as customer not found
   }
+}
+
+// Store current field values before clearing (to restore if customer not found)
+function storeCurrentFieldValues() {
+  const fieldsToStore = [
+    'first_name',
+    'last_name',
+    'email',
+    'organization',
+    'pan_card_number',
+    'aadhaar_card_number',
+    'referral_through',
+    'marital_status',
+    'date_of_birth',
+    'anniversary',
+  ]
+
+  const storedValues = {}
+  let hasData = false
+
+  fieldsToStore.forEach((field) => {
+    const value = lead.doc[field]
+    storedValues[field] = value
+    if (value && value.toString().trim() !== '') {
+      hasData = true
+    }
+  })
+
+  return {
+    values: storedValues,
+    hasData: hasData
+  }
+}
+
+// Restore field values from stored data
+async function restoreFieldValues(storedData) {
+  if (!storedData || !storedData.values) return
+
+  Object.keys(storedData.values).forEach((field) => {
+    const value = storedData.values[field]
+    if (value && value.toString().trim() !== '') {
+      lead.doc[field] = value
+    }
+  })
+
+  // Ensure referral_through is never empty after restoration
+  if (!lead.doc.referral_through) {
+    await setDefaultReferralThrough()
+  }
+
+  console.log('🔄 [LEAD AUTO-FILL] Restored field values:', storedData.values)
 }
 
 // Clear customer-related fields when mobile changes to a non-existing customer
