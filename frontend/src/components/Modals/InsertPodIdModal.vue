@@ -66,8 +66,32 @@ function insertPodId() {
       docnames: Array.from(props.selectedValues),
       pod_id: podId.value.trim(),
     }
-  ).then(() => {
-    toast.success(__('POD ID inserted successfully for {0} leads', [recordCount.value]))
+  ).then((result) => {
+    const data = result?.data || {}
+    const updated = data.updated_count || 0
+    const skipped = data.skipped_existing || []
+    const failed = data.failed_leads || []
+
+    if (updated > 0) {
+      toast.success(__('POD ID inserted successfully for {0} lead(s)', [updated]))
+    }
+
+    if (skipped.length > 0) {
+      toast.error(__('Skipped (POD ID already present):'))
+      skipped.slice(0, 20).forEach((lead) => toast.error(lead))
+      if (skipped.length > 20) {
+        toast.error(__('... and {0} more', [skipped.length - 20]))
+      }
+    }
+
+    if (failed.length > 0) {
+      toast.error(__('Failed:'))
+      failed.slice(0, 20).forEach((lead) => toast.error(lead))
+      if (failed.length > 20) {
+        toast.error(__('... and {0} more', [failed.length - 20]))
+      }
+    }
+
     podId.value = ''
     loading.value = false
     show.value = false
