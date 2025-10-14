@@ -191,26 +191,40 @@ def prepare_call_log_document(call_log_data):
 
     # Normalize original/native status keywords
     orig_norm = original_status.lower()
+    native_type_norm = (call_log_data.get('native_call_type') or '').strip().lower()
+    native_status_norm = (call_log_data.get('native_call_status') or '').strip().lower()
+
     is_incoming_unanswered = orig_norm in ['missed', 'no answer', 'no_answer']
     is_incoming_rejected = orig_norm in ['rejected', 'canceled', 'cancelled', 'declined']
     is_outgoing_unanswered = orig_norm in ['no answer', 'no_answer', 'did not pick', 'did_not_pick', 'canceled', 'cancelled']
 
+    flagged_incoming_missed = (
+        is_incoming_unanswered
+        or native_type_norm in ['missed']
+        or native_status_norm in ['missed', 'no answer', 'no_answer']
+    )
+    flagged_incoming_rejected = (
+        is_incoming_rejected
+        or native_type_norm in ['rejected', 'cancelled', 'canceled', 'declined']
+        or native_status_norm in ['rejected', 'cancelled', 'canceled', 'declined']
+    )
+    flagged_outgoing_unanswered = (
+        is_outgoing_unanswered
+        or native_status_norm in ['no answer', 'no_answer', 'did not pick', 'did_not_pick', 'canceled', 'cancelled']
+    )
+
     # Apply prioritized mapping rules with original/native status taking precedence
     if call_type == 'Incoming':
-        if is_incoming_rejected:
-            # Normalize rejected/canceled incoming to Missed Call to keep 3-status model
+        if flagged_incoming_rejected or flagged_incoming_missed or duration <= 0:
+            # Normalize rejected/missed incoming calls to Missed Call even if OEM reported ring duration
             status = 'Missed Call'
-        elif duration > 0:
-            status = 'Completed'
         else:
-            status = 'Missed Call'
+            status = 'Completed'
     else:  # Outgoing
-        if is_outgoing_unanswered:
+        if flagged_outgoing_unanswered or duration <= 0:
             status = 'Did Not Picked'
-        elif duration > 0:
-            status = 'Completed'
         else:
-            status = 'Did Not Picked'
+            status = 'Completed'
 
     # Validate against allowed statuses (including new ones)
     valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled', 'Did Not Picked', 'Missed Call']

@@ -90,7 +90,7 @@ class CallLogSyncService {
 
     final last = await _getLastSyncMillis();
     // Safety window so we don't miss calls that OEMs write late or with slightly older timestamps
-    final safetyWindowMs = 2 * 60 * 1000; // 2 minutes
+    final safetyWindowMs = 30 * 60 * 1000; // 30 minutes
     final since = last > 0 ? math.max(0, last - safetyWindowMs) : 0;
     final userMobile = (await _getUserMobile()) ?? '+911234567890';
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -138,5 +138,4 @@ class CallLogSyncService {
     return out;
   }
 }
-
 
