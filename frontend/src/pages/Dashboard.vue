@@ -934,6 +934,80 @@ const tileNavigationConfig = {
   },
 }
 
+const formatDateTimeForFilter = (value, isEnd = false) => {
+  if (!value) return null
+
+  if (typeof value === 'string') {
+    if (value.includes('T')) {
+      const isoDate = new Date(value)
+      if (!Number.isNaN(isoDate.getTime())) {
+        return formatDateTimeForFilter(isoDate, isEnd)
+      }
+
+      const sanitized = value.replace('T', ' ').split('.')[0].replace('Z', '')
+      return sanitized
+    }
+
+    if (value.includes(' ')) {
+      return value
+    }
+
+    return `${value} ${isEnd ? '23:59:59' : '00:00:00'}`
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  const pad = (num) => String(num).padStart(2, '0')
+  const year = date.getFullYear()
+  const month = pad(date.getMonth() + 1)
+  const day = pad(date.getDate())
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  const seconds = pad(date.getSeconds())
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+const getNormalizedDateRange = (scope = 'global') => {
+  let start
+  let end
+
+  if (currentView.value === 'custom' && customStartDate.value && customEndDate.value) {
+    start = customStartDate.value
+    end = customEndDate.value
+  } else {
+    const sourceRange = scope === 'user'
+      ? (userDashboardData.value?.date_range || {})
+      : (dateRange.value || {})
+
+    start = sourceRange.start_date
+    end = sourceRange.end_date
+
+    if ((!start || !end) && scope === 'user') {
+      const fallback = dateRange.value || {}
+      start = start || fallback.start_date
+      end = end || fallback.end_date
+    }
+  }
+
+  const formattedStart = formatDateTimeForFilter(start, false)
+  const formattedEnd = formatDateTimeForFilter(end, true)
+
+  if (!formattedStart || !formattedEnd) return null
+
+  return { start: formattedStart, end: formattedEnd }
+}
+
+const buildDateFilter = (field, scope = 'global') => {
+  if (!field) return {}
+  const range = getNormalizedDateRange(scope)
+  if (!range) return {}
+  return {
+    [field]: ['between', [range.start, range.end]],
+  }
+}
+
 const handleUserDashboardNavigate = (target) => {
   if (!target) return
 
@@ -942,6 +1016,7 @@ const handleUserDashboardNavigate = (target) => {
 
   if (target === 'calls') {
     const callFilters = safeUserToken ? { owner: safeUserToken } : {}
+    Object.assign(callFilters, buildDateFilter('start_time', 'user'))
     try {
       router.push({
         name: 'Call Logs',
@@ -957,6 +1032,8 @@ const handleUserDashboardNavigate = (target) => {
   if (!config) return
 
   const filters = config.buildFilters(safeUserToken)
+  const dateFilterField = 'creation'
+  Object.assign(filters, buildDateFilter(dateFilterField, 'user'))
 
   try {
     if (Object.keys(filters).length === 0) {
@@ -1010,6 +1087,8 @@ const handleCallLogTileNavigate = (key) => {
   }
 
   filters.owner = ownerToken
+  const scope = selectedCallLogsUserId.value === 'all' ? 'global' : 'user'
+  Object.assign(filters, buildDateFilter('start_time', scope))
 
   try {
     router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
@@ -1025,11 +1104,26 @@ const handleStatsCardClick = (target) => {
   if (activeTab.value === 'analytics') {
     try {
       if (target === 'calls') {
-        router.push({ name: 'Call Logs' })
+        const filters = {
+          owner: '__all__',
+          ...buildDateFilter('start_time', 'global')
+        }
+        router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
       } else {
         const config = tileNavigationConfig[target]
         if (config) {
-          router.push({ name: config.routeName })
+          const filters = {
+            ...config.buildFilters(''),
+            ...buildDateFilter('creation', 'global')
+          }
+          if (Object.keys(filters).length === 0) {
+            router.push({ name: config.routeName })
+          } else {
+            router.push({
+              name: config.routeName,
+              query: { [config.queryKey]: JSON.stringify(filters) }
+            })
+          }
         }
       }
     } catch (error) {

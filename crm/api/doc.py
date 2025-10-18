@@ -1632,46 +1632,53 @@ def get_lead_list_with_customer_data(rows, filters, order_by, page_length, start
 			return op, rhs
 		return "=", val
 
+	def build_condition(column, op, rhs):
+		"""Return parameterized SQL condition and value list for supported operators."""
+		if op in {"LIKE", "NOT LIKE"}:
+			return f"{column} {op} %s", [rhs]
+		if op == "BETWEEN":
+			if not isinstance(rhs, (list, tuple)) or len(rhs) != 2:
+				return None, []
+			return f"{column} BETWEEN %s AND %s", [rhs[0], rhs[1]]
+		if op in {">", ">=", "<", "<=", "!=", "<>"}:
+			return f"{column} {op} %s", [rhs]
+		if op in {"IN", "NOT IN"}:
+			if not isinstance(rhs, (list, tuple)) or not rhs:
+				# Empty IN clauses should short circuit to no results
+				return "0=1", []
+			placeholders = ", ".join(["%s"] * len(rhs))
+			return f"{column} {op} ({placeholders})", list(rhs)
+		if op in {"IS", "IS NOT"}:
+			if rhs is None or (isinstance(rhs, str) and rhs.lower() == "null"):
+				return f"{column} {op} NULL", []
+			return f"{column} {op} %s", [rhs]
+		# Default equality / null check
+		if rhs is None:
+			return f"{column} IS NULL", []
+		return f"{column} = %s", [rhs]
+
 	where_conditions = []
 	values = []
 	for key, value in filters.items():
 		op, rhs = _parse_op(value)
+		column = f"l.{key}"
+
 		if key in ("lead_name", "customer_name"):
-			# Lead name quick filter should match customer display name or lead_name
-			if op == "LIKE":
-				where_conditions.append("(COALESCE(c.customer_name, l.lead_name) LIKE %s)")
-				values.append(rhs)
-			else:
-				where_conditions.append("(COALESCE(c.customer_name, l.lead_name) = %s)")
-				values.append(rhs)
+			column = "COALESCE(c.customer_name, l.lead_name)"
 		elif key == "email":
-			if op == "LIKE":
-				where_conditions.append("(COALESCE(c.email, l.email) LIKE %s)")
-				values.append(rhs)
-			else:
-				where_conditions.append("(COALESCE(c.email, l.email) = %s)")
-				values.append(rhs)
+			column = "COALESCE(c.email, l.email)"
 		elif key == "mobile_no":
-			if op == "LIKE":
-				where_conditions.append("(COALESCE(c.mobile_no, l.mobile_no) LIKE %s)")
-				values.append(rhs)
-			else:
-				where_conditions.append("(COALESCE(c.mobile_no, l.mobile_no) = %s)")
-				values.append(rhs)
+			column = "COALESCE(c.mobile_no, l.mobile_no)"
 		elif key == "name":
-			if op == "LIKE":
-				where_conditions.append("l.name LIKE %s")
-				values.append(rhs)
-			else:
-				where_conditions.append("l.name = %s")
-				values.append(rhs)
+			column = "l.name"
+
+		condition, condition_values = build_condition(column, op, rhs)
+		if condition:
+			where_conditions.append(condition)
+			values.extend(condition_values)
 		else:
-			if op == "LIKE":
-				where_conditions.append(f"l.{key} LIKE %s")
-				values.append(rhs)
-			else:
-				where_conditions.append(f"l.{key} = %s")
-				values.append(rhs)
+			# If condition generation failed (e.g. unsupported operator), skip filter to avoid SQL errors.
+			continue
 
 	where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 	
