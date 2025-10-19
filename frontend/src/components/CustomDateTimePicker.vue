@@ -32,6 +32,8 @@
           class="datetime-picker-popup"
           :style="pickerPosition"
           @click.stop
+          @mousedown.stop
+          @touchstart.stop
         >
           <div class="picker-header">
             <button @click="previousMonth" class="nav-btn">
@@ -481,33 +483,84 @@ function calculatePosition() {
     const inputElement = pickerRef.value
     if (!inputElement) return
     const rect = inputElement.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const viewportWidth = window.innerWidth
+
+    // Determine the effective containing rectangle for positioning.
+    // When teleported (default), use the viewport. When not teleported
+    // (disableTeleport=true), many modal implementations apply CSS transforms
+    // and overflow on ancestors, creating a new containing block. In that case,
+    // we compute bounds from the nearest ancestor that creates a containing
+    // block or clips overflow and then position within those bounds.
+    const getContainingRect = () => {
+      if (!props.disableTeleport) {
+        return {
+          top: 0,
+          left: 0,
+          right: window.innerWidth,
+          bottom: window.innerHeight,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }
+      }
+      let node = inputElement.parentElement
+      while (node && node !== document.body) {
+        const style = window.getComputedStyle(node)
+        const createsContainingBlock =
+          (style.transform && style.transform !== 'none') ||
+          (style.perspective && style.perspective !== 'none') ||
+          (style.filter && style.filter !== 'none') ||
+          (style.willChange && /transform|perspective|filter/.test(style.willChange))
+        const overflowClips = /auto|scroll|hidden|clip/.test(
+          `${style.overflow} ${style.overflowX} ${style.overflowY}`,
+        )
+        if (createsContainingBlock || overflowClips) {
+          return node.getBoundingClientRect()
+        }
+        node = node.parentElement
+      }
+      return {
+        top: 0,
+        left: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }
+    }
+
+    const bounds = getContainingRect()
     const pickerHeight = 520
     const pickerWidth = 320
 
+    // Start by aligning to the input field
     let top = rect.bottom + 4
     let left = rect.left
 
-    if (rect.bottom + pickerHeight > viewportHeight) {
+    // Prevent overflow on the bottom/right within container bounds
+    const bottomLimit = bounds.top + bounds.height
+    const rightLimit = bounds.left + bounds.width
+
+    if (top + pickerHeight > bottomLimit) {
       top = rect.top - pickerHeight - 4
     }
-
-    if (rect.left + pickerWidth > viewportWidth) {
-      left = viewportWidth - pickerWidth - 16
+    if (left + pickerWidth > rightLimit) {
+      left = rightLimit - pickerWidth - 16
     }
 
-    if (left < 16) {
-      left = 16
-    }
+    // Prevent overflow on the top/left within container bounds
+    const minLeft = bounds.left + 16
+    const minTop = bounds.top + 16
+    if (left < minLeft) left = minLeft
+    if (top < minTop) top = minTop
 
-    if (top < 16) {
-      top = 16
-    }
+    // If not teleported, convert viewport coords to container-local coords
+    // because position: fixed under a transformed ancestor uses that ancestor
+    // as the containing block.
+    const finalLeft = props.disableTeleport ? left - bounds.left : left
+    const finalTop = props.disableTeleport ? top - bounds.top : top
 
     pickerPosition.value = {
-      top: `${top}px`,
-      left: `${left}px`,
+      top: `${finalTop}px`,
+      left: `${finalLeft}px`,
     }
   })
 }
@@ -644,8 +697,9 @@ const handleClickOutside = (event) => {
   if (!isOpen.value) return
   const popupEl = popupRef.value
   const pickerEl = pickerRef.value
-  if (popupEl && popupEl.contains(event.target)) return
-  if (pickerEl && pickerEl.contains(event.target)) return
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+  if (popupEl && (popupEl.contains(event.target) || path.includes(popupEl))) return
+  if (pickerEl && (pickerEl.contains(event.target) || path.includes(pickerEl))) return
   closePicker()
 }
 
@@ -749,6 +803,12 @@ onUnmounted(() => {
 }
 
 .datetime-picker-popup {
+  /*
+   * Use fixed positioning when teleported to body; fall back to absolute
+   * positioning when rendered inside a transformed/overflow-hidden modal
+   * (disableTeleport=true) to ensure the popup is clipped and aligned
+   * within the dialog instead of the viewport.
+   */
   position: fixed !important;
   z-index: 99999 !important;
   background: #ffffff !important;
@@ -760,6 +820,12 @@ onUnmounted(() => {
   width: 320px;
   overflow: visible;
 }
+
+/* When the picker is inside a transformed container (common for modals),
+   browsers treat fixed elements as fixed to that container. However, some
+   UI kits still compute coordinates relative to that container. The class
+   below can be toggled if ever needed, but we compute coordinates already.
+*/
 
 .picker-header {
   display: flex;
@@ -864,6 +930,7 @@ onUnmounted(() => {
 
 .calendar-date.clickable:hover {
   background: #f3f4f6;
+  color: #000000 !important; /* Ensure readable text on hover */
 }
 
 .calendar-date.today {
@@ -878,6 +945,20 @@ onUnmounted(() => {
   background: #000000;
   color: #ffffff;
   font-weight: 600;
+}
+
+/* Preserve contrast when hovering selected endpoints */
+.calendar-date.selected.clickable:hover,
+.calendar-date.range-start.clickable:hover,
+.calendar-date.range-end.clickable:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Preserve contrast for today on hover */
+.calendar-date.today.clickable:hover {
+  background: #e5e7eb !important;
+  color: #000000 !important;
 }
 
 .calendar-date.in-range {

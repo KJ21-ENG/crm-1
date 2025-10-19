@@ -86,6 +86,7 @@
             v-model="_task.due_date"
             :placeholder="currentDateTimePlaceholder"
             :input-class="'border-none'"
+            :disable-teleport="true"
           />
           <Dropdown :options="taskPriorityOptions(updateTaskPriority)">
             <Button :label="_task.priority" class="justify-between w-full">
