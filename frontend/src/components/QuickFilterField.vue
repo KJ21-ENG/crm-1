@@ -40,15 +40,17 @@
     :placeholder="filter.label"
     @change.stop="updateFilter(filter, $event.target.value)"
   />
-  <component
+  <CustomDateTimePicker
     v-else-if="['Date', 'Datetime'].includes(filter.fieldtype)"
     class="border-none"
-    :is="filter.fieldtype === 'Date' ? DatePicker : CustomDateTimePicker"
-    :value="filter.value"
-    :modelValue="filter.value"
-    :preventAutoFill="true"
-    @change="(v) => updateFilter(filter, v)"
+    :model-value="filter.value"
+    mode="date"
+    :show-time="false"
+    :prevent-auto-fill="true"
+    :auto-default="false"
     :placeholder="filter.label"
+    @change="(v) => updateFilter(filter, v)"
+    @update:modelValue="(v) => (filter.value = v)"
   />
   <FormControl
     v-else
@@ -60,7 +62,7 @@
 </template>
 <script setup>
 import Link from '@/components/Controls/Link.vue'
-import { FormControl, DatePicker, createResource, call } from 'frappe-ui'
+import { FormControl, createResource, call } from 'frappe-ui'
 import CustomDateTimePicker from './CustomDateTimePicker.vue'
 import { useDebounceFn } from '@vueuse/core'
 import { ref, onMounted } from 'vue'

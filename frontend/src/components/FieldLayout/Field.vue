@@ -296,7 +296,7 @@ import { flt } from '@/utils/numberFormat.js'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { useDocument } from '@/data/document'
-import { Tooltip, DatePicker } from 'frappe-ui'
+import { Tooltip } from 'frappe-ui'
 import { ref, computed, provide, inject, nextTick } from 'vue'
 import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 

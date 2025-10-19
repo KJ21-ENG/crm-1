@@ -179,22 +179,20 @@
                       @change="(e) => fieldChange(e.target.checked, field, row)"
                     />
                   </div>
-                  <DatePicker
+                  <CustomDateTimePicker
                     v-else-if="field.fieldtype === 'Date'"
-                    :value="row[field.fieldname]"
-                    icon-left=""
-                    variant="outline"
-                    :formatter="(date) => getFormat(date, '', true)"
-                    input-class="border-none text-sm text-ink-gray-8"
-                    @change="(v) => fieldChange(v, field, row)"
+                    :model-value="row[field.fieldname]"
+                    mode="date"
+                    :show-time="false"
+                    :auto-default="false"
+                    :input-class="'border-none text-sm text-ink-gray-8'"
+                    @update:modelValue="(v) => fieldChange(v, field, row)"
                   />
                   <CustomDateTimePicker
                     v-else-if="field.fieldtype === 'Datetime'"
                     :model-value="row[field.fieldname]"
-                    icon-left=""
-                    variant="outline"
-                    :formatter="(date) => getFormat(date, '', true, true)"
-                    input-class="border-none text-sm text-ink-gray-8"
+                    :auto-default="false"
+                    :input-class="'border-none text-sm text-ink-gray-8'"
                     @update:modelValue="(v) => fieldChange(v, field, row)"
                   />
                   <FormControl
@@ -353,7 +351,6 @@ import {
   FeatherIcon,
   FormControl,
   Checkbox,
-  DatePicker,
   Tooltip,
   dayjs,
 } from 'frappe-ui'

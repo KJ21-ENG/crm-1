@@ -3,20 +3,17 @@
     <!-- Compact Filters -->
     <div class="bg-white rounded-lg p-4 border border-gray-200 mb-6">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-ink-gray-7 mb-1">Date From</label>
-          <input
-            v-model="filters.dateFrom"
-            type="date"
-            class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-ink-gray-7 mb-1">Date To</label>
-          <input
-            v-model="filters.dateTo"
-            type="date"
-            class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-ink-gray-7 mb-1">Date Range</label>
+          <CustomDateTimePicker
+            v-model="dateRange"
+            mode="daterange"
+            :show-time="false"
+            :auto-default="false"
+            :prevent-auto-fill="true"
+            range-value-type="array"
+            placeholder="Select range"
+            :input-class="'w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-ink-gray-9'"
           />
         </div>
         <div>
@@ -404,6 +401,7 @@ import ActivityIcon from '@/components/Icons/ActivityIcon.vue'
 import ConvertIcon from '@/components/Icons/ConvertIcon.vue'
 import RefreshIcon from '@/components/Icons/RefreshIcon.vue'
 import ExportIcon from '@/components/Icons/ExportIcon.vue'
+import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -424,6 +422,22 @@ const filters = ref({
   dateTo: '',
   accountType: '',
   leadCategory: ''
+})
+
+const dateRange = computed({
+  get: () => [filters.value.dateFrom || null, filters.value.dateTo || null],
+  set: (val) => {
+    if (Array.isArray(val)) {
+      filters.value.dateFrom = val[0] || ''
+      filters.value.dateTo = val[1] || ''
+    } else if (val && typeof val === 'object') {
+      filters.value.dateFrom = val.start || ''
+      filters.value.dateTo = val.end || ''
+    } else {
+      filters.value.dateFrom = ''
+      filters.value.dateTo = ''
+    }
+  },
 })
 
 // Computed properties for pagination

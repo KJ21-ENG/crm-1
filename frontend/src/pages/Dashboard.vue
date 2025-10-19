@@ -126,23 +126,18 @@
         </div>
         
         <div class="p-4 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-              <input
-                v-model="customStartDate"
-                type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                v-model="customEndDate"
-                type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+            <CustomDateTimePicker
+              v-model="customDateRangeSelection"
+              mode="daterange"
+              :show-time="false"
+              :auto-default="false"
+              :prevent-auto-fill="true"
+              range-value-type="array"
+              placeholder="Select date range"
+              :input-class="'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900'"
+            />
           </div>
           
           <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -470,6 +465,7 @@ import UserDashboard from '@/components/Dashboard/UserDashboard.vue'
 import CallLogAnalytics from '@/components/Dashboard/CallLogAnalytics.vue'
 import ChartCard from '@/components/Dashboard/ChartCard.vue'
 import ActivityFeed from '@/components/Dashboard/ActivityFeed.vue'
+import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 import { useDashboard } from '@/stores/dashboard'
 import { useUserRole } from '@/stores/userRole'
 import { sessionStore } from '@/stores/session'
@@ -634,6 +630,21 @@ watch(lastFetchedUserId, (newVal) => {
 const showCustomDatePicker = ref(false)
 const customStartDate = ref('')
 const customEndDate = ref('')
+const customDateRangeSelection = computed({
+  get: () => [customStartDate.value || null, customEndDate.value || null],
+  set: (val) => {
+    if (Array.isArray(val)) {
+      customStartDate.value = val[0] || ''
+      customEndDate.value = val[1] || ''
+    } else if (val && typeof val === 'object') {
+      customStartDate.value = val.start || ''
+      customEndDate.value = val.end || ''
+    } else {
+      customStartDate.value = ''
+      customEndDate.value = ''
+    }
+  },
+})
 
 // User selection state (Admin only)
 const selectedUserId = ref('')

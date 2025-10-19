@@ -161,13 +161,7 @@ import NestedPopover from '@/components/NestedPopover.vue'
 import FilterIcon from '@/components/Icons/FilterIcon.vue'
 import Link from '@/components/Controls/Link.vue'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
-import {
-  FormControl,
-  createResource,
-  Tooltip,
-  DatePicker,
-  DateRangePicker,
-} from 'frappe-ui'
+import { FormControl, createResource, Tooltip } from 'frappe-ui'
 import { h, computed, onMounted } from 'vue'
 import { isMobileView } from '@/composables/settings'
 import CustomDateTimePicker from './CustomDateTimePicker.vue'
@@ -402,13 +396,39 @@ function getValueControl(f) {
   } else if (typeNumber.includes(fieldtype)) {
     return h(FormControl, { type: 'number' })
   } else if (typeDate.includes(fieldtype) && operator == 'between') {
-    return h(DateRangePicker, { value: f.value, iconLeft: '' })
+    return h(CustomDateTimePicker, {
+      mode: 'daterange',
+      showTime: false,
+      modelValue: f.value,
+      placeholder: field.label,
+      inputClass: 'border-none',
+      preventAutoFill: true,
+      autoDefault: false,
+      rangeValueType: 'array',
+      onChange: (val) => {
+        f.value = val
+        apply()
+      },
+      'onUpdate:modelValue': (val) => {
+        f.value = val
+      },
+    })
   } else if (typeDate.includes(fieldtype)) {
-    // For Call Logs, ensure 'start_time' uses date-only picker
-    const useDateOnly = props.doctype === 'CRM Call Log' && field.fieldname === 'start_time'
-    return h(useDateOnly || fieldtype == 'Date' ? DatePicker : CustomDateTimePicker, {
-      value: f.value,
-      iconLeft: '',
+    return h(CustomDateTimePicker, {
+      mode: 'date',
+      showTime: false,
+      modelValue: f.value,
+      placeholder: field.label,
+      inputClass: 'border-none',
+      preventAutoFill: true,
+      autoDefault: false,
+      onChange: (val) => {
+        f.value = val
+        apply()
+      },
+      'onUpdate:modelValue': (val) => {
+        f.value = val
+      },
     })
   } else {
     return h(FormControl, { type: 'text' })

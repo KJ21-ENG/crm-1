@@ -68,6 +68,7 @@
         v-model="task.due_date"
         :placeholder="__('Select date and time')"
         :input-class="'border-none'"
+        :disable-teleport="true"
       />
     </div>
   </div>
