@@ -528,8 +528,23 @@ function calculatePosition() {
     }
 
     const bounds = getContainingRect()
-    const pickerHeight = 520
-    const pickerWidth = 320
+    
+    // Auto-calculate picker dimensions based on content and available space
+    const basePickerWidth = 320
+    const basePickerHeight = 520 // Base height for calendar + time + actions
+    
+    // Measure actual popup size if available, otherwise use base
+    const measuredWidth = popupRef.value?.offsetWidth || basePickerWidth
+    const measuredHeight = popupRef.value?.offsetHeight || basePickerHeight
+    
+    // Calculate available space within container bounds (with margins)
+    const margin = 16
+    const availableWidth = Math.max(260, bounds.width - margin * 2)
+    const availableHeight = Math.max(360, bounds.height - margin * 2)
+    
+    // Auto-adjust dimensions to fit content and available space
+    const pickerWidth = Math.min(measuredWidth, availableWidth)
+    const pickerHeight = Math.min(measuredHeight, availableHeight)
 
     // Start by aligning to the input field
     let top = rect.bottom + 4
@@ -547,8 +562,8 @@ function calculatePosition() {
     }
 
     // Prevent overflow on the top/left within container bounds
-    const minLeft = bounds.left + 16
-    const minTop = bounds.top + 16
+    const minLeft = bounds.left + margin
+    const minTop = bounds.top + margin
     if (left < minLeft) left = minLeft
     if (top < minTop) top = minTop
 
@@ -558,9 +573,15 @@ function calculatePosition() {
     const finalLeft = props.disableTeleport ? left - bounds.left : left
     const finalTop = props.disableTeleport ? top - bounds.top : top
 
+    // Determine if we need scrolling for constrained space
+    const needsScroll = measuredHeight > availableHeight
+
     pickerPosition.value = {
       top: `${finalTop}px`,
       left: `${finalLeft}px`,
+      width: `${pickerWidth}px`,
+      maxHeight: needsScroll ? `${availableHeight}px` : 'auto',
+      overflowY: needsScroll ? 'auto' : 'visible',
     }
   })
 }
@@ -818,6 +839,7 @@ onUnmounted(() => {
   padding: 16px;
   padding-bottom: 20px;
   width: 320px;
+  /* Auto-adjust height based on content and available space */
   overflow: visible;
 }
 
