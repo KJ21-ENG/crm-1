@@ -556,30 +556,34 @@ function calculatePosition() {
     // Calculate available space within container bounds (with margins)
     const margin = 16
     const availableWidth = Math.max(260, bounds.width - margin * 2)
-    const availableHeight = Math.max(360, bounds.height - margin * 2)
     
-    // Auto-adjust dimensions to fit content and available space
+    // Auto-adjust width while keeping natural height for full content visibility
     const pickerWidth = Math.min(measuredWidth, availableWidth)
-    const pickerHeight = Math.min(measuredHeight, availableHeight)
+    const pickerHeight = measuredHeight
 
     // Start by aligning to the input field
     let top = rect.bottom + 4
     let left = rect.left
 
     // Prevent overflow on the bottom/right within container bounds
-    const bottomLimit = bounds.top + bounds.height
-    const rightLimit = bounds.left + bounds.width
+    const minLeft = bounds.left + margin
+    const minTop = bounds.top + margin
+    const rightLimit = bounds.left + bounds.width - margin
+    const bottomLimit = bounds.top + bounds.height - margin
 
     if (top + pickerHeight > bottomLimit) {
-      top = rect.top - pickerHeight - 4
+      const flippedTop = rect.top - pickerHeight - 4
+      if (flippedTop >= minTop) {
+        top = flippedTop
+      } else {
+        top = bottomLimit - pickerHeight
+      }
     }
     if (left + pickerWidth > rightLimit) {
-      left = rightLimit - pickerWidth - 16
+      left = rightLimit - pickerWidth
     }
 
     // Prevent overflow on the top/left within container bounds
-    const minLeft = bounds.left + margin
-    const minTop = bounds.top + margin
     if (left < minLeft) left = minLeft
     if (top < minTop) top = minTop
 
@@ -589,15 +593,12 @@ function calculatePosition() {
     const finalLeft = props.disableTeleport ? left - bounds.left : left
     const finalTop = props.disableTeleport ? top - bounds.top : top
 
-    // Determine if we need scrolling for constrained space
-    const needsScroll = measuredHeight > availableHeight
-
     pickerPosition.value = {
       top: `${finalTop}px`,
       left: `${finalLeft}px`,
       width: `${pickerWidth}px`,
-      maxHeight: needsScroll ? `${availableHeight}px` : 'auto',
-      overflowY: needsScroll ? 'auto' : 'visible',
+      maxHeight: 'auto',
+      overflowY: 'visible',
     }
   })
 }
