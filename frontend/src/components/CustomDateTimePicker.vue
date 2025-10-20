@@ -529,17 +529,38 @@ function calculatePosition() {
 
     const bounds = getContainingRect()
     
-    // Auto-calculate picker dimensions - let content determine natural size
+    // Auto-calculate picker dimensions based on content and available space
     const basePickerWidth = 320
     const basePickerHeight = 520 // Base height for calendar + time + actions
+
+    const popupEl = popupRef.value
+    let previousMaxHeight = ''
+    let previousOverflowY = ''
+    if (popupEl) {
+      previousMaxHeight = popupEl.style.maxHeight
+      previousOverflowY = popupEl.style.overflowY
+      // Remove prior constraints so the measurement reflects the natural size.
+      popupEl.style.maxHeight = ''
+      popupEl.style.overflowY = ''
+    }
+
+    // Measure actual popup size if available, otherwise use base
+    const measuredWidth = popupEl?.offsetWidth || basePickerWidth
+    const measuredHeight = popupEl?.offsetHeight || basePickerHeight
+
+    if (popupEl) {
+      popupEl.style.maxHeight = previousMaxHeight
+      popupEl.style.overflowY = previousOverflowY
+    }
     
     // Calculate available space within container bounds (with margins)
     const margin = 16
     const availableWidth = Math.max(260, bounds.width - margin * 2)
+    const availableHeight = Math.max(360, bounds.height - margin * 2)
     
-    // Auto-adjust width to fit available space, height will be natural content size
-    const pickerWidth = Math.min(basePickerWidth, availableWidth)
-    const pickerHeight = basePickerHeight // Let CSS handle natural sizing
+    // Auto-adjust dimensions to fit content and available space
+    const pickerWidth = Math.min(measuredWidth, availableWidth)
+    const pickerHeight = Math.min(measuredHeight, availableHeight)
 
     // Start by aligning to the input field
     let top = rect.bottom + 4
@@ -568,10 +589,15 @@ function calculatePosition() {
     const finalLeft = props.disableTeleport ? left - bounds.left : left
     const finalTop = props.disableTeleport ? top - bounds.top : top
 
+    // Determine if we need scrolling for constrained space
+    const needsScroll = measuredHeight > availableHeight
+
     pickerPosition.value = {
       top: `${finalTop}px`,
       left: `${finalLeft}px`,
       width: `${pickerWidth}px`,
+      maxHeight: needsScroll ? `${availableHeight}px` : 'auto',
+      overflowY: needsScroll ? 'auto' : 'visible',
     }
   })
 }
@@ -829,8 +855,7 @@ onUnmounted(() => {
   padding: 16px;
   padding-bottom: 20px;
   width: 320px;
-  /* Natural height - no constraints, no scrolling */
-  height: auto;
+  /* Auto-adjust height based on content and available space */
   overflow: visible;
 }
 
