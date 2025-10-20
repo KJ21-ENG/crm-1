@@ -559,7 +559,15 @@ function calculatePosition() {
     
     // Auto-adjust width while keeping natural height for full content visibility
     const pickerWidth = Math.min(measuredWidth, availableWidth)
-    const pickerHeight = measuredHeight
+    let pickerHeight = measuredHeight
+
+    if (popupEl && pickerWidth !== measuredWidth) {
+      const previousWidth = popupEl.style.width
+      popupEl.style.width = `${pickerWidth}px`
+      // Re-measure because reducing width can change the layout height
+      pickerHeight = popupEl.offsetHeight || pickerHeight
+      popupEl.style.width = previousWidth
+    }
 
     // Start by aligning to the input field
     let top = rect.bottom + 4
