@@ -322,7 +322,8 @@ export function useDashboard() {
         color: 'purple', 
         change: null,
         clickable: true,
-        target: 'calls'
+        target: 'calls',
+        filters: { dateField: 'start_time' }
       },
       {
         title: 'Account Opened',
@@ -336,7 +337,8 @@ export function useDashboard() {
         tooltip: {
           enabled: true,
           fetchData: () => fetchTooltipData('account_opened', currentView.value, customDateRange.value.start, customDateRange.value.end)
-        }
+        },
+        filters: { status: 'Account Opened', dateField: 'account_opened_on' }
       },
       {
         title: 'Account Activated',
@@ -350,7 +352,8 @@ export function useDashboard() {
         tooltip: {
           enabled: true,
           fetchData: () => fetchTooltipData('account_activated', currentView.value, customDateRange.value.start, customDateRange.value.end)
-        }
+        },
+        filters: { status: 'Account Activated', dateField: 'account_activated_on' }
       }
     ]
   })

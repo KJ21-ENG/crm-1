@@ -133,9 +133,9 @@
 
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
-        @click="navigateTo('calls')"
-        @keydown.enter.prevent="navigateTo('calls')"
-        @keydown.space.prevent="navigateTo('calls')"
+        @click="navigateTo('calls', { dateField: 'start_time' })"
+        @keydown.enter.prevent="navigateTo('calls', { dateField: 'start_time' })"
+        @keydown.space.prevent="navigateTo('calls', { dateField: 'start_time' })"
         role="button"
         tabindex="0"
       >
@@ -154,9 +154,9 @@
       <!-- Account Opened tile -->
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
-        @click="navigateTo('leads')"
-        @keydown.enter.prevent="navigateTo('leads')"
-        @keydown.space.prevent="navigateTo('leads')"
+        @click="navigateTo('leads', { status: 'Account Opened', dateField: 'account_opened_on' })"
+        @keydown.enter.prevent="navigateTo('leads', { status: 'Account Opened', dateField: 'account_opened_on' })"
+        @keydown.space.prevent="navigateTo('leads', { status: 'Account Opened', dateField: 'account_opened_on' })"
         role="button"
         tabindex="0"
       >
@@ -237,9 +237,9 @@
       <!-- Account Activated tile -->
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
-        @click="navigateTo('leads')"
-        @keydown.enter.prevent="navigateTo('leads')"
-        @keydown.space.prevent="navigateTo('leads')"
+        @click="navigateTo('leads', { status: 'Account Activated', dateField: 'account_activated_on' })"
+        @keydown.enter.prevent="navigateTo('leads', { status: 'Account Activated', dateField: 'account_activated_on' })"
+        @keydown.space.prevent="navigateTo('leads', { status: 'Account Activated', dateField: 'account_activated_on' })"
         role="button"
         tabindex="0"
       >
@@ -1022,9 +1022,9 @@ const getMostProductivePeriod = (hourlyData) => {
   return `${bestPeriod} (${maxActivity} activities)`
 }
 
-const navigateTo = (target) => {
+const navigateTo = (target, extraFilters = {}) => {
   if (!target) return
-  emit('navigate', target)
+  emit('navigate', target, extraFilters)
 }
 
 onMounted(() => {

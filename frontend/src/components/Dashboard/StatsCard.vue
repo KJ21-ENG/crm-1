@@ -152,6 +152,10 @@ const props = defineProps({
   tooltip: {
     type: Object,
     default: null
+  },
+  filters: {
+    type: Object,
+    default: null
   }
 })
 
@@ -164,7 +168,7 @@ const emit = defineEmits(['click'])
 
 const handleClick = () => {
   if (props.clickable && props.target) {
-    emit('click', props.target)
+    emit('click', props.target, props.filters || {})
   }
 }
 
