@@ -1027,14 +1027,13 @@ const handleUserDashboardNavigate = (target, extraFilters = {}) => {
   const { dateField: overrideDateField, ...filterOverrides } = normalizedExtra
   const effectiveUser = selectedUserId.value || session.user || ''
   const safeUserToken = effectiveUser || '__current__'
-  // For user-dashboard-origin navigations, default to 'creation' for call filters
-  const dateFilterField = overrideDateField || 'creation'
+  const defaultDateField = target === 'calls' ? 'creation' : 'creation'
+  const dateFilterField = overrideDateField || defaultDateField
 
   if (target === 'calls') {
     const callFilters = safeUserToken ? { owner: safeUserToken } : {}
     Object.assign(callFilters, filterOverrides)
     Object.assign(callFilters, buildDateFilter(dateFilterField, 'user'))
-    console.log('DEBUG: UserDashboard -> Call Logs navigation', { activeTab: activeTab.value, dateFilterField, callFilters })
     try {
       router.push({
         name: 'Call Logs',
@@ -1105,10 +1104,7 @@ const handleCallLogTileNavigate = (key) => {
 
   filters.owner = ownerToken
   const scope = selectedCallLogsUserId.value === 'all' ? 'global' : 'user'
-  // Use 'start_time' when navigating from analytics (analytics or calllogs tab), otherwise use 'creation'
-  const dateField = ['analytics', 'calllogs'].includes(activeTab.value) ? 'start_time' : 'creation'
-  Object.assign(filters, buildDateFilter(dateField, scope))
-  console.log('DEBUG: CallLog tile navigate', { activeTab: activeTab.value, scope, dateField, filters })
+  Object.assign(filters, buildDateFilter('creation', scope))
 
   try {
     router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
@@ -1122,11 +1118,11 @@ const handleStatsCardClick = (target, extraFilters = {}) => {
 
   const normalizedExtra = extraFilters && typeof extraFilters === 'object' ? { ...extraFilters } : {}
   const { dateField: overrideDateField, ...filterOverrides } = normalizedExtra
-  // For analytics-origin navigations to calls, prefer start_time; otherwise use creation
-  const dateField = overrideDateField || ((['analytics', 'calllogs'].includes(activeTab.value) && target === 'calls') ? 'start_time' : 'creation')
+  const defaultDateField = target === 'calls' ? 'start_time' : 'creation'
+  const dateField = overrideDateField || defaultDateField
 
-  // For analytics tab (analytics or calllogs), navigate without any user filters to show all data
-  if (['analytics', 'calllogs'].includes(activeTab.value)) {
+  // For analytics tab, navigate without any user filters to show all data
+  if (activeTab.value === 'analytics') {
     try {
       if (target === 'calls') {
         const filters = {
@@ -1134,7 +1130,6 @@ const handleStatsCardClick = (target, extraFilters = {}) => {
           ...filterOverrides,
           ...buildDateFilter(dateField, 'global')
         }
-        console.log('DEBUG: Analytics -> Call Logs navigation', { activeTab: activeTab.value, target, dateField, filters })
         router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
       } else {
         const config = tileNavigationConfig[target]
@@ -1171,7 +1166,6 @@ const handleStatsCardClick = (target, extraFilters = {}) => {
     const callFilters = safeUserToken ? { owner: safeUserToken } : {}
     Object.assign(callFilters, filterOverrides)
     Object.assign(callFilters, buildDateFilter(dateField, 'user'))
-    console.log('DEBUG: Non-analytics stats card -> Call Logs', { activeTab: activeTab.value, target, dateField, callFilters })
     try {
       router.push({
         name: 'Call Logs',

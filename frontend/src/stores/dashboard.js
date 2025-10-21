@@ -314,7 +314,7 @@ export function useDashboard() {
       { title: 'Total Leads', value: overview.value.total_leads || 0, icon: 'user-plus', color: 'blue', change: null, clickable: true, target: 'leads' },
       { title: 'Total Tickets', value: overview.value.total_tickets || 0, icon: 'ticket', color: 'orange', change: null, clickable: true, target: 'tickets' },
       { title: 'Total Tasks', value: overview.value.total_tasks || 0, icon: 'check-square', color: 'green', change: null, clickable: true, target: 'tasks' },
-      { 
+        { 
         title: 'Call Logs', 
         value: overview.value.total_call_logs || 0, 
         subtitle: overview.value.missed_calls > 0 ? `${overview.value.missed_calls} missed calls` : null,
@@ -323,7 +323,7 @@ export function useDashboard() {
         change: null,
         clickable: true,
         target: 'calls',
-        filters: { dateField: 'start_time' }
+        filters: { dateField: 'creation' }
       },
       {
         title: 'Account Opened',
