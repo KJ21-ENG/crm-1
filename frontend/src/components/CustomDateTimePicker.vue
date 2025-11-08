@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <Teleport :to="teleportTarget" :disabled="disableTeleport">
+    <Teleport :to="teleportTarget" :disabled="resolvedDisableTeleport">
       <div v-if="isOpen" class="datetime-picker-overlay" @click="closePicker">
         <div
           ref="popupRef"
@@ -240,6 +240,7 @@ const popupRef = ref(null)
 const isOpen = ref(false)
 const isValueApplied = ref(false)
 const hasUserSelection = ref(false)
+const isInsideDialog = ref(false)
 
 const currentDate = ref(startOfMonth(new Date()))
 const selectedDate = ref(null)
@@ -292,6 +293,8 @@ const showTimeComputed = computed(() => {
   }
   return props.mode === 'datetime' || props.mode === 'datetimerange'
 })
+
+const resolvedDisableTeleport = computed(() => props.disableTeleport || isInsideDialog.value)
 
 const displayValue = computed(() => {
   if (!isValueApplied.value) {
@@ -374,6 +377,7 @@ function createCalendarDate(date, todayYear, todayMonth, todayDay, isCurrentMont
 }
 
 function togglePicker() {
+  updateDialogContext()
   if (isOpen.value) {
     closePicker()
     return
@@ -478,11 +482,18 @@ function applySelection() {
   closePicker()
 }
 
+function updateDialogContext() {
+  const pickerElement = pickerRef.value
+  if (!pickerElement) return
+  isInsideDialog.value = Boolean(pickerElement.closest('.dialog-content'))
+}
+
 function calculatePosition() {
   nextTick(() => {
     const inputElement = pickerRef.value
     if (!inputElement) return
     const rect = inputElement.getBoundingClientRect()
+    const disableTeleport = resolvedDisableTeleport.value
 
     // Determine the effective containing rectangle for positioning.
     // When teleported (default), use the viewport. When not teleported
@@ -491,7 +502,7 @@ function calculatePosition() {
     // we compute bounds from the nearest ancestor that creates a containing
     // block or clips overflow and then position within those bounds.
     const getContainingRect = () => {
-      if (!props.disableTeleport) {
+      if (!disableTeleport) {
         return {
           top: 0,
           left: 0,
@@ -598,8 +609,8 @@ function calculatePosition() {
     // If not teleported, convert viewport coords to container-local coords
     // because position: fixed under a transformed ancestor uses that ancestor
     // as the containing block.
-    const finalLeft = props.disableTeleport ? left - bounds.left : left
-    const finalTop = props.disableTeleport ? top - bounds.top : top
+    const finalLeft = disableTeleport ? left - bounds.left : left
+    const finalTop = disableTeleport ? top - bounds.top : top
 
     pickerPosition.value = {
       top: `${finalTop}px`,
