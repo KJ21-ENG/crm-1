@@ -93,11 +93,15 @@
                 </div>
                 <div v-if="customer.data.date_of_birth">
                   <label class="text-sm text-ink-gray-7">Date of Birth</label>
-                  <p class="text-ink-gray-12">{{ formatDate(customer.data.date_of_birth) }}</p>
+                  <p class="text-ink-gray-12">
+                    {{ formatDate(customer.data.date_of_birth, { includeTime: false }) }}
+                  </p>
                 </div>
                 <div v-if="customer.data.anniversary">
                   <label class="text-sm text-ink-gray-7">Anniversary</label>
-                  <p class="text-ink-gray-12">{{ formatDate(customer.data.anniversary) }}</p>
+                  <p class="text-ink-gray-12">
+                    {{ formatDate(customer.data.anniversary, { includeTime: false }) }}
+                  </p>
                 </div>
                 <div v-if="customer.data.job_title">
                   <label class="text-sm text-ink-gray-7">Job Title</label>
@@ -881,14 +885,21 @@ async function updateCustomer() {
   }
 }
 
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-US', {
+function formatDate(dateString, { includeTime = true } = {}) {
+  if (!dateString) return ''
+
+  const options = {
     year: 'numeric',
     month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+    day: 'numeric'
+  }
+
+  if (includeTime) {
+    options.hour = '2-digit'
+    options.minute = '2-digit'
+  }
+
+  return new Date(dateString).toLocaleDateString('en-US', options)
 }
 
 function formatDuration(seconds) {
