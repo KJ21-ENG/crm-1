@@ -159,6 +159,18 @@
             />
           </div>
           <div
+            v-else-if="column.key === 'status'"
+            class="truncate text-base"
+          >
+            <!-- Support both shapes: item can be { value, color } or a plain string. Prefer label when provided by ListRowItem -->
+            <StatusBadge
+              v-if="item || label"
+              :status="item?.value || label || item || ''"
+              :color="resolveStatusColor(item, label)"
+              @click.native.stop="(event) => emit('applyFilter', { event, idx, column, item, firstColumn: columns[0] })"
+            />
+          </div>
+          <div
             v-else
             class="truncate text-base"
             @click="
@@ -187,15 +199,14 @@
       </template>
     </ListSelectBanner>
   </ListView>
-  <ListFooter
-    v-if="pageLengthCount"
+  <Pagination
+    v-if="pageLengthCount && options.totalCount > 0"
     class="border-t sm:px-5 px-3 py-2"
-    v-model="pageLengthCount"
-    :options="{
-      rowCount: options.rowCount,
-      totalCount: options.totalCount,
-    }"
-    @loadMore="emit('loadMore')"
+    :current-page="currentPage"
+    :page-size="pageLengthCount"
+    :total-count="options.totalCount"
+    @page-change="handlePageChange"
+    @page-size-change="handlePageSizeChange"
   />
   <ListBulkActions ref="listBulkActionsRef" v-model="list" doctype="CRM Lead" />
 </template>
@@ -203,10 +214,12 @@
 <script setup>
 import HeartIcon from '@/components/Icons/HeartIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+import StatusBadge from '@/components/Badges/StatusBadge.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
 import ListRows from '@/components/ListViews/ListRows.vue'
+import Pagination from '@/components/Pagination.vue'
 import {
   Avatar,
   ListView,
@@ -214,11 +227,11 @@ import {
   ListHeaderItem,
   ListSelectBanner,
   ListRowItem,
-  ListFooter,
   Dropdown,
   Tooltip,
 } from 'frappe-ui'
 import { sessionStore } from '@/stores/session'
+import { statusesStore } from '@/stores/statuses'
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -250,6 +263,8 @@ const emit = defineEmits([
   'applyLikeFilter',
   'likeDoc',
   'selectionsChanged',
+  'pageChange',
+  'pageSizeChange',
 ])
 
 const route = useRoute()
@@ -282,4 +297,46 @@ defineExpose({
     () => listBulkActionsRef.value?.customListActions,
   ),
 })
+
+// Add pagination computed properties
+const currentPage = computed(() => {
+  // Use the current page from the list data if available, otherwise fallback to 1
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  const pageLength = list.value.data.page_length
+  const calculatedPage = Math.floor(start / pageLength) + 1
+  
+  console.log('🔍 LeadsListView Debug - Current page calculation:', {
+    start,
+    pageLength,
+    calculatedPage,
+    listData: list.value?.data
+  })
+  
+  return calculatedPage
+})
+
+const totalPages = computed(() => {
+  if (!list.value?.data?.total_count || !list.value?.data?.page_length) return 1
+  return Math.ceil(list.value.data.total_count / list.value.data.page_length)
+})
+
+// Helper to resolve status color when item doesn't include color
+function resolveStatusColor(item, label) {
+  // If item has color token stored like '!text-blue-700', return stripped
+  if (item && item.color) return item.color.replace('!text-', '')
+  const { getLeadStatus } = statusesStore()
+  const statusName = (item && (item.value || item)) || label
+  const status = getLeadStatus(statusName)
+  return status && status.color ? status.color.replace('!text-', '') : 'gray-700'
+}
+
+// Add pagination methods
+function handlePageChange(page) {
+  emit('pageChange', page)
+}
+
+function handlePageSizeChange(pageSize) {
+  emit('pageSizeChange', pageSize)
+}
 </script>

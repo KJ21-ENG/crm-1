@@ -3,7 +3,9 @@ from collections.abc import Iterable
 import frappe
 from frappe import _
 from bs4 import BeautifulSoup
+import json
 from crm.fcrm.doctype.crm_notification.crm_notification import notify_user
+from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
 
 
 def on_update(self, method):
@@ -20,6 +22,135 @@ def notify_mentions(doc):
         return
     mentions = extract_mentions(content)
     reference_doc = frappe.get_doc(doc.reference_doctype, doc.reference_name)
+    # Notify all users in parent document's _assign as 'New Message'
+    try:
+        parent_assign_json = reference_doc.get("_assign") if reference_doc else None
+        parent_assign = json.loads(parent_assign_json) if parent_assign_json else []
+        if not isinstance(parent_assign, list):
+            parent_assign = []
+    except Exception:
+        parent_assign = []
+
+    # Build a set of mention emails to avoid duplicate notifications
+    mention_emails = {m.email for m in mentions} if mentions else set()
+
+    owner = frappe.get_cached_value("User", doc.owner, "full_name")
+
+    def customer_suffix(reference_doctype: str | None, reference_name: str | None) -> str:
+        """Return HTML suffix with customer name and optional client id.
+
+        Example outputs:
+        - " (John Doe)"
+        - " (John Doe - ABC123)"  # when a client_id exists on the linked customer
+        """
+        try:
+            if not (reference_doctype and reference_name):
+                return ""
+            customer_name = None
+            client_id = None
+            cid = None
+
+            if reference_doctype == "CRM Ticket":
+                t = frappe.get_doc("CRM Ticket", reference_name)
+                cid = getattr(t, "customer_id", None)
+            elif reference_doctype == "CRM Lead":
+                l = frappe.get_doc("CRM Lead", reference_name)
+                cid = getattr(l, "customer_id", None)
+
+            if cid:
+                # Fetch customer_name and accounts in one go
+                customer = frappe.db.get_value(
+                    "CRM Customer", cid, ["customer_name", "accounts"], as_dict=1
+                )
+                if customer:
+                    customer_name = customer.get("customer_name")
+                    # accounts is JSON storing list of objects with client_id
+                    accounts_raw = customer.get("accounts")
+                    try:
+                        if accounts_raw:
+                            import json as _json
+
+                            accounts = (
+                                accounts_raw if isinstance(accounts_raw, list) else _json.loads(accounts_raw)
+                            )
+                            if isinstance(accounts, list) and accounts:
+                                # Use the first client_id found
+                                for acc in accounts:
+                                    cid_val = acc.get("client_id") if isinstance(acc, dict) else None
+                                    if cid_val:
+                                        client_id = cid_val
+                                        break
+                    except Exception:
+                        # Ignore JSON issues silently
+                        client_id = None
+
+            if customer_name:
+                suffix = customer_name if not client_id else f"{customer_name} - {client_id}"
+                return f"<span class=\"text-ink-gray-6\"> ({suffix})</span>"
+        except Exception:
+            # Non-fatal; no suffix
+            pass
+        return ""
+
+    for assigned_user in parent_assign:
+        try:
+            # Skip notifying the comment owner and users already mentioned
+            if assigned_user == doc.owner or assigned_user in mention_emails:
+                continue
+
+            # Create New Message notification
+            debug_ctx_ass = {
+                "owner": owner,
+                "assigned_to": assigned_user,
+                "reference_doctype": doc.reference_doctype,
+                "reference_docname": doc.reference_name,
+                "comment_name": doc.name,
+            }
+            frappe.logger().debug(f"Creating New Message notification for assign: {debug_ctx_ass}")
+
+            new_notification = create_task_notification(
+                task_name=None,
+                notification_type="New Message",
+                assigned_to=assigned_user,
+                message=doc.content,
+                reference_doctype=doc.reference_doctype,
+                reference_docname=doc.reference_name,
+            )
+
+            if new_notification:
+                try:
+                    parsed = BeautifulSoup(doc.content or "", "html.parser")
+                    preview_text = (parsed.get_text() or "").strip()
+                    words = preview_text.split()
+                    if len(words) > 20:
+                        preview = " ".join(words[:20]).rstrip() + "..."
+                    else:
+                        preview = preview_text
+
+                    new_text = f"""
+                        <div class=\"mb-2 leading-5 text-ink-gray-5\"> 
+                            <span class=\"font-medium text-blue-600\">💬 New Message In Chat</span>
+                            <div class=\"mt-1\">
+                                <span class=\"font-medium text-ink-gray-9\">{ owner }</span>
+                                <span> posted a new message in </span>
+                                <span class=\"font-medium text-ink-gray-9\">{ doc.reference_name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
+                            </div>
+                            <div class=\"mt-1 text-sm text-ink-gray-6\">Message: { preview }</div>
+                        </div>
+                    """
+                    try:
+                        new_notification.db_set("notification_text", new_text)
+                        # Mark sent so frontend gets realtime event
+                        new_notification.mark_as_sent()
+                    except Exception:
+                        frappe.logger().exception("Failed to set notification_text or mark sent for New Message")
+                except Exception:
+                    frappe.logger().exception("Failed to build New Message notification text")
+            else:
+                frappe.logger().warning(f"create_task_notification returned None for New Message: {debug_ctx_ass}")
+
+        except Exception:
+            frappe.logger().exception("Failed to create New Message notification for assigned user")
     for mention in mentions:
         owner = frappe.get_cached_value("User", doc.owner, "full_name")
         doctype = doc.reference_doctype
@@ -32,9 +163,12 @@ def notify_mentions(doc):
         )
         notification_text = f"""
             <div class="mb-2 leading-5 text-ink-gray-5">
-                <span class="font-medium text-ink-gray-9">{ owner }</span>
-                <span>{ _('mentioned you in {0}').format(doctype) }</span>
-                <span class="font-medium text-ink-gray-9">{ name }</span>
+                <span class="font-medium text-blue-600">💬 Mention</span>
+                <div class="mt-1">
+                    <span class="font-medium text-ink-gray-9">{ owner }</span>
+                    <span> { _('mentioned you in {0}').format(doctype) } </span>
+                    <span class="font-medium text-ink-gray-9">{ name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
+                </div>
             </div>
         """
         notify_user(
@@ -50,6 +184,81 @@ def notify_mentions(doc):
                 "redirect_to_docname": doc.reference_name,
             }
         )
+        # Also create a Task Reminder style notification so it appears under Task Reminder
+        debug_context = {
+            "owner": owner,
+            "assigned_to": mention.email,
+            "reference_doctype": doc.reference_doctype,
+            "reference_docname": doc.reference_name,
+            "comment_name": doc.name,
+        }
+        try:
+            frappe.logger().debug(f"Creating CRM Task Notification for mention: {debug_context}")
+
+            # Use task notification system: task_name=None for non-task mentions, notification_type 'Mention'
+            # Create the task notification using the comment content as message
+            notification = create_task_notification(
+                task_name=None,
+                notification_type="Mention",
+                assigned_to=mention.email,
+                message=doc.content,
+                reference_doctype=doc.reference_doctype,
+                reference_docname=doc.reference_name,
+            )
+
+            if notification:
+                try:
+                    # Build enhanced notification_text: header, who mentioned, where, and message preview
+                    # Extract plain text preview from HTML content
+                    parsed = BeautifulSoup(doc.content or "", "html.parser")
+                    preview_text = (parsed.get_text() or "").strip()
+                    # Create a short word-based preview (first 20 words) and append ellipsis if truncated
+                    words = preview_text.split()
+                    if len(words) > 20:
+                        preview = " ".join(words[:20]).rstrip() + "..."
+                    else:
+                        preview = preview_text
+
+                    notification_text = f"""
+                        <div class="mb-2 leading-5 text-ink-gray-5">
+                            <span class="font-medium text-blue-600">💬 Mention</span>
+                            <div class="mt-1">
+                                <span class="font-medium text-ink-gray-9">{ owner }</span>
+                                <span> mentioned you in </span>
+                                <span class="font-medium text-ink-gray-9">{ doc.reference_name }</span>{ customer_suffix(doc.reference_doctype, doc.reference_name) }
+                            </div>
+                            <div class="mt-1 text-sm text-ink-gray-6">Message: { preview }</div>
+                        </div>
+                    """
+
+                    # Persist the custom formatted notification text
+                    try:
+                        notification.db_set("notification_text", notification_text)
+                    except Exception:
+                        frappe.logger().exception("Failed to set notification_text on CRM Task Notification")
+
+                    # Log essential notification fields
+                    frappe.logger().info(
+                        "CRM Task Notification created",
+                        extra={
+                            "name": getattr(notification, "name", None),
+                            "status": getattr(notification, "status", None),
+                            "assigned_to": getattr(notification, "assigned_to", None),
+                            "notification_type": getattr(notification, "notification_type", None),
+                        },
+                    )
+                    # Full doc dump for deeper debugging (may be large)
+                    frappe.logger().debug(f"Notification full doc: {notification.as_dict()}")
+                except Exception:
+                    # If as_dict or attributes fail, still continue
+                    frappe.logger().exception("Failed to log created notification details")
+            else:
+                frappe.logger().warning(f"create_task_notification returned None for mention: {debug_context}")
+
+        except Exception:
+            # Log exception with context — do not interrupt comment creation
+            frappe.logger().exception("Failed to create task reminder notification for mention")
+            frappe.logger().error(f"Debug context when failure occurred: {debug_context}")
 
 
 def extract_mentions(html):

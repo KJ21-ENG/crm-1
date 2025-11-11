@@ -36,12 +36,12 @@
     <ListRows
       class="mx-3 sm:mx-5"
       :rows="rows"
-      v-slot="{ idx, column, item }"
+      v-slot="{ idx, column, item, row }"
       doctype="CRM Call Log"
     >
       <ListRowItem :item="item" :align="column.align">
         <template #prefix>
-          <div v-if="['caller', 'receiver'].includes(column.key)">
+          <div v-if="['caller', 'receiver', 'employee'].includes(column.key)">
             <Avatar
               v-if="item.label"
               class="flex items-center"
@@ -56,7 +56,7 @@
         </template>
         <template #default="{ label }">
           <div
-            v-if="['modified', 'creation'].includes(column.key)"
+            v-if="['modified', 'creation', 'start_time'].includes(column.key)"
             class="truncate text-base"
             @click="
               (event) =>
@@ -74,22 +74,27 @@
             </Tooltip>
           </div>
           <div v-else-if="column.key === 'status'" class="truncate text-base">
-            <Badge
-              :variant="'subtle'"
-              :theme="item.color"
-              size="md"
-              :label="__(item.label)"
-              @click="
-                (event) =>
-                  emit('applyFilter', {
-                    event,
-                    idx,
-                    column,
-                    item,
-                    firstColumn: columns[0],
-                  })
-              "
-            />
+            <div class="inline-flex items-center gap-1">
+              <Badge
+                :variant="'subtle'"
+                :theme="item.color"
+                size="md"
+                :label="__(item.label)"
+                @click="
+                  (event) =>
+                    emit('applyFilter', {
+                      event,
+                      idx,
+                      column,
+                      item,
+                      firstColumn: columns[0],
+                    })
+                "
+              />
+              <Tooltip :text="__('Original status: {0}', [item.raw || item.name || __('Unknown')])">
+                <FeatherIcon name="info" class="h-3.5 w-3.5 text-ink-gray-5" />
+              </Tooltip>
+            </div>
           </div>
           <div v-else-if="column.type === 'Check'">
             <FormControl
@@ -113,7 +118,7 @@
           </div>
           <div
             v-else
-            class="truncate text-base"
+            class="flex items-center gap-2 truncate text-base"
             @click="
               (event) =>
                 emit('applyFilter', {
@@ -125,7 +130,24 @@
                 })
             "
           >
-            {{ label }}
+            <span class="flex-1 truncate">{{ label }}</span>
+            <Tooltip
+              v-if="idx === 0"
+              :text="row?.__isColdCall ? __('Unmark cold call') : __('Mark as cold call')"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                class="!p-1"
+                @click.stop="toggleColdCall(row)"
+              >
+                <FeatherIcon
+                  name="flag"
+                  class="h-4 w-4 transition-colors"
+                  :class="row?.__isColdCall ? 'text-blue-600' : 'text-ink-gray-4'"
+                />
+              </Button>
+            </Tooltip>
           </div>
         </template>
       </ListRowItem>
@@ -140,14 +162,14 @@
       </template>
     </ListSelectBanner>
   </ListView>
-  <ListFooter
+  <Pagination
+    v-if="pageLengthCount && options.totalCount > 0"
     class="border-t sm:px-5 px-3 py-2"
-    v-model="pageLengthCount"
-    :options="{
-      rowCount: options.rowCount,
-      totalCount: options.totalCount,
-    }"
-    @loadMore="emit('loadMore')"
+    :current-page="currentPage"
+    :page-size="pageLengthCount"
+    :total-count="options.totalCount"
+    @page-change="handlePageChange"
+    @page-size-change="handlePageSizeChange"
   />
   <ListBulkActions
     ref="listBulkActionsRef"
@@ -163,14 +185,16 @@
 import HeartIcon from '@/components/Icons/HeartIcon.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
 import ListRows from '@/components/ListViews/ListRows.vue'
+import Pagination from '@/components/Pagination.vue'
 import {
   Avatar,
+  Button,
+  FeatherIcon,
   ListView,
   ListHeader,
   ListHeaderItem,
   ListSelectBanner,
   ListRowItem,
-  ListFooter,
   Tooltip,
   Dropdown,
 } from 'frappe-ui'
@@ -206,7 +230,10 @@ const emit = defineEmits([
   'applyFilter',
   'applyLikeFilter',
   'likeDoc',
+  'toggleColdCall',
   'selectionsChanged',
+  'pageChange',
+  'pageSizeChange',
 ])
 
 const pageLengthCount = defineModel()
@@ -225,6 +252,13 @@ function isLiked(item) {
   }
 }
 
+function toggleColdCall(row) {
+  if (!row) return
+  const name = row.__doc?.name || row.name
+  if (!name) return
+  emit('toggleColdCall', { name, nextValue: !row.__isColdCall })
+}
+
 watch(pageLengthCount, (val, old_value) => {
   if (val === old_value) return
   emit('updatePageCount', val)
@@ -237,4 +271,40 @@ defineExpose({
     () => listBulkActionsRef.value?.customListActions,
   ),
 })
+
+// Add pagination computed properties
+const currentPage = computed(() => {
+  // Use the current page from the list data if available, otherwise fallback to 1
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  const pageLength = list.value.data.page_length
+  const calculatedPage = Math.floor(start / pageLength) + 1
+  
+  console.log('🔍 CallLogsListView Debug - Current page calculation:', {
+    start,
+    pageLength,
+    calculatedPage,
+    listData: list.value?.data
+  })
+  
+  return calculatedPage
+})
+
+const totalPages = computed(() => {
+  if (!list.value?.data?.total_count || !list.value?.data?.page_length) return 1
+  return Math.ceil(list.value.data.total_count / list.value.data.page_length)
+})
+
+// Add pagination methods
+function handlePageChange(page) {
+  emit('pageChange', page)
+}
+
+function handlePageSizeChange(pageSize) {
+  emit('pageSizeChange', pageSize)
+}
+
 </script>
+
+<style scoped>
+</style>

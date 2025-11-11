@@ -25,6 +25,19 @@
                       icon: TaskIcon,
                       onClick: addEditTask,
                     },
+                    {
+                      label: __('Link to Lead/Ticket'),
+                      icon: 'link-2',
+                      onClick: () => (showLinkDialog = true),
+                      condition: () => !callLog?.data?.reference_docname,
+                    },
+                    {
+                      label: __('Delink'),
+                      icon: 'unlink',
+                      onClick: delinkCall,
+                      disabled: !(callLog?.data?.reference_docname && callLog?.data?.reference_doctype),
+                      condition: () => callLog?.data?.reference_docname && callLog?.data?.reference_doctype,
+                    },
                   ],
                 },
               ]"
@@ -142,21 +155,73 @@
           </div>
         </div>
       </div>
-      <div
-        v-if="!callLog?.data?._lead && !callLog?.data?._deal"
-        class="px-4 pb-7 pt-4 sm:px-6"
-      >
-        <Button
-          class="w-full"
-          variant="solid"
-          :label="__('Create lead')"
-          @click="createLead"
-        />
+      <div class="px-4 pb-7 pt-4 sm:px-6">
+        <div class="flex gap-2">
+          <Button
+            class="flex-1"
+            variant="outline"
+            :label="__('Create Ticket')"
+            @click="createTicket"
+          >
+            <template #prefix>
+              <TicketIcon class="h-4 w-4" />
+            </template>
+          </Button>
+          <Button
+            class="flex-1"
+            variant="solid"
+            :label="__('Create Lead')"
+            @click="createLead"
+          >
+            <template #prefix>
+              <LeadsIcon class="h-4 w-4" />
+            </template>
+          </Button>
+        </div>
       </div>
     </template>
   </Dialog>
   <NoteModal v-model="showNoteModal" :note="note" @after="addNoteToCallLog" />
   <TaskModal v-model="showTaskModal" :task="task" @after="addTaskToCallLog" />
+  <TicketModal 
+    v-model="showTicketModal" 
+    :defaults="ticketDefaults"
+    :call-log="callLog?.data"
+  />
+
+  <!-- Link Call Dialog -->
+  <Dialog
+    v-model="showLinkDialog"
+    :options="{
+      title: __('Link Call Log'),
+      size: 'md',
+      actions: [
+        { label: __('Link'), variant: 'solid', onClick: linkCall },
+      ],
+    }"
+  >
+    <template #body-content>
+      <div class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm text-ink-gray-7">{{ __('Document Type') }}</label>
+          <select v-model="linkDoctype" class="form-control">
+            <option value="CRM Lead">CRM Lead</option>
+            <option value="CRM Ticket">CRM Ticket</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-ink-gray-7">{{ __('Document') }}</label>
+          <Link
+            class="form-control"
+            :doctype="linkDoctype"
+            :value="selectedDoc"
+            @change="(v) => (selectedDoc = v)"
+          />
+        </div>
+        <ErrorMessage :message="linkError" />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -165,20 +230,24 @@ import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import DurationIcon from '@/components/Icons/DurationIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import Dealsicon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Deal module not in use
+// import Dealsicon from '@/components/Icons/DealsIcon.vue'
 import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import CheckCircleIcon from '@/components/Icons/CheckCircleIcon.vue'
+import TicketIcon from '@/components/Icons/TicketIcon.vue'
 import NoteModal from '@/components/Modals/NoteModal.vue'
 import TaskModal from '@/components/Modals/TaskModal.vue'
+import TicketModal from '@/components/Modals/TicketModal.vue'
 import FadedScrollableDiv from '@/components/FadedScrollableDiv.vue'
 import { getCallLogDetail } from '@/utils/callLog'
 import { usersStore } from '@/stores/users'
 import { isMobileView } from '@/composables/settings'
 import { useDocument } from '@/data/document'
-import { FeatherIcon, Dropdown, Avatar, Tooltip, call } from 'frappe-ui'
+import { FeatherIcon, Dropdown, Avatar, Tooltip, call, ErrorMessage } from 'frappe-ui'
 import { ref, computed, h, nextTick, watch } from 'vue'
+import Link from '@/components/Controls/Link.vue'
 import { useRouter } from 'vue-router'
 
 const { isManager } = usersStore()
@@ -187,6 +256,11 @@ const router = useRouter()
 const show = defineModel()
 const showNoteModal = ref(false)
 const showTaskModal = ref(false)
+const showTicketModal = ref(false)
+const showLinkDialog = ref(false)
+const linkDoctype = ref('CRM Lead')
+const selectedDoc = ref('')
+const linkError = ref('')
 
 const callLog = defineModel('callLog')
 
@@ -234,23 +308,20 @@ const detailFields = computed(() => {
       },
     },
     {
-      icon: data._lead ? LeadsIcon : Dealsicon,
+      icon: LeadsIcon,
       name: 'reference_doc',
-      value: data._lead ? 'Lead' : 'Deal',
+      value:
+        data.reference_doctype && data.reference_docname
+          ? `${(data.reference_doctype || '').replace('CRM ', '')}: ${data.reference_docname}`
+          : null,
       link: () => {
-        if (data._lead) {
-          router.push({
-            name: 'Lead',
-            params: { leadId: data._lead },
-          })
-        } else {
-          router.push({
-            name: 'Deal',
-            params: { dealId: data._deal },
-          })
+        if (data.reference_doctype === 'CRM Ticket') {
+          router.push({ name: 'Ticket', params: { ticketId: data.reference_docname } })
+        } else if (data.reference_doctype === 'CRM Lead') {
+          router.push({ name: 'Lead', params: { leadId: data.reference_docname } })
         }
       },
-      condition: () => data._lead || data._deal,
+      condition: () => data.reference_doctype && data.reference_docname,
     },
     {
       icon: CalendarIcon,
@@ -268,6 +339,7 @@ const detailFields = computed(() => {
       name: 'status',
       value: data.status.label,
       color: data.status.color,
+      tooltip: __('Original status: {0}', [data.status.raw || data.status.name || __('Unknown')]),
     },
     {
       icon: h(FeatherIcon, {
@@ -297,19 +369,49 @@ const detailFields = computed(() => {
 const d = ref({})
 const leadDetails = ref({})
 
-async function createLead() {
-  await d.value.triggerOnCreateLead?.(
-    callLog.value?.data,
-    leadDetails.value,
-    () => (show.value = false),
-  )
+// Ticket defaults computed from call log data
+const ticketDefaults = computed(() => {
+  if (!callLog.value?.data) return {}
+  
+  // Use the new customer field, fallback to legacy logic
+  const customerNumber = callLog.value.data.customer || 
+    (callLog.value.data.type === 'Incoming' ? callLog.value.data.from : callLog.value.data.to)
+    
+  return {
+    mobile_no: customerNumber,
+    first_name: callLog.value.data.customer_name || `Customer from call ${customerNumber}`,
+    ticket_subject: `Support request from call ${customerNumber}`,
+    description: `Customer called on ${new Date(callLog.value.data.start_time).toLocaleString()}`,
+    priority: 'Medium',
+    issue_type: 'General',
+    department: 'Support'
+  }
+})
 
-  call('crm.fcrm.doctype.crm_call_log.crm_call_log.create_lead_from_call_log', {
-    call_log: callLog.value?.data,
-    lead_details: leadDetails.value,
-  }).then((d) => {
-    if (d) {
-      router.push({ name: 'Lead', params: { leadId: d } })
+async function createTicket() {
+  show.value = false
+  router.push({ 
+    name: 'Tickets',
+    query: { 
+      showTicketModal: true,
+      mobile_no: callLog.value?.data?.customer || 
+        (callLog.value?.data?.type === 'Incoming' ? callLog.value?.data?.from : callLog.value?.data?.to),
+      call_log: callLog.value?.data?.name
+    }
+  })
+}
+
+async function createLead() {
+  // Use the new customer field, fallback to legacy logic
+  const customerNumber = callLog.value?.data?.customer || 
+    (callLog.value?.data?.type === 'Incoming' ? callLog.value?.data?.from : callLog.value?.data?.to)
+
+  show.value = false
+  router.push({ 
+    name: 'Leads',
+    query: { 
+      showLeadModal: true,
+      mobile_no: customerNumber
     }
   })
 }
@@ -321,6 +423,37 @@ function openCallLogModal() {
   nextTick(() => {
     show.value = false
   })
+}
+
+async function linkCall() {
+  linkError.value = ''
+  try {
+    if (!selectedDoc.value) {
+      linkError.value = __('Please select a document')
+      return
+    }
+    await call('crm.fcrm.doctype.crm_call_log.crm_call_log.link_call_log', {
+      call_log_name: callLog.value?.data?.name,
+      reference_doctype: linkDoctype.value,
+      reference_docname: selectedDoc.value,
+    })
+    showLinkDialog.value = false
+    // reload current callLog data to reflect link
+    callLog.value && callLog.value.reload && callLog.value.reload()
+  } catch (e) {
+    linkError.value = e.messages?.[0] || e.message || __('Failed to link call log')
+  }
+}
+
+async function delinkCall() {
+  try {
+    await call('crm.fcrm.doctype.crm_call_log.crm_call_log.delink_call_log', {
+      call_log_name: callLog.value?.data?.name,
+    })
+    callLog.value && callLog.value.reload && callLog.value.reload()
+  } catch (e) {
+    // no-op; optional toast
+  }
 }
 
 function addEditNote() {

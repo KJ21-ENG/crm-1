@@ -9,22 +9,23 @@
     <div class="flex-1 overflow-y-auto">
       <div class="mb-3 flex flex-col">
         <SidebarLink
-          id="notifications-btn"
-          :label="__('Notifications')"
-          :icon="NotificationsIcon"
+          id="task-notifications-btn"
+          :label="__('Task Reminders')"
+          :icon="TaskIcon"
           :isCollapsed="isSidebarCollapsed"
-          @click="() => toggleNotificationPanel()"
+          @click="() => toggleTaskNotificationPanel()"
           class="relative mx-2 my-0.5"
         >
           <template #right>
             <Badge
-              v-if="!isSidebarCollapsed && unreadNotificationsCount"
-              :label="unreadNotificationsCount"
+              v-if="!isSidebarCollapsed && unreadTaskNotificationsCount"
+              :label="unreadTaskNotificationsCount"
               variant="subtle"
+              theme="orange"
             />
             <div
-              v-else-if="unreadNotificationsCount"
-              class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-surface-gray-6 ring-1 ring-white"
+              v-else-if="unreadTaskNotificationsCount"
+              class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-orange-500 ring-1 ring-white"
             />
           </template>
         </SidebarLink>
@@ -68,6 +69,16 @@
               class="mx-2 my-0.5"
             />
           </nav>
+          <!-- Admin-only Requests link -->
+          <div v-if="showRequestsLink" class="flex flex-col">
+            <SidebarLink
+              :icon="'users'"
+              :label="__('Requests')"
+              :to="{ name: 'Requests' }"
+              :isCollapsed="isSidebarCollapsed"
+              class="mx-2 my-0.5"
+            />
+          </div>
         </Section>
       </div>
     </div>
@@ -119,7 +130,7 @@
         </template>
       </SidebarLink>
     </div>
-    <Notifications />
+    <TaskNotifications />
     <Settings />
     <HelpModal
       v-if="showHelpModal"
@@ -151,23 +162,27 @@ import PinIcon from '@/components/Icons/PinIcon.vue'
 import UserDropdown from '@/components/UserDropdown.vue'
 import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
-import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
+// Commented out - Deal module not in use
+// import DealsIcon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Contacts module not in use
+// import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+import CustomersIcon from '@/components/Icons/CustomersIcon.vue'
+// Commented out - Organizations module not in use
+// import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
 import CollapseSidebar from '@/components/Icons/CollapseSidebar.vue'
-import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import HelpIcon from '@/components/Icons/HelpIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
-import Notifications from '@/components/Notifications.vue'
+import TaskNotifications from '@/components/TaskNotifications.vue'
 import Settings from '@/components/Settings/Settings.vue'
 import { viewsStore } from '@/stores/views'
 import {
-  unreadNotificationsCount,
-  notificationsStore,
-} from '@/stores/notifications'
+  unreadTaskNotificationsCount,
+  taskNotificationsStore,
+} from '@/stores/taskNotifications'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { showSettings, activeSettingsPage } from '@/composables/settings'
@@ -189,7 +204,7 @@ import { useStorage } from '@vueuse/core'
 import { ref, reactive, computed, h, markRaw, onMounted } from 'vue'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
-const { toggle: toggleNotificationPanel } = notificationsStore()
+const { toggle: toggleTaskNotificationPanel } = taskNotificationsStore()
 
 const isSidebarCollapsed = useStorage('isSidebarCollapsed', false)
 
@@ -198,24 +213,47 @@ const isDemoSite = ref(window.is_demo_site)
 
 const links = [
   {
+    label: 'Dashboard',
+    icon: 'bar-chart-2',
+    to: 'Dashboard',
+  },
+  {
+    label: 'Tickets',
+    icon: SquareAsterisk,
+    to: 'Tickets',
+  },
+  {
     label: 'Leads',
     icon: LeadsIcon,
     to: 'Leads',
   },
+  // Commented out - Deal module not in use
+  // {
+  //   label: 'Deals',
+  //   icon: DealsIcon,
+  //   to: 'Deals',
+  // },
+  // Commented out - Contacts module not in use
+  // {
+  //   label: 'Contacts',
+  //   icon: ContactsIcon,
+  //   to: 'Contacts',
+  // },
   {
-    label: 'Deals',
-    icon: DealsIcon,
-    to: 'Deals',
+    label: 'Customers',
+    icon: CustomersIcon,
+    to: 'Customers',
   },
+  // Commented out - Organizations module not in use
+  // {
+  //   label: 'Organizations',
+  //   icon: OrganizationsIcon,
+  //   to: 'Organizations',
+  // },
   {
-    label: 'Contacts',
-    icon: ContactsIcon,
-    to: 'Contacts',
-  },
-  {
-    label: 'Organizations',
-    icon: OrganizationsIcon,
-    to: 'Organizations',
+    label: 'Support Pages',
+    icon: SupportPagesIcon,
+    to: 'Support Pages',
   },
   {
     label: 'Notes',
@@ -232,7 +270,23 @@ const links = [
     icon: PhoneIcon,
     to: 'Call Logs',
   },
+  {
+    label: 'Round Robin',
+    icon: PinIcon,
+    to: 'Round Robin',
+  },
+  // Admin-only Requests link will be inserted dynamically below
 ]
+
+// Insert Requests link only for admin users (computed so it reacts to user store)
+const showRequestsLink = computed(() => {
+  try {
+    const { isAdmin } = usersStore()
+    return isAdmin()
+  } catch (e) {
+    return false
+  }
+})
 
 const allViews = computed(() => {
   let _views = [
@@ -281,12 +335,17 @@ function getIcon(routeName, icon) {
   switch (routeName) {
     case 'Leads':
       return LeadsIcon
-    case 'Deals':
-      return DealsIcon
-    case 'Contacts':
-      return ContactsIcon
-    case 'Organizations':
-      return OrganizationsIcon
+    // Commented out - Deal module not in use
+    // case 'Deals':
+    //   return DealsIcon
+    // Commented out - Contacts module not in use
+    // case 'Contacts':
+    //   return ContactsIcon
+    case 'Customers':
+      return CustomersIcon
+    // Commented out - Organizations module not in use
+    // case 'Organizations':
+    //   return OrganizationsIcon
     case 'Notes':
       return NoteIcon
     case 'Call Logs':

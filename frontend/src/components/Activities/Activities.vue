@@ -9,11 +9,16 @@
     :emailBox="emailBox"
     :whatsappBox="whatsappBox"
     :modalRef="modalRef"
+    :whatsappStatus="whatsappStatus"
+    :canWrite="canWrite"
   />
-  <FadedScrollableDiv
-    :maskHeight="30"
-    class="flex flex-col flex-1 overflow-y-auto"
-  >
+  <div class="relative flex flex-1">
+    <FadedScrollableDiv
+      ref="scroller"
+      :maskHeight="30"
+      class="flex flex-col flex-1 overflow-y-auto"
+      @scroll="onScrollEvent"
+    >
     <div
       v-if="all_activities?.loading"
       class="flex flex-1 flex-col items-center justify-center gap-3 text-xl font-medium text-ink-gray-4"
@@ -101,12 +106,12 @@
       >
         <AttachmentArea
           :attachments="activities"
-          @reload="all_activities.reload() && scroll()"
+          @reload="debouncedReload() && scroll()"
         />
       </div>
       <div
         v-else
-        v-for="(activity, i) in activities"
+        v-for="(activity, i) in (title == 'Activity' ? visibleActivities : activities)"
         class="activity px-3 sm:px-10"
         :class="
           ['Activity', 'Emails'].includes(title)
@@ -220,6 +225,63 @@
           class="mb-4"
         >
           <CallArea :activity="activity" />
+        </div>
+        <div v-else-if="activity.activity_type == 'whatsapp_support'" class="mb-4">
+          <WhatsAppActivityArea :activity="activity" />
+        </div>
+        <div v-else-if="activity.activity_type == 'task'" class="mb-4">
+          <div class="flex flex-col gap-2 py-1.5">
+            <div class="flex items-center justify-stretch gap-2 text-base">
+              <div class="inline-flex items-center flex-wrap gap-1.5 text-ink-gray-8 font-medium">
+                <UserAvatar class="mr-1" :user="activity.owner" size="xs" />
+                <span class="font-medium">{{ getUser(activity.owner).full_name }}</span>
+                <span class="text-ink-gray-5">{{ activity.data.status === 'Done' ? 'completed' : 'created' }}</span>
+                <span class="font-medium text-ink-gray-8">task:</span>
+                <span class="font-medium text-ink-gray-9">{{ activity.data.title }}</span>
+                <div v-if="activity.data.priority" class="flex items-center gap-1">
+                  <TaskPriorityIcon class="!h-3 !w-3" :priority="activity.data.priority" />
+                  <span class="text-sm text-ink-gray-6">{{ activity.data.priority }}</span>
+                </div>
+              </div>
+              <div class="ml-auto whitespace-nowrap">
+                <Tooltip :text="formatDate(activity.creation)">
+                  <div class="text-sm text-ink-gray-5">
+                    {{ __(timeAgo(activity.creation)) }}
+                  </div>
+                </Tooltip>
+              </div>
+            </div>
+            <div v-if="activity.data.due_date" class="flex items-center gap-2 text-sm text-ink-gray-6">
+              <CalendarIcon class="h-3 w-3" />
+              <span>Due: {{ formatDate(activity.data.due_date, 'MMM D, YYYY | hh:mm a') }}</span>
+            </div>
+            <div v-if="activity.data.description" class="text-sm text-ink-gray-7 leading-relaxed">
+              <div class="prose-sm" v-html="activity.data.description"></div>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="activity.activity_type == 'note'" class="mb-4">
+          <div class="flex flex-col gap-2 py-1.5">
+            <div class="flex items-center justify-stretch gap-2 text-base">
+              <div class="inline-flex items-center flex-wrap gap-1.5 text-ink-gray-8 font-medium">
+                <UserAvatar class="mr-1" :user="activity.owner" size="xs" />
+                <span class="font-medium">{{ getUser(activity.owner).full_name }}</span>
+                <span class="text-ink-gray-5">created</span>
+                <span class="font-medium text-ink-gray-8">note:</span>
+                <span class="font-medium text-ink-gray-9">{{ activity.data.title }}</span>
+              </div>
+              <div class="ml-auto whitespace-nowrap">
+                <Tooltip :text="formatDate(activity.creation)">
+                  <div class="text-sm text-ink-gray-5">
+                    {{ __(timeAgo(activity.creation)) }}
+                  </div>
+                </Tooltip>
+              </div>
+            </div>
+            <div v-if="activity.data.content" class="text-sm text-ink-gray-7 leading-relaxed">
+              <div class="prose-sm" v-html="activity.data.content"></div>
+            </div>
+          </div>
         </div>
         <div v-else class="mb-4 flex flex-col gap-2 py-1.5">
           <div class="flex items-center justify-stretch gap-2 text-base">
@@ -377,34 +439,49 @@
     >
       <component :is="emptyTextIcon" class="h-10 w-10" />
       <span>{{ __(emptyText) }}</span>
-      <MultiActionButton v-if="title == 'Calls'" :options="callActions" />
+      <MultiActionButton v-if="canWrite && title == 'Calls'" :options="callActions" />
       <Button
-        v-else-if="title == 'Notes'"
+        v-else-if="canWrite && title == 'Notes'"
         :label="__('Create Note')"
         @click="modalRef.showNote()"
       />
       <Button
-        v-else-if="title == 'Emails'"
+        v-else-if="canWrite && title == 'Emails'"
         :label="__('New Email')"
         @click="emailBox.show = true"
       />
       <Button
-        v-else-if="title == 'Comments'"
+        v-else-if="canWrite && title == 'Comments'"
         :label="__('New Comment')"
         @click="emailBox.showComment = true"
       />
       <Button
-        v-else-if="title == 'Tasks'"
+        v-else-if="canWrite && title == 'Tasks'"
         :label="__('Create Task')"
         @click="modalRef.showTask()"
       />
       <Button
-        v-else-if="title == 'Attachments'"
+        v-else-if="canWrite && title == 'Attachments'"
         :label="__('Upload Attachment')"
         @click="showFilesUploader = true"
       />
     </div>
-  </FadedScrollableDiv>
+    <div v-if="title == 'Activity' && activities.length > visibleActivities.length" class="px-3 sm:px-10 py-2">
+      <Button variant="ghost" class="w-full" @click="loadMore">{{ __('Load more') }}</Button>
+    </div>
+    </FadedScrollableDiv>
+
+    <!-- Scroll to top button shown when user scrolls down -->
+    <Button
+      v-show="showScrollTop"
+      class="absolute right-4 bottom-4 z-20 !rounded-full"
+      variant="solid"
+      size="sm"
+      @click="scrollToTop"
+    >
+      <FeatherIcon name="chevron-up" class="w-4 h-4" />
+    </Button>
+  </div>
   <div>
     <CommunicationArea
       ref="emailBox"
@@ -412,6 +489,7 @@
       v-model="doc"
       v-model:reload="reload_email"
       :doctype="doctype"
+      :canWrite="canWrite"
       @scroll="scroll"
     />
     <WhatsAppBox
@@ -422,6 +500,14 @@
       v-model:whatsapp="whatsappMessages"
       :doctype="doctype"
       @scroll="scroll"
+    />
+    <WhatsAppSupportArea
+      v-if="title == 'WhatsApp Support'"
+      :doctype="doctype"
+      :docname="doc.data.name"
+      :customer="doc.data"
+      ref="whatsappSupportRef"
+      @statusUpdate="updateWhatsappStatus"
     />
   </div>
   <WhatsappTemplateSelectorModal
@@ -437,13 +523,13 @@
     :doc="doc"
   />
   <FilesUploader
-    v-if="doc.data?.name"
+    v-if="doc.data?.name && canWrite"
     v-model="showFilesUploader"
     :doctype="doctype"
     :docname="doc.data.name"
     @after="
       () => {
-        all_activities.reload()
+        debouncedReload()
         changeTabTo('attachments')
       }
     "
@@ -465,14 +551,19 @@ import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
+import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import WhatsAppArea from '@/components/Activities/WhatsAppArea.vue'
+import WhatsAppSupportArea from '@/components/Activities/WhatsAppSupportArea.vue'
 import WhatsAppBox from '@/components/Activities/WhatsAppBox.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import MultiActionButton from '@/components/MultiActionButton.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Deal module not in use
+// import DealsIcon from '@/components/Icons/DealsIcon.vue'
 import DotIcon from '@/components/Icons/DotIcon.vue'
 import CommentIcon from '@/components/Icons/CommentIcon.vue'
 import SelectIcon from '@/components/Icons/SelectIcon.vue'
@@ -490,7 +581,7 @@ import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
 import { whatsappEnabled, callEnabled } from '@/composables/settings'
 import { capture } from '@/telemetry'
-import { Button, Tooltip, createResource } from 'frappe-ui'
+import { Button, Tooltip, createResource, FeatherIcon } from 'frappe-ui'
 import { useElementVisibility } from '@vueuse/core'
 import {
   ref,
@@ -503,6 +594,7 @@ import {
   onBeforeUnmount,
 } from 'vue'
 import { useRoute } from 'vue-router'
+import WhatsAppActivityArea from '@/components/Activities/WhatsAppActivityArea.vue'
 
 const { makeCall, $socket } = globalStore()
 const { getUser } = usersStore()
@@ -515,6 +607,10 @@ const props = defineProps({
   tabs: {
     type: Array,
     default: () => [],
+  },
+  canWrite: {
+    type: Boolean,
+    default: true,
   },
 })
 
@@ -529,6 +625,31 @@ const tabIndex = defineModel('tabIndex')
 const reload_email = ref(false)
 const modalRef = ref(null)
 const showFilesUploader = ref(false)
+const whatsappSupportRef = ref(null)
+const lastReloadTime = ref(0)
+const whatsappStatus = ref({
+  connected: false,
+  phoneNumber: null,
+})
+
+function updateWhatsappStatus(status) {
+  whatsappStatus.value = status
+}
+
+// Debounced reload function to prevent rapid successive reloads
+function debouncedReload() {
+  const now = Date.now()
+  const timeSinceLastReload = now - lastReloadTime.value
+  
+  // Only reload if at least 500ms have passed since the last reload
+  if (timeSinceLastReload > 500) {
+    console.log('Activities: Performing debounced reload')
+    lastReloadTime.value = now
+    all_activities.reload()
+  } else {
+    console.log('Activities: Skipping reload - too soon since last reload')
+  }
+}
 
 const title = computed(() => props.tabs?.[tabIndex.value]?.name || 'Activity')
 
@@ -537,6 +658,12 @@ const changeTabTo = (tabName) => {
   const index = tabNames?.indexOf(tabName)
   if (index == -1) return
   tabIndex.value = index
+}
+
+const openWhatsAppSetup = () => {
+  if (whatsappSupportRef.value) {
+    whatsappSupportRef.value.openSetupModal()
+  }
 }
 
 const all_activities = createResource({
@@ -560,12 +687,88 @@ const whatsappMessages = createResource({
   },
   auto: true,
   transform: (data) => sortByCreation(data),
-  onSuccess: () => nextTick(() => scroll()),
+  onSuccess: () => nextTick(() => scroll(route.hash.slice(1) || null)),
 })
 
 onBeforeUnmount(() => {
   $socket.off('whatsapp_message')
+  $socket.off('activity_update')
+  window.removeEventListener('scroll', onWindowScroll)
 })
+
+const scroller = ref(null)
+const showScrollTop = ref(false)
+const SCROLL_ACTIVITIES_THRESHOLD = 15
+
+function getScrolledActivitiesCount(el) {
+  try {
+    if (!el) return 0
+    const activitiesEls = el.querySelectorAll ? el.querySelectorAll('.activity') : []
+    if (!activitiesEls.length) return 0
+    const containerRect = el.getBoundingClientRect()
+    let count = 0
+    for (let i = 0; i < activitiesEls.length; i++) {
+      const a = activitiesEls[i]
+      const aRect = a.getBoundingClientRect()
+      // count activity if it's fully above the top of container
+      if (aRect.bottom <= containerRect.top + 1) count++
+      else break
+    }
+    return count
+  } catch (err) {
+    return 0
+  }
+}
+
+function onScrollEvent(e) {
+  try {
+    // Prefer the native scroll event target when available (emitted from FadedScrollableDiv)
+    const el = e?.target || scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+    if (!el) return
+    const scrolledCount = getScrolledActivitiesCount(el)
+    const totalRendered = title.value === 'Activity' ? visibleActivities.value.length : (activities.value?.length || 0)
+    const dynamicThreshold = Math.min(
+      SCROLL_ACTIVITIES_THRESHOLD,
+      Math.max(5, totalRendered - 2),
+    )
+    showScrollTop.value = scrolledCount >= dynamicThreshold
+  } catch (err) {
+    // ignore
+  }
+}
+
+function onWindowScroll() {
+  try {
+    // If inner scroller exists and is scrollable, let its handler manage state
+    const el = scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+    if (!el) return
+
+    // If the inner scroller can scroll, ignore window scroll
+    if ((el.scrollHeight || 0) > (el.clientHeight || 0)) return
+
+    // Otherwise, count activities that are above the viewport top
+    const activitiesEls = el.querySelectorAll ? el.querySelectorAll('.activity') : []
+    let count = 0
+    for (let i = 0; i < activitiesEls.length; i++) {
+      const a = activitiesEls[i]
+      const r = a.getBoundingClientRect()
+      if (r.bottom < 0) count++
+      else break
+    }
+    const totalRendered = title.value === 'Activity' ? visibleActivities.value.length : (activities.value?.length || 0)
+    const dynamicThreshold = Math.min(
+      SCROLL_ACTIVITIES_THRESHOLD,
+      Math.max(5, totalRendered - 2),
+    )
+    showScrollTop.value = count >= dynamicThreshold
+  } catch (err) {}
+}
+
+function scrollToTop() {
+  const el = scroller.value?.$el || scroller.value?.scrollableDiv || scroller.value
+  if (!el) return
+  el.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 onMounted(() => {
   $socket.on('whatsapp_message', (data) => {
@@ -577,6 +780,17 @@ onMounted(() => {
     }
   })
 
+  $socket.on('activity_update', (data) => {
+    if (
+      data.reference_doctype === props.doctype &&
+      data.reference_name === doc.value.data.name
+    ) {
+      console.log('Activities: Socket activity_update received, reloading activities')
+      // Use debounced reload to prevent rapid successive reloads
+      debouncedReload()
+    }
+  })
+
   nextTick(() => {
     const hash = route.hash.slice(1) || null
     let tabNames = props.tabs?.map((tab) => tab.name)
@@ -584,6 +798,8 @@ onMounted(() => {
       scroll(hash)
     }
   })
+  // Listen to window scroll as a fallback for cases where inner scroller isn't used
+  window.addEventListener('scroll', onWindowScroll)
 })
 
 function sendTemplate(template) {
@@ -605,9 +821,58 @@ const replyMessage = ref({})
 
 function get_activities() {
   if (!all_activities.data?.versions) return []
-  if (!all_activities.data?.calls.length)
-    return all_activities.data.versions || []
-  return [...all_activities.data.versions, ...all_activities.data.calls]
+  
+  let activities = [...(all_activities.data.versions || [])]
+  
+  // Add calls if available
+  if (all_activities.data?.calls?.length) {
+    activities = [...activities, ...all_activities.data.calls]
+  }
+  
+  // Add notes as activities if available
+  if (all_activities.data?.notes?.length) {
+    const noteActivities = all_activities.data.notes.map(note => ({
+      activity_type: 'note',
+      name: note.name,
+      creation: note.modified, // Use modified as creation time for sorting
+      owner: note.owner,
+      data: {
+        title: note.title,
+        content: note.content,
+        reference_doctype: note.reference_doctype,
+        reference_docname: note.reference_docname
+      },
+      is_lead: props.doctype === 'CRM Lead',
+      is_ticket: props.doctype === 'CRM Ticket',
+      note_data: note // Keep original note data for detailed display
+    }))
+    activities = [...activities, ...noteActivities]
+  }
+  
+  // Add tasks as activities if available
+  if (all_activities.data?.tasks?.length) {
+    const taskActivities = all_activities.data.tasks.map(task => ({
+      activity_type: 'task',
+      name: task.name,
+      creation: task.modified, // Use modified as creation time for sorting
+      owner: task.assigned_to,
+      data: {
+        title: task.title,
+        description: task.description,
+        due_date: task.due_date,
+        priority: task.priority,
+        status: task.status,
+        reference_doctype: task.reference_doctype,
+        reference_docname: task.reference_docname
+      },
+      is_lead: props.doctype === 'CRM Lead',
+      is_ticket: props.doctype === 'CRM Ticket',
+      task_data: task // Keep original task data for detailed display
+    }))
+    activities = [...activities, ...taskActivities]
+  }
+  
+  return activities
 }
 
 const activities = computed(() => {
@@ -639,7 +904,8 @@ const activities = computed(() => {
   }
 
   _activities.forEach((activity) => {
-    activity.icon = timelineIcon(activity.activity_type, activity.is_lead)
+    // Handle ticket activities with proper icon assignment
+    activity.icon = timelineIcon(activity.activity_type, activity.is_lead, activity.is_ticket)
 
     if (
       activity.activity_type == 'incoming_call' ||
@@ -659,6 +925,20 @@ const activities = computed(() => {
   })
   return sortByCreation(_activities)
 })
+
+// For Activity tab we want newest-first and paginated view
+const visibleCount = ref(10)
+const visibleActivities = computed(() => {
+  // Only apply pagination for Activity tab
+  if (title.value !== 'Activity') return activities.value
+  // Show newest first
+  const newestFirst = (activities.value || []).slice().reverse()
+  return newestFirst.slice(0, visibleCount.value)
+})
+
+function loadMore() {
+  visibleCount.value += 10
+}
 
 function sortByCreation(list) {
   return list.sort((a, b) => new Date(a.creation) - new Date(b.creation))
@@ -732,17 +1012,29 @@ const emptyTextIcon = computed(() => {
   return h(icon, { class: 'text-ink-gray-4' })
 })
 
-function timelineIcon(activity_type, is_lead) {
+function timelineIcon(activity_type, is_lead, is_ticket) {
   let icon
   switch (activity_type) {
     case 'creation':
-      icon = is_lead ? LeadsIcon : DealsIcon
+      if (is_ticket) {
+        icon = SquareAsterisk // Ticket creation
+      } else if (is_lead) {
+        icon = LeadsIcon
+      } else {
+        // Commented out - Deal module not in use
+        // icon = DealsIcon
+        icon = DotIcon // Fallback icon
+      }
       break
-    case 'deal':
-      icon = DealsIcon
-      break
+    // Commented out - Deal module not in use
+    // case 'deal':
+    //   icon = DealsIcon
+    //   break
     case 'comment':
       icon = CommentIcon
+      break
+    case 'note':
+      icon = NoteIcon
       break
     case 'incoming_call':
       icon = InboundCallIcon
@@ -752,6 +1044,45 @@ function timelineIcon(activity_type, is_lead) {
       break
     case 'attachment_log':
       icon = AttachmentIcon
+      break
+    case 'escalation':
+      icon = SelectIcon // Using select icon for escalation
+      break
+    case 'assignment':
+    case 'auto_assignment':
+      icon = SelectIcon // Using select icon for assignments
+      break
+    case 'status_update':
+    case 'priority_update':
+    case 'sla_update':
+      icon = DotIcon
+      break
+    case 'call_log':
+      icon = PhoneIcon
+      break
+    case 'resolution':
+      icon = SquareAsterisk
+      break
+    case 'reopening':
+      icon = SelectIcon
+      break
+    case 'sla_breach':
+      icon = SelectIcon
+      break
+    case 'customer_response':
+      icon = Email2Icon
+      break
+    case 'internal_note':
+      icon = NoteIcon
+      break
+    case 'department_transfer':
+      icon = SelectIcon
+      break
+    case 'whatsapp_support':
+      icon = WhatsAppIcon
+      break
+    case 'task':
+      icon = TaskIcon
       break
     default:
       icon = DotIcon
@@ -765,13 +1096,20 @@ const whatsappBox = ref(null)
 
 watch([reload, reload_email], ([reload_value, reload_email_value]) => {
   if (reload_value || reload_email_value) {
-    all_activities.reload()
-    reload.value = false
-    reload_email.value = false
+    console.log('Activities: Reloading activities due to reload trigger')
+    debouncedReload()
+    // Use nextTick to ensure the reload values are reset after the current tick
+    nextTick(() => {
+      reload.value = false
+      reload_email.value = false
+    })
   }
 })
 
 function scroll(hash) {
+  // Do not auto-scroll for Activity tab since it is newest-first now.
+  // Allow explicit hash scrolling when a hash is provided.
+  if (title.value === 'Activity' && !hash) return
   if (['tasks', 'notes'].includes(route.hash?.slice(1))) return
   setTimeout(() => {
     let el

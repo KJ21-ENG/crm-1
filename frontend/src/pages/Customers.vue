@@ -1,0 +1,381 @@
+<template>
+  <div class="flex h-full flex-col overflow-hidden">
+    <LayoutHeader>
+      <template #left-header>
+        <ViewBreadcrumbs v-model="viewControls" routeName="Customers" />
+      </template>
+      <template #right-header>
+        <CustomActions
+          v-if="customersListView?.customListActions"
+          :actions="customersListView.customListActions"
+        />
+        <Button
+          v-if="canWriteCustomers"
+          variant="solid"
+          :label="__('New Customer')"
+          @click="showCreateDialog = true"
+        >
+          <template #prefix>
+            <FeatherIcon name="plus" class="h-4" />
+          </template>
+        </Button>
+      </template>
+    </LayoutHeader>
+
+    <!-- Customer List (standard paginated list like other pages) -->
+    <ViewControls
+      ref="viewControls"
+      v-model="customersList"
+      v-model:loadMore="loadMore"
+      v-model:resizeColumn="triggerResize"
+      v-model:updatedPageCount="updatedPageCount"
+      doctype="CRM Customer"
+    />
+    <CustomersListView
+      ref="customersListView"
+      v-if="customersList.data && rows.length"
+      v-model="customersList.data.page_length_count"
+      v-model:list="customersList"
+      :rows="rows"
+      :columns="customersList.data.columns"
+      :options="{
+        showTooltip: false,
+        resizeColumn: true,
+        rowCount: customersList.data.row_count,
+        totalCount: customersList.data.total_count,
+      }"
+      @loadMore="() => loadMore++"
+      @columnWidthUpdated="() => triggerResize++"
+      @updatePageCount="(count) => (updatedPageCount = count)"
+      @pageChange="(page) => viewControls.goToPage(page)"
+      @pageSizeChange="(pageSize) => viewControls.handlePageSizeChange(pageSize)"
+      @applyFilter="(data) => viewControls.applyFilter(data)"
+      @selectionsChanged="(selections) => viewControls.updateSelections(selections)"
+    />
+    <div v-else-if="customersList.data" class="flex h-full items-center justify-center">
+      <div class="flex flex-col items-center gap-3 text-xl font-medium text-ink-gray-4">
+        <span>No Customers Found</span>
+        <Button v-if="canWriteCustomers" :label="'New Customer'" @click="showCreateDialog = true">
+          <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Create Customer Dialog -->
+    <Dialog
+      v-if="canWriteCustomers"
+      v-model="showCreateDialog"
+      :options="{
+        title: 'Create New Customer',
+        size: 'xl'
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.first_name"
+              label="First Name"
+              placeholder="Enter first name"
+            />
+            <FormControl
+              v-model="newCustomer.last_name"
+              label="Last Name"
+              placeholder="Enter last name"
+            />
+          </div>
+          
+          <FormControl
+            v-model="newCustomer.email"
+            label="Email"
+            type="email"
+            placeholder="Enter email address"
+          />
+          
+          <FormControl
+            v-model="newCustomer.mobile_no"
+            label="Mobile Number"
+            placeholder="Enter mobile number"
+          />
+
+          <FormControl
+            v-model="newCustomer.alternative_mobile_no"
+            label="Alternative Mobile Number"
+            placeholder="Enter Alternate mobile number"
+          />
+
+          <FormControl
+            v-model="newCustomer.marital_status"
+            label="Marital Status"
+            type="select"
+            :options="['', 'Married', 'Unmarried']"
+            placeholder="Select marital status"
+          />
+
+          <div class="grid grid-cols-2 gap-4">
+                      <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Date of Birth</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="newCustomer.date_of_birth"
+                placeholder="Enter Date of Birth"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <div class="mb-2 text-sm text-ink-gray-5">Anniversary</div>
+            <div class="relative">
+              <CustomDateTimePicker
+                v-model="newCustomer.anniversary"
+                placeholder="Enter Anniversary"
+                :input-class="'border-none'"
+                :mode="'date'"
+                :show-time="false"
+                :auto-default="false"
+                :year-quick-select="true"
+              />
+            </div>
+          </div>
+          </div>
+
+          <!-- Address Fields -->
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.address_line_1"
+              label="Address Line 1"
+              placeholder="House No, Street"
+            />
+            <FormControl
+              v-model="newCustomer.address_line_2"
+              label="Address Line 2"
+              placeholder="Area, Landmark (optional)"
+            />
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <FormControl v-model="newCustomer.city" label="City" />
+            <FormControl v-model="newCustomer.state" label="State" />
+            <FormControl v-model="newCustomer.pincode" label="Pincode" />
+          </div>
+          <FormControl v-model="newCustomer.country" label="Country" />
+
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.pan_card_number"
+              label="PAN Card Number"
+              placeholder="Enter PAN card number (optional)"
+            />
+            <FormControl
+              v-model="newCustomer.aadhaar_card_number"
+              label="Aadhaar Card Number"
+              placeholder="Enter Aadhaar number (optional)"
+            />
+          </div>
+
+          <!-- Referral Fields -->
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl
+              v-model="newCustomer.referral_code"
+              label="Client ID"
+              placeholder="Enter client ID (optional)"
+            />
+            <FormControl
+              v-model="newCustomer.referral_through"
+              label="Referral Through"
+              placeholder="Who referred? (optional)"
+            />
+          </div>
+        </div>
+      </template>
+      
+      <template #actions>
+        <Button
+          variant="solid"
+          label="Create Customer"
+          @click="createCustomer"
+          :loading="creating"
+        />
+      </template>
+    </Dialog>
+  </div>
+</template>
+
+<script setup>
+import { 
+  Button,
+  Dialog,
+  FormControl,
+  FeatherIcon,
+  call,
+  toast
+} from 'frappe-ui'
+import { ref, computed } from 'vue'
+import LayoutHeader from '@/components/LayoutHeader.vue'
+import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
+import CustomActions from '@/components/CustomActions.vue'
+import ViewControls from '@/components/ViewControls.vue'
+import CustomersListView from '@/components/ListViews/CustomersListView.vue'
+import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
+import { useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
+
+const router = useRouter()
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteCustomers = computed(() => canWrite('Customers'))
+
+// Data
+const showCreateDialog = ref(false)
+const creating = ref(false)
+const newCustomer = ref({
+  first_name: '',
+  last_name: '',
+  email: '',
+  mobile_no: '',
+  alternative_mobile_no: '',
+  marital_status: '',
+  date_of_birth: '',
+  anniversary: '',
+  address_line_1: '',
+  address_line_2: '',
+  city: '',
+  state: '',
+  country: '',
+  pincode: '',
+  pan_card_number: '',
+  aadhaar_card_number: '',
+  referral_code: '',
+  referral_through: ''
+})
+
+// Standard list wiring (pagination handled by ViewControls)
+const customersList = ref({})
+const loadMore = ref(1)
+const triggerResize = ref(1)
+const updatedPageCount = ref(20)
+const viewControls = ref(null)
+const customersListView = ref(null)
+
+// Computed
+const rows = computed(() => {
+  if (!customersList.value?.data?.data || !['list', 'group_by'].includes(customersList.value.data.view_type)) return []
+  return customersList.value?.data.data.map((c) => {
+    let _rows = {}
+    customersList.value?.data.rows.forEach((row) => {
+      _rows[row] = c[row]
+      const col = customersList.value?.data.columns?.find((col) => (col.key || col.value) == row)
+      const fieldType = col?.type
+      if (fieldType && ['Date','Datetime'].includes(fieldType) && !['modified','creation'].includes(row)) {
+        _rows[row] = new Date(c[row]).toLocaleString()
+      }
+      if (row === 'customer_name' || row === 'full_name') {
+        _rows[row] = { label: c.customer_name || `${c.first_name || ''} ${c.last_name || ''}`.trim(), image_label: c.customer_name, image: c.image }
+      } else if (['modified','creation'].includes(row)) {
+        _rows[row] = { label: new Date(c[row]).toLocaleString(), timeAgo: '' }
+      }
+    })
+    return _rows
+  })
+})
+
+// Methods
+const navigateToCustomer = (customerId) => {
+  router.push({ name: 'Customer', params: { customerId } })
+}
+
+const createCustomer = async () => {
+  // Basic required checks
+  if (!newCustomer.value.first_name || !newCustomer.value.last_name || !newCustomer.value.mobile_no) {
+    toast.error('First name, last name, and mobile number are required')
+    return
+  }
+  // Optional validations for India specifics
+  const pan = (newCustomer.value.pan_card_number || '').toUpperCase().trim()
+  if (pan) {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+    if (!panRegex.test(pan)) {
+      toast.error('Invalid PAN. Expected format: ABCDE1234F')
+      return
+    }
+    newCustomer.value.pan_card_number = pan
+  }
+  const aadhaar = (newCustomer.value.aadhaar_card_number || '').trim()
+  if (aadhaar) {
+    const aadhaarRegex = /^[2-9][0-9]{11}$/
+    if (!aadhaarRegex.test(aadhaar)) {
+      toast.error('Invalid Aadhaar. It should be a 12-digit number starting 2-9')
+      return
+    }
+  }
+  const pincode = (newCustomer.value.pincode || '').trim()
+  if (pincode && !/^[1-9][0-9]{5}$/.test(pincode)) {
+    toast.error('Invalid Pincode. It should be a 6-digit number')
+    return
+  }
+  
+  try {
+    creating.value = true
+    
+    // Prepare customer data, handling empty dates properly
+    const customerData = {
+      mobile_no: newCustomer.value.mobile_no,
+      first_name: newCustomer.value.first_name,
+      last_name: newCustomer.value.last_name,
+      email: newCustomer.value.email,
+      alternative_mobile_no: newCustomer.value.alternative_mobile_no,
+      marital_status: newCustomer.value.marital_status,
+      date_of_birth: newCustomer.value.date_of_birth || null,
+      anniversary: newCustomer.value.anniversary || null,
+      address_line_1: newCustomer.value.address_line_1,
+      address_line_2: newCustomer.value.address_line_2,
+      city: newCustomer.value.city,
+      state: newCustomer.value.state,
+      country: newCustomer.value.country,
+      pincode: newCustomer.value.pincode,
+      pan_card_number: newCustomer.value.pan_card_number,
+      aadhaar_card_number: newCustomer.value.aadhaar_card_number,
+      referral_code: newCustomer.value.referral_code,
+      referral_through: newCustomer.value.referral_through,
+      customer_source: 'Direct'
+    }
+    
+    console.log('Creating customer with data:', customerData)
+    
+    await call('crm.api.customers.create_or_update_customer', customerData)
+    
+    // Reset form
+    newCustomer.value = {
+      first_name: '',
+      last_name: '',
+      email: '',
+      mobile_no: '',
+      marital_status: '',
+      date_of_birth: '',
+      anniversary: '',
+      address_line_1: '',
+      address_line_2: '',
+      city: '',
+      state: '',
+      country: '',
+      pincode: '',
+      pan_card_number: '',
+      aadhaar_card_number: '',
+      referral_code: '',
+      referral_through: ''
+    }
+    
+    showCreateDialog.value = false
+    // Refresh list via resource bound to ViewControls
+    customersList.value?.reload && customersList.value.reload()
+  } catch (error) {
+    console.error('Error creating customer:', error)
+    toast.error(error.messages?.[0] || 'Failed to create customer')
+  } finally {
+    creating.value = false
+  }
+}
+</script> 

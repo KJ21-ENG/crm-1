@@ -3,8 +3,13 @@ import { StatusBar, View, Text, ActivityIndicator, StyleSheet } from 'react-nati
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { store } from './src/store/store';
 import { validateSession } from './src/store/slices/authSlice';
+import callLogSyncService from './src/services/CallLogSyncService';
+import { registerBackgroundFetch, unregisterBackgroundFetch } from './src/services/BackgroundHeadless';
+import { startForegroundSync, stopForegroundSync } from './src/services/ForegroundSyncService';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import { requestAllStartupPermissions } from './src/services/PermissionsService';
+import DebugLogger from './src/services/DebugLogger';
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -12,21 +17,37 @@ const AppContent = () => {
 
   useEffect(() => {
     console.log('App starting, checking for session...');
+    DebugLogger.log('APP', 'start');
+    // Ensure all critical permissions are granted on startup (Android)
+    requestAllStartupPermissions().catch(() => {});
     // Check for existing session on app start
     dispatch(validateSession());
+
+    // Register OS background fetch (best effort)
+    registerBackgroundFetch(60).catch((e) => { try { DebugLogger.error('APP', 'BGF register failed', { message: e?.message }) } catch (_) {} });
     
-    // Force timeout after 3 seconds to prevent infinite loading
-    const forceTimeout = setTimeout(() => {
-      console.log('Force timeout triggered, clearing validation state');
-      // This will force the app to show login screen
-      dispatch({ type: 'auth/validateSession/rejected', payload: 'Forced timeout' });
-    }, 3000);
-    
-    return () => clearTimeout(forceTimeout);
+    // Remove the forced timeout to avoid prematurely cancelling validation
+    return () => {
+      unregisterBackgroundFetch().catch(() => {});
+    };
   }, [dispatch]);
 
   useEffect(() => {
     console.log('Auth state changed:', { isAuthenticated, isValidating, loading, error });
+    DebugLogger.log('APP', 'auth change', { isAuthenticated, isValidating, loading, error });
+    // When authenticated, ensure background auto sync is running (foreground lifecycle safety)
+    if (isAuthenticated) {
+      try {
+        callLogSyncService.startAutoSync(60_000);
+      } catch (_) {}
+      // Start Android Foreground Service for strict background cadence
+      startForegroundSync(60_000).catch((e) => {
+        try { console.error('Foreground service start error:', e?.message || e) } catch (_) {}
+      });
+    } else {
+      try { callLogSyncService.stopAutoSync() } catch (_) {}
+      stopForegroundSync().catch(() => {});
+    }
   }, [isAuthenticated, isValidating, loading, error]);
 
   // Show loading screen during validation

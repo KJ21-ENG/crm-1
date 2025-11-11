@@ -26,12 +26,19 @@
     </div>
 
     <div v-if="settings.doc" class="flex-1 flex flex-col gap-8 overflow-y-auto">
-      <div class="flex w-full">
+      <div class="flex w-full gap-4">
         <FormControl
           type="text"
           class="w-1/2"
           v-model="settings.doc.brand_name"
           :label="__('Brand name')"
+        />
+        <FormControl
+          type="text"
+          class="w-1/2"
+          v-model="settings.doc.default_referral_code"
+          :label="__('Default Referral Code')"
+          :description="__('Default referral code that will be automatically filled in new leads')"
         />
       </div>
 
@@ -132,13 +139,14 @@ import { FormControl, Badge, ErrorMessage } from 'frappe-ui'
 import { getSettings } from '@/stores/settings'
 import { showSettings } from '@/composables/settings'
 
-const { _settings: settings, setupBrand } = getSettings()
+const { _settings: settings, setupBrand, updateFavicon } = getSettings()
 
 function updateSettings() {
   settings.save.submit(null, {
     onSuccess: () => {
       showSettings.value = false
       setupBrand()
+      updateFavicon()
     },
   })
 }

@@ -123,7 +123,7 @@ def add_default_fields_layout(force=False):
 	quick_entry_layouts = {
 		"CRM Lead-Quick Entry": {
 			"doctype": "CRM Lead",
-			"layout": '[{"name": "person_section", "columns": [{"name": "column_5jrk", "fields": ["salutation", "email"]}, {"name": "column_5CPV", "fields": ["first_name", "mobile_no"]}, {"name": "column_gXOy", "fields": ["last_name", "gender"]}]}, {"name": "organization_section", "columns": [{"name": "column_GHfX", "fields": ["organization", "territory"]}, {"name": "column_hXjS", "fields": ["website", "annual_revenue"]}, {"name": "column_RDNA", "fields": ["no_of_employees", "industry"]}]}, {"name": "lead_section", "columns": [{"name": "column_EO1H", "fields": ["status"]}, {"name": "column_RWBe", "fields": ["lead_owner"]}]}]',
+			"layout": '[{"name": "lead_type_section", "columns": [{"name": "column_type", "fields": ["lead_type"]}]}, {"name": "conditional_section", "columns": [{"name": "column_conditional", "fields": ["issue_type", "account_type"]}]}, {"name": "description_section", "columns": [{"name": "column_desc", "fields": ["description"]}]}, {"name": "person_section", "columns": [{"name": "column_name", "fields": ["first_name", "last_name"]}, {"name": "column_contact", "fields": ["mobile_no"]}]}, {"name": "required_section", "columns": [{"name": "column_status", "fields": ["status", "lead_owner"]}]}]',
 		},
 		"CRM Deal-Quick Entry": {
 			"doctype": "CRM Deal",
@@ -143,14 +143,14 @@ def add_default_fields_layout(force=False):
 		},
 		"CRM Call Log-Quick Entry": {
 			"doctype": "CRM Call Log",
-			"layout": '[{"name":"details_section","columns":[{"name":"column_uMSG","fields":["type","from","duration"]},{"name":"column_wiZT","fields":["to","status","caller","receiver"]}]}]',
+			"layout": '[{"name":"details_section","label":"Call Details","sections":[{"name":"call_info","label":"Call Information","columns":[{"name":"column_call_type","fields":["type","status","duration"]},{"name":"column_participants","fields":["employee","customer","customer_name"]}]}]}]',
 		},
 	}
 
 	sidebar_fields_layouts = {
 		"CRM Lead-Side Panel": {
 			"doctype": "CRM Lead",
-			"layout": '[{"label": "Details", "name": "details_section", "opened": true, "columns": [{"name": "column_kl92", "fields": ["organization", "website", "territory", "industry", "job_title", "source", "lead_owner"]}]}, {"label": "Person", "name": "person_section", "opened": true, "columns": [{"name": "column_XmW2", "fields": ["salutation", "first_name", "last_name", "email", "mobile_no"]}]}]',
+			"layout": '[{"label": "Lead Info", "name": "lead_info_section", "opened": true, "columns": [{"name": "column_type", "fields": ["lead_type", "issue_type", "account_type", "description"]}]}, {"label": "Contact", "name": "contact_section", "opened": true, "columns": [{"name": "column_contact", "fields": ["first_name", "last_name", "mobile_no"]}]}]',
 		},
 		"CRM Deal-Side Panel": {
 			"doctype": "CRM Deal",
@@ -169,7 +169,7 @@ def add_default_fields_layout(force=False):
 	data_fields_layouts = {
 		"CRM Lead-Data Fields": {
 			"doctype": "CRM Lead",
-			"layout": '[{"label": "Details", "name": "details_section", "opened": true, "columns": [{"name": "column_ZgLG", "fields": ["organization", "industry", "lead_owner"]}, {"name": "column_TbYq", "fields": ["website", "job_title"]}, {"name": "column_OKSX", "fields": ["territory", "source"]}]}, {"label": "Person", "name": "person_section", "opened": true, "columns": [{"name": "column_6c5g", "fields": ["salutation", "email"]}, {"name": "column_1n7Q", "fields": ["first_name", "mobile_no"]}, {"name": "column_cT6C", "fields": ["last_name"]}]}]',
+			"layout": '[{"label": "Lead Info", "name": "lead_info_section", "opened": true, "columns": [{"name": "column_type", "fields": ["lead_type"]}, {"name": "column_conditional", "fields": ["issue_type", "account_type"]}, {"name": "column_desc", "fields": ["description"]}]}, {"label": "Contact", "name": "contact_section", "opened": true, "columns": [{"name": "column_name", "fields": ["first_name", "last_name"]}, {"name": "column_contact", "fields": ["mobile_no"]}]}]',
 		},
 		"CRM Deal-Data Fields": {
 			"doctype": "CRM Deal",

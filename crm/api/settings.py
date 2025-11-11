@@ -1,4 +1,7 @@
 import frappe
+import os
+from datetime import datetime, timezone
+
 
 
 @frappe.whitelist()
@@ -97,3 +100,231 @@ email_service_config = {
 		"smtp_port": 587,
 	},
 }
+
+
+@frappe.whitelist()
+def get_default_referral_code():
+	"""Get default referral code from FCRM Settings"""
+	try:
+		fcrm_settings = frappe.get_single("FCRM Settings")
+		if fcrm_settings and fcrm_settings.default_referral_code:
+			return {
+				"success": True,
+				"default_referral_code": fcrm_settings.default_referral_code
+			}
+		else:
+			return {
+				"success": False,
+				"message": "Default referral code not configured"
+			}
+	except Exception as e:
+		frappe.log_error(f"Error getting default referral code: {str(e)}")
+		return {
+			"success": False,
+			"message": "Error retrieving default referral code",
+			"error": str(e)
+		}
+
+
+@frappe.whitelist()
+def get_backup_status(max_items: int = 60):
+	"""Return backup status and recent files for the current site.
+
+	- Detects the current site via Frappe context and inspects
+	  sites/<site>/private/backups
+	- Returns whether a database backup exists for today
+	- Returns recent backup files (db/public/private/site_config) sorted by mtime desc
+
+	Args:
+		max_items: Maximum number of files to return
+
+	Returns:
+		Dict with keys: site, backup_dir, today_backup_exists, latest, files
+	"""
+
+	try:
+		# Resolve current site and backup directory
+		site = frappe.local.site
+		backup_dir = frappe.get_site_path('private', 'backups')
+
+		if not os.path.isdir(backup_dir):
+			return {
+				"site": site,
+				"backup_dir": backup_dir,
+				"today_backup_exists": False,
+				"latest": {},
+				"files": [],
+			}
+
+		# Collect files and metadata (only gz archives)
+		entries = []
+		for fname in sorted(os.listdir(backup_dir)):
+			fpath = os.path.join(backup_dir, fname)
+			if not os.path.isfile(fpath):
+				continue
+			# Only show compressed files (.gz/.tgz/.tar.gz)
+			lower_fname = fname.lower()
+			if not (
+				lower_fname.endswith('.gz')
+				or lower_fname.endswith('.tgz')
+				or lower_fname.endswith('.tar.gz')
+			):
+				continue
+
+			stat = os.stat(fpath)
+			modified_ts = stat.st_mtime
+			modified = datetime.fromtimestamp(modified_ts, tz=timezone.utc)
+
+			# Infer backup type from filename
+			lower = fname.lower()
+			if 'database.sql.gz' in lower or lower.endswith('.sql.gz'):
+				btype = 'database'
+			elif 'private-files' in lower:
+				btype = 'private_files'
+			elif 'public-files' in lower:
+				btype = 'public_files'
+			elif 'site_config_backup.json' in lower:
+				btype = 'site_config'
+			else:
+				btype = 'archive'
+
+			entries.append(
+				{
+					"name": fname,
+					"type": btype,
+					"size": stat.st_size,
+					"modified": modified.isoformat(),
+				}
+			)
+
+		# Sort newest-first
+		entries.sort(key=lambda x: x["modified"], reverse=True)
+		entries = entries[: int(max_items or 60)]
+
+		# Determine if a database backup exists today (server local date)
+		today = datetime.now(timezone.utc).date()
+		today_backup_exists = any(
+			item["type"] == "database"
+			and datetime.fromisoformat(item["modified"]).date() == today
+			for item in entries
+		)
+
+		# Latest by type
+		latest = {}
+		for item in entries:
+			latest.setdefault(item["type"], item)
+
+		return {
+			"site": site,
+			"backup_dir": backup_dir,
+			"today_backup_exists": bool(today_backup_exists),
+			"latest": latest,
+			"files": entries,
+		}
+
+	except Exception as e:
+		frappe.log_error(f"Error reading backup status: {str(e)}")
+		return {
+			"site": frappe.local.site if getattr(frappe.local, 'site', None) else None,
+			"error": str(e),
+			"today_backup_exists": False,
+			"latest": {},
+			"files": [],
+		}
+
+
+
+@frappe.whitelist()
+def download_backup(filename: str):
+    """Securely serve a backup file from the site's private/backups directory.
+
+    Call via: /api/method/crm.api.settings.download_backup?filename=<name>
+    """
+    import mimetypes
+
+    try:
+        if not filename:
+            frappe.throw("filename is required")
+
+        backup_dir = frappe.get_site_path('private', 'backups')
+        # Prevent path traversal
+        requested = os.path.normpath(os.path.join(backup_dir, filename))
+        if not requested.startswith(os.path.normpath(backup_dir) + os.sep) and requested != os.path.normpath(backup_dir):
+            frappe.throw("Invalid filename")
+
+        if not os.path.exists(requested) or not os.path.isfile(requested):
+            frappe.throw("File not found")
+
+        # Guess mime
+        mime_type, _ = mimetypes.guess_type(requested)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+
+        with open(requested, 'rb') as f:
+            content = f.read()
+
+        frappe.response.filename = os.path.basename(requested)
+        frappe.response.filecontent = content
+        frappe.response.type = 'download'
+        frappe.response.headers = {
+            'Content-Type': mime_type,
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error serving backup file {filename}: {str(e)}")
+        frappe.throw(str(e))
+
+
+@frappe.whitelist()
+def create_manual_backup(include_files: int = 0):
+    """Create a manual backup for the current site and return created files.
+
+    Args:
+        include_files: Optional flag (truthy) to include public/private files.
+    """
+    from frappe.utils.backups import new_backup
+
+    try:
+        include_files_flag = bool(int(include_files)) if include_files is not None else False
+
+        # Generate a fresh backup; force=True ensures a new copy even if one exists
+        backup = new_backup(force=True, ignore_files=not include_files_flag)
+
+        created_files = []
+
+        def add_file(path, ftype):
+            if not path or not os.path.exists(path):
+                return
+            stat = os.stat(path)
+            created_files.append(
+                {
+                    "type": ftype,
+                    "path": path,
+                    "name": os.path.basename(path),
+                    "size": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                }
+            )
+
+        add_file(getattr(backup, "backup_path_db", None), "database")
+        add_file(getattr(backup, "backup_path_files", None), "public_files")
+        add_file(getattr(backup, "backup_path_private_files", None), "private_files")
+        add_file(getattr(backup, "backup_path_conf", None), "site_config")
+
+        # Refresh list for caller convenience
+        status = get_backup_status()
+
+        # Prefer returning the db backup filename for easy access
+        database_backup = next((item for item in created_files if item["type"] == "database"), None)
+
+        return {
+            "success": True,
+            "site": frappe.local.site,
+            "created_files": created_files,
+            "database_backup": database_backup,
+            "status": status,
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Manual backup failed: {str(e)}")
+        frappe.throw(str(e))

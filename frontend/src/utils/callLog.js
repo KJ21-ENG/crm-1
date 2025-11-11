@@ -4,6 +4,48 @@ import { getMeta } from '@/stores/meta'
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Call Log')
 
+function parseDurationToSeconds(val, fallback = 0) {
+  if (val == null) return fallback
+  if (typeof val === 'number' && !isNaN(val)) return val
+  if (typeof val !== 'string') return fallback
+
+  // Try HH:MM:SS or MM:SS
+  if (val.includes(':')) {
+    const parts = val.split(':').map((p) => parseInt(p, 10) || 0)
+    if (parts.length === 3) {
+      const [h, m, s] = parts
+      return h * 3600 + m * 60 + s
+    }
+    if (parts.length === 2) {
+      const [m, s] = parts
+      return m * 60 + s
+    }
+  }
+
+  // Try forms like "1m 20s", "2m", "30s"
+  const trimmed = val.trim().toLowerCase()
+  let match = trimmed.match(/^(\d+)\s*m\s*(\d+)\s*s$/)
+  if (match) {
+    const m = parseInt(match[1], 10) || 0
+    const s = parseInt(match[2], 10) || 0
+    return m * 60 + s
+  }
+  match = trimmed.match(/^(\d+)\s*m(?![a-z])/)
+  if (match) {
+    const m = parseInt(match[1], 10) || 0
+    return m * 60
+  }
+  match = trimmed.match(/^(\d+)\s*s(?![a-z])/)
+  if (match) {
+    const s = parseInt(match[1], 10) || 0
+    return s
+  }
+
+  // Try simple number inside string
+  const num = parseFloat(val)
+  return isNaN(num) ? fallback : num
+}
+
 export function getCallLogDetail(row, log, columns = []) {
   let incoming = log.type === 'Incoming'
 
@@ -17,6 +59,15 @@ export function getCallLogDetail(row, log, columns = []) {
       label: log._caller?.label,
       image: log._caller?.image,
     }
+  } else if (row === 'employee') {
+    // Show employee display name + avatar instead of raw id/email
+    return {
+      // Prefer explicit _employee.label, then employee_display, then fallback to employee
+      label: log._employee?.label || log.employee_display || log.employee,
+      image: log._employee?.image || null,
+      // include underlying id so filters use the stored value (not the display label)
+      name: log.employee,
+    }
   } else if (row === 'receiver') {
     return {
       label: log._receiver?.label,
@@ -28,11 +79,11 @@ export function getCallLogDetail(row, log, columns = []) {
       icon: incoming ? 'phone-incoming' : 'phone-outgoing',
     }
   } else if (row === 'status') {
-    return {
-      label: statusLabelMap[log.status],
-      color: statusColorMap[log.status],
-    }
-  } else if (['modified', 'creation'].includes(row)) {
+    // Use the status directly from database (now stores correct values)
+    const status = log.status || 'Completed'
+    const color = statusColorMap[status] || 'gray'
+    return { label: status, color: color, name: status, raw: status }
+  } else if (['modified', 'creation', 'start_time'].includes(row)) {
     return {
       label: formatDate(log[row]),
       timeAgo: __(timeAgo(log[row])),
@@ -41,7 +92,7 @@ export function getCallLogDetail(row, log, columns = []) {
 
   let fieldType = columns?.find((col) => (col.key || col.value) == row)?.type
 
-  if (fieldType && ['Date', 'Datetime'].includes(fieldType)) {
+  if (fieldType && ['Date', 'Datetime'].includes(fieldType) && !['modified', 'creation', 'start_time'].includes(row)) {
     return formatDate(log[row], '', true, fieldType == 'Datetime')
   }
 
@@ -74,6 +125,8 @@ export const statusLabelMap = {
 
 export const statusColorMap = {
   Completed: 'green',
+  'Did Not Picked': 'red',
+  'Missed Call': 'red',
   Busy: 'orange',
   Failed: 'red',
   Initiated: 'gray',

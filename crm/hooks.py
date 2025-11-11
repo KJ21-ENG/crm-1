@@ -121,9 +121,19 @@ before_uninstall = "crm.uninstall.before_uninstall"
 # "Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
 #
-# has_permission = {
-# "Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+has_permission = {
+    # Core CRM doctypes mapped to modules
+    "CRM Ticket": "crm.api.permissions.doctype_has_permission",
+    "CRM Lead": "crm.api.permissions.doctype_has_permission",
+    "CRM Customer": "crm.api.permissions.doctype_has_permission",
+    "CRM Support Pages": "crm.api.permissions.doctype_has_permission",
+    # Ancillary doctypes commonly created from detail pages
+    "CRM Task": "crm.api.permissions.doctype_has_permission",
+    # These may be created/attached from module pages; guard by reference_doctype when present
+    "Comment": "crm.api.permissions.doctype_has_permission",
+    "Communication": "crm.api.permissions.doctype_has_permission",
+    "File": "crm.api.permissions.doctype_has_permission",
+}
 
 # DocType Class
 # ---------------
@@ -164,26 +174,38 @@ doc_events = {
 	},
 }
 
+# Assignment Requests APIs (create/approve/reject) are whitelisted in crm.api.assignment_requests
+
+
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# "all": [
-# "crm.tasks.all"
-# ],
-# "daily": [
-# "crm.tasks.daily"
-# ],
-# "hourly": [
-# "crm.tasks.hourly"
-# ],
-# "weekly": [
-# "crm.tasks.weekly"
-# ],
-# "monthly": [
-# "crm.tasks.monthly"
-# ],
-# }
+scheduler_events = {
+	"cron": {
+		# Task notification check every minute (closest to 5 seconds we can get with Frappe scheduler)
+		"* * * * *": [
+			"crm.api.task_reassignment.process_overdue_task_reassignments",
+			"crm.api.task_notifications.check_and_send_task_notifications",
+		],
+		# # Daily lead expiry job: run at 10:00
+		# "0 10 * * *": [
+		# 	"crm.api.lead_expiry.daily_mark_expired_leads",
+		# ],
+		# Daily site backup job: run at 02:00 and invoke wrapper that executes
+		# the server-side backup script shipped in the repository. This mirrors
+		# other cron-style hooks used in this app (e.g. lead expiry).
+		"0 2 * * *": [
+			"crm.utils.backup.run_system_backup_script",
+		],
+		# Daily generic bench backup job: run at 17:25
+		"25 17 * * *": [
+			"crm.utils.backup.run_bench_backup_script",
+		],
+	},
+	"daily": [
+		"crm.api.task_notifications.get_notification_stats",
+	],
+}
 
 # Testing
 # -------

@@ -19,10 +19,11 @@
             </div>
             <div v-if="task.due_date">
               <Tooltip
-                :text="formatDate(task.due_date, 'ddd, MMM D, YYYY | hh:mm a')"
+                :text="`${__('Due Date')}: ${formatDate(task.due_date, 'ddd, MMM D, YYYY | hh:mm a')}`"
               >
                 <div class="flex gap-2">
                   <CalendarIcon />
+                  <div class="text-ink-gray-6">{{ __('Due Date') }}:</div>
                   <div>{{ formatDate(task.due_date, 'D MMM, hh:mm a') }}</div>
                 </div>
               </Tooltip>

@@ -14,7 +14,13 @@
           :class="{ 'my-4 sm:my-5': hasTabs }"
         >
           <template v-for="section in tab.sections" :key="section.name">
-            <Section :section="section" :data-name="section.name" />
+            <Section 
+              :section="section" 
+              :data-name="section.name"
+              :modelValue="modelValue"
+              @update:modelValue="$emit('update:modelValue', $event)"
+              @swap="$emit('swap')" 
+            />
           </template>
         </div>
       </TabPanel>
@@ -29,7 +35,10 @@ import { ref, computed, provide } from 'vue'
 
 const props = defineProps({
   tabs: Array,
-  data: Object,
+  modelValue: {
+    type: Object,
+    required: true
+  },
   doctype: {
     type: String,
     default: 'CRM Lead',
@@ -44,6 +53,8 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits(['update:modelValue'])
+
 const tabIndex = ref(0)
 
 const hasTabs = computed(() => {
@@ -54,7 +65,10 @@ const hasTabs = computed(() => {
 
 provide(
   'data',
-  computed(() => props.data),
+  computed({
+    get: () => props.modelValue,
+    set: (value) => emit('update:modelValue', value)
+  })
 )
 provide('hasTabs', hasTabs)
 provide('doctype', props.doctype)

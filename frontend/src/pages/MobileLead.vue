@@ -57,11 +57,12 @@
         v-if="document.actions?.length"
         :actions="document.actions"
       />
-      <Button
+      <!-- Commented out - Deal module not in use -->
+      <!-- <Button
         :label="__('Convert')"
         variant="solid"
         @click="showConvertToDealModal = true"
-      />
+      /> -->
     </div>
   </div>
   <div v-if="lead?.data" class="flex h-full overflow-hidden">
@@ -82,6 +83,7 @@
               :sections="sections.data"
               doctype="CRM Lead"
               :docname="lead.data.name"
+              :documentData="lead.data"
               @reload="sections.reload"
               @afterFieldChange="reloadAssignees"
             />
@@ -98,7 +100,8 @@
       </TabPanel>
     </Tabs>
   </div>
-  <Dialog
+  <!-- Commented out - Deal module not in use -->
+  <!-- <Dialog
     v-model="showConvertToDealModal"
     :options="{
       title: __('Convert to Deal'),
@@ -163,7 +166,7 @@
         </div>
       </div>
     </template>
-  </Dialog>
+  </Dialog> -->
 </template>
 <script setup>
 import Icon from '@/components/Icon.vue'
@@ -177,8 +180,9 @@ import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+// Commented out - Organizations and Contacts modules not in use
+// import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
+// import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import Activities from '@/components/Activities/Activities.vue'
 import AssignTo from '@/components/AssignTo.vue'
@@ -424,49 +428,50 @@ async function deleteLead(name) {
   router.push({ name: 'Leads' })
 }
 
-// Convert to Deal
-const showConvertToDealModal = ref(false)
-const existingContactChecked = ref(false)
-const existingOrganizationChecked = ref(false)
+// Commented out - Deal module not in use
+// // Convert to Deal
+// const showConvertToDealModal = ref(false)
+// const existingContactChecked = ref(false)
+// const existingOrganizationChecked = ref(false)
 
-const existingContact = ref('')
-const existingOrganization = ref('')
+// const existingContact = ref('')
+// const existingOrganization = ref('')
 
-async function convertToDeal() {
-  if (existingContactChecked.value && !existingContact.value) {
-    toast.error(__('Please select an existing contact'))
-    return
-  }
+// async function convertToDeal() {
+//   if (existingContactChecked.value && !existingContact.value) {
+//     toast.error(__('Please select an existing contact'))
+//     return
+//   }
 
-  if (existingOrganizationChecked.value && !existingOrganization.value) {
-    toast.error(__('Please select an existing organization'))
-    return
-  }
+//   if (existingOrganizationChecked.value && !existingOrganization.value) {
+//     toast.error(__('Please select an existing organization'))
+//     return
+//   }
 
-  if (!existingContactChecked.value && existingContact.value) {
-    existingContact.value = ''
-  }
+//   if (!existingContactChecked.value && existingContact.value) {
+//     existingContact.value = ''
+//   }
 
-  if (!existingOrganizationChecked.value && existingOrganization.value) {
-    existingOrganization.value = ''
-  }
+//   if (!existingOrganizationChecked.value && existingOrganization.value) {
+//     existingOrganization.value = ''
+//   }
 
-  let deal = await call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
-    lead: lead.data.name,
-    deal: {},
-    existing_contact: existingContact.value,
-    existing_organization: existingOrganization.value,
-  })
-  if (deal) {
-    showConvertToDealModal.value = false
-    existingContactChecked.value = false
-    existingOrganizationChecked.value = false
-    existingContact.value = ''
-    existingOrganization.value = ''
-    capture('convert_lead_to_deal')
-    router.push({ name: 'Deal', params: { dealId: deal } })
-  }
-}
+//   let deal = await call('crm.fcrm.doctype.crm_lead.crm_lead.convert_to_deal', {
+//     lead: lead.data.name,
+//     deal: {},
+//     existing_contact: existingContact.value,
+//     existing_organization: existingOrganization.value,
+//   })
+//   if (deal) {
+//     showConvertToDealModal.value = false
+//     existingContactChecked.value = false
+//     existingOrganizationChecked.value = false
+//     existingContact.value = ''
+//     existingOrganization.value = ''
+//     capture('convert_lead_to_deal')
+//     router.push({ name: 'Deal', params: { dealId: deal } })
+//   }
+// }
 
 const { assignees, document, triggerOnChange } = useDocument(
   'CRM Lead',

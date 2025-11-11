@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-01-16 07:12:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "role_name",
+  "current_position",
+  "total_users",
+  "last_assigned_user",
+  "last_assigned_on",
+  "assignment_count",
+  "user_list",
+  "assignment_history"
+ ],
+ "fields": [
+  {
+   "default": "RAT-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "RAT-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "role_name",
+   "fieldtype": "Data",
+   "label": "Role Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "current_position",
+   "fieldtype": "Int",
+   "label": "Current Position",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_users",
+   "fieldtype": "Int",
+   "label": "Total Users",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_assigned_user",
+   "fieldtype": "Data",
+   "label": "Last Assigned User"
+  },
+  {
+   "fieldname": "last_assigned_on",
+   "fieldtype": "Datetime",
+   "label": "Last Assigned On"
+  },
+  {
+   "default": "0",
+   "fieldname": "assignment_count",
+   "fieldtype": "Int",
+   "label": "Assignment Count"
+  },
+  {
+   "fieldname": "user_list",
+   "fieldtype": "JSON",
+   "label": "User List"
+  },
+  {
+   "fieldname": "assignment_history",
+   "fieldtype": "JSON",
+   "label": "Assignment History"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-16 07:12:00.000000",
+ "modified_by": "Administrator",
+ "module": "fcrm",
+ "name": "Role Assignment Tracker",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "CRM Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -18,7 +18,8 @@ import { login, clearError, setServerUrl } from '../store/slices/authSlice';
 const LoginScreen = () => {
   const [username, setUsername] = useState('Administrator');
   const [password, setPassword] = useState('admin');
-  const [serverUrl, setServerUrlLocal] = useState('http://192.168.1.81:8000');
+  // Server URL is now fixed to production in ApiService; keep a visible default for testing if needed
+  const [serverUrl, setServerUrlLocal] = useState('https://eshin.in');
   const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useDispatch();
@@ -43,30 +44,21 @@ const LoginScreen = () => {
       return;
     }
     
-    if (!serverUrl.trim()) {
-      Alert.alert('Error', 'Please enter server URL');
-      return;
-    }
-
-    // Update server URL in state
-    dispatch(setServerUrl(serverUrl));
+    // Use fixed production URL by default; still allow override if changed
+    const finalServerUrl = (serverUrl && serverUrl.trim()) || 'https://eshin.in';
+    dispatch(setServerUrl(finalServerUrl));
 
     // Attempt login
     dispatch(login({
       username: username.trim(),
       password: password.trim(),
-      serverUrl: serverUrl.trim(),
+      serverUrl: finalServerUrl,
     }));
   };
 
   const handleTestConnection = async () => {
-    if (!serverUrl.trim()) {
-      Alert.alert('Error', 'Please enter server URL');
-      return;
-    }
-
     try {
-      const response = await fetch(`${serverUrl.trim()}/api/method/ping`);
+      const response = await fetch(`${(serverUrl && serverUrl.trim()) || 'https://eshin.in'}/api/method/ping`);
       if (response.ok) {
         Alert.alert('Success', 'Connection to CRM server successful!');
       } else {

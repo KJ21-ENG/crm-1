@@ -8,6 +8,20 @@ from frappe.model.document import Document
 class FCRMNote(Document):
 	@staticmethod
 	def default_list_data():
+		columns = [
+			{
+				"label": "Title",
+				"type": "Data",
+				"key": "title",
+				"width": "20rem",
+			},
+			{
+				"label": "Content",
+				"type": "Text Editor",
+				"key": "content",
+				"width": "30rem",
+			},
+		]
 		rows = [
 			"name",
 			"title",
@@ -17,4 +31,4 @@ class FCRMNote(Document):
 			"owner",
 			"modified",
 		]
-		return {'columns': [], 'rows': rows}
+		return {'columns': columns, 'rows': rows}

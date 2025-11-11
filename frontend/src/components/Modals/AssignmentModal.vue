@@ -156,22 +156,48 @@ function updateAssignees() {
   if (addedAssignees.length) {
     if (props.docs.size) {
       capture('bulk_assign_to', { doctype: props.doctype })
-      call('frappe.desk.form.assign_to.add_multiple', {
-        doctype: props.doctype,
-        name: JSON.stringify(Array.from(props.docs)),
-        assign_to: addedAssignees,
-        bulk_assign: true,
-        re_assign: true,
-      }).then(() => {
-        emit('reload')
-      })
+      
+      // Use custom bulk assignment for CRM Lead to update assign_to field
+      if (props.doctype === 'CRM Lead') {
+        call('crm.api.role_assignment.bulk_assign_leads', {
+          lead_names: JSON.stringify(Array.from(props.docs)),
+          assign_to_users: JSON.stringify(addedAssignees),
+          assigned_by: null // Will use current user
+        }).then(() => {
+          emit('reload')
+        })
+      } else {
+        // Use standard Frappe assignment for other doctypes
+        call('frappe.desk.form.assign_to.add_multiple', {
+          doctype: props.doctype,
+          name: JSON.stringify(Array.from(props.docs)),
+          assign_to: addedAssignees,
+          bulk_assign: true,
+          re_assign: true,
+        }).then(() => {
+          emit('reload')
+        })
+      }
     } else {
       capture('assign_to', { doctype: props.doctype })
-      call('frappe.desk.form.assign_to.add', {
-        doctype: props.doctype,
-        name: props.doc.name,
-        assign_to: addedAssignees,
-      })
+      
+      // Use custom assignment for CRM Lead to update assign_to field
+      if (props.doctype === 'CRM Lead') {
+        call('crm.api.role_assignment.bulk_assign_leads', {
+          lead_names: JSON.stringify([props.doc.name]),
+          assign_to_users: JSON.stringify(addedAssignees),
+          assigned_by: null // Will use current user
+        }).then(() => {
+          emit('reload')
+        })
+      } else {
+        // Use standard Frappe assignment for other doctypes
+        call('frappe.desk.form.assign_to.add', {
+          doctype: props.doctype,
+          name: props.doc.name,
+          assign_to: addedAssignees,
+        })
+      }
     }
   }
   show.value = false

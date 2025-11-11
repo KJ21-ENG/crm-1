@@ -1,0 +1,580 @@
+import frappe
+from frappe import _
+from frappe.utils import escape_html, nowdate
+
+@frappe.whitelist()
+def save_client_id_without_validation(lead_name, client_id):
+    """
+    Save client_id to lead document without triggering full validation
+    This is used when the lead has missing required fields but we need to save client_id
+    """
+    try:
+        # Use direct SQL to avoid validation
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'client_id',
+            client_id,
+            update_modified=False
+        )
+        
+        # Commit the transaction
+        frappe.db.commit()
+
+        # If the lead is already in 'Account Opened' status, ensure account_open_date is set
+        try:
+            status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+            if status == 'Account Opened':
+                current_acc_date = frappe.db.get_value('CRM Lead', lead_name, 'account_open_date')
+                if not current_acc_date:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_open_date', nowdate(), update_modified=False
+                    )
+                    frappe.db.commit()
+        except Exception:
+            # Non-critical: don't fail the save if this additional step errors
+            pass
+        
+        return {
+            'success': True,
+            'message': 'Client ID saved successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error saving client_id for lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to save Client ID: {str(e)}'
+        }
+
+@frappe.whitelist()
+def update_customer_with_client_id(customer_name, client_id, accounts_json):
+    """
+    Update customer with referral_code and accounts in a single operation
+    Note: client_id field in customer table is NOT updated
+    """
+    try:
+        # Update only referral_code and accounts fields
+        frappe.db.set_value(
+            'CRM Customer',
+            customer_name,
+            {
+                'referral_code': client_id,  # Store Client ID as referral_code
+                'accounts': accounts_json
+            },
+            update_modified=False
+        )
+        
+        # Commit the transaction
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': 'Customer updated successfully with Client ID'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating customer {customer_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to update customer: {str(e)}'
+        }
+
+@frappe.whitelist()
+def update_lead_status_with_client_id(lead_name, new_status, client_id=None):
+    """
+    Update lead status and optionally save client_id in a single operation
+    This handles the case where client_id needs to be saved before status change
+    """
+    try:
+        # First save client_id if provided
+        if client_id:
+            frappe.db.set_value(
+                'CRM Lead',
+                lead_name,
+                'client_id',
+                client_id,
+                update_modified=False
+            )
+
+        # Capture previous status for creating a Version entry
+        previous_status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+
+        # Then update status
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'status',
+            new_status,
+            update_modified=False
+        )
+
+        # Set timestamps for account status changes
+        try:
+            from frappe.utils import now_datetime
+            
+            if new_status == 'Account Opened':
+                # Check if timestamp is already set (don't overwrite)
+                existing_timestamp = frappe.db.get_value('CRM Lead', lead_name, 'account_opened_on')
+                if not existing_timestamp:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_opened_on', now_datetime(), update_modified=False
+                    )
+            
+            if new_status == 'Account Activated':
+                # Check if timestamp is already set (don't overwrite)
+                existing_timestamp = frappe.db.get_value('CRM Lead', lead_name, 'account_activated_on')
+                if not existing_timestamp:
+                    frappe.db.set_value(
+                        'CRM Lead', lead_name, 'account_activated_on', now_datetime(), update_modified=False
+                    )
+        except Exception as e:
+            # Non-critical - log but don't fail the status update
+            frappe.log_error(f"Failed to set timestamp for {new_status}: {str(e)}")
+
+        # Commit the transaction
+        frappe.db.commit()
+
+        # Create a Version entry so the status change appears in Activity
+        try:
+            # include meta so activities can surface client_id / rejection_reason
+            lead_vals = frappe.db.get_value('CRM Lead', lead_name, ['client_id', 'rejection_reason'], as_dict=True)
+            version_data = {
+                'changed': [["status", previous_status, new_status]],
+                'added': [],
+                'removed': [],
+                'row_changed': [],
+                'data_import': None,
+                'updater_reference': None,
+                'meta': {
+                    'client_id': lead_vals.get('client_id') if lead_vals else None,
+                    'rejection_reason': lead_vals.get('rejection_reason') if lead_vals else None,
+                },
+            }
+            v = frappe.get_doc({
+                'doctype': 'Version',
+                'ref_doctype': 'CRM Lead',
+                'docname': lead_name,
+                'data': frappe.as_json(version_data),
+            })
+            v.insert(ignore_permissions=True)
+            # Also create a comment so UI can prioritise comment-based activity messages
+            try:
+                comment_text = f"Status changed to {new_status}."
+                # Prepare escaped values
+                client_html = None
+                rejection_html = None
+                if lead_vals:
+                    if lead_vals.get('client_id'):
+                        client_html = escape_html(lead_vals.get('client_id'))
+                    if lead_vals.get('rejection_reason'):
+                        rejection_html = escape_html(lead_vals.get('rejection_reason'))
+
+                # Only include relevant information based on the target status
+                if new_status in ['Account Opened', 'Account Activated'] and client_html:
+                    comment_text += f" Client ID: <span style=\"color:#2563eb\">{client_html}</span>"
+                elif new_status == 'Rejected - Follow-up Required' and rejection_html:
+                    comment_text += f" Rejection Reason: <span style=\"color:#dc2626\">{rejection_html}</span>"
+
+                c = frappe.get_doc({
+                    'doctype': 'Comment',
+                    'comment_type': 'Comment',
+                    'reference_doctype': 'CRM Lead',
+                    'reference_name': lead_name,
+                    'content': comment_text,
+                })
+                c.insert(ignore_permissions=True)
+            except Exception:
+                pass
+        except Exception:
+            # Non-critical: if version insertion fails, continue
+            pass
+
+        return {
+            'success': True,
+            'message': f'Lead status updated to {new_status} successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to update lead: {str(e)}'
+        }
+
+@frappe.whitelist()
+def save_rejection_reason_without_validation(lead_name, rejection_reason):
+    """
+    Save rejection_reason to lead document without triggering full validation
+    This is used when rejecting a lead and we need to capture the reason
+    """
+    try:
+        # Use direct SQL to avoid validation
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'rejection_reason',
+            rejection_reason,
+            update_modified=False
+        )
+        
+        # Commit the transaction
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': 'Rejection reason saved successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error saving rejection_reason for lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to save rejection reason: {str(e)}'
+        }
+
+@frappe.whitelist()
+def update_lead_status_with_rejection_reason(lead_name, new_status, rejection_reason=None):
+    """
+    Update lead status and optionally save rejection_reason in a single operation
+    This handles the case where rejection_reason needs to be saved before status change
+    """
+    try:
+        # First save rejection_reason if provided
+        if rejection_reason:
+            frappe.db.set_value(
+                'CRM Lead',
+                lead_name,
+                'rejection_reason',
+                rejection_reason,
+                update_modified=False
+            )
+
+        # Capture previous status for creating a Version entry
+        previous_status = frappe.db.get_value('CRM Lead', lead_name, 'status')
+
+        # Then update status
+        frappe.db.set_value(
+            'CRM Lead',
+            lead_name,
+            'status',
+            new_status,
+            update_modified=False
+        )
+
+        # Commit the transaction
+        frappe.db.commit()
+
+        # Create a Version entry so the status change appears in Activity
+        try:
+            # include meta so activities can surface client_id / rejection_reason
+            lead_vals = frappe.db.get_value('CRM Lead', lead_name, ['client_id', 'rejection_reason'], as_dict=True)
+            version_data = {
+                'changed': [["status", previous_status, new_status]],
+                'added': [],
+                'removed': [],
+                'row_changed': [],
+                'data_import': None,
+                'updater_reference': None,
+                'meta': {
+                    'client_id': lead_vals.get('client_id') if lead_vals else None,
+                    'rejection_reason': lead_vals.get('rejection_reason') if lead_vals else None,
+                },
+            }
+            v = frappe.get_doc({
+                'doctype': 'Version',
+                'ref_doctype': 'CRM Lead',
+                'docname': lead_name,
+                'data': frappe.as_json(version_data),
+            })
+            v.insert(ignore_permissions=True)
+            # Also create a comment so UI can prioritise comment-based activity messages
+            try:
+                comment_text = f"Status changed to {new_status}."
+                # Prepare escaped values
+                client_html = None
+                rejection_html = None
+                if lead_vals:
+                    if lead_vals.get('client_id'):
+                        client_html = escape_html(lead_vals.get('client_id'))
+                    if lead_vals.get('rejection_reason'):
+                        rejection_html = escape_html(lead_vals.get('rejection_reason'))
+
+                # Only include relevant information based on the target status
+                if new_status in ['Account Opened', 'Account Activated'] and client_html:
+                    comment_text += f" Client ID: <span style=\"color:#2563eb\">{client_html}</span>"
+                elif new_status == 'Rejected - Follow-up Required' and rejection_html:
+                    comment_text += f" Rejection Reason: <span style=\"color:#dc2626\">{rejection_html}</span>"
+
+                c = frappe.get_doc({
+                    'doctype': 'Comment',
+                    'comment_type': 'Comment',
+                    'reference_doctype': 'CRM Lead',
+                    'reference_name': lead_name,
+                    'content': comment_text,
+                })
+                c.insert(ignore_permissions=True)
+            except Exception:
+                pass
+        except Exception:
+            # Non-critical: if version insertion fails, continue
+            pass
+
+        return {
+            'success': True,
+            'message': f'Lead status updated to {new_status} successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Failed to update lead: {str(e)}'
+        }
+
+@frappe.whitelist()
+def validate_lead_for_status_change(lead_name, target_status):
+    """
+    Validate if a lead can be moved to the target status
+    Returns validation errors if any
+    """
+    try:
+        lead = frappe.get_doc('CRM Lead', lead_name)
+        errors = []
+        
+        # Check if status requires client_id
+        if target_status in ['Account Opened', 'Account Activated']:
+            if not lead.client_id:
+                errors.append('Client ID is required for this status')
+        
+        # Check if status requires rejection_reason
+        if target_status in ['Rejected - Follow-up Required']:
+            if not lead.rejection_reason:
+                errors.append('Rejection reason is required for this status')
+        
+        # Check if status requires pod_id
+        if target_status in ['Sent to HO']:
+            if not lead.pod_id:
+                errors.append('POD ID is required for this status')
+        
+        # Check for other required fields based on status
+        if target_status in ['Account Opened', 'Account Activated']:
+            if not lead.first_name:
+                errors.append('First Name is required for account operations')
+            if not lead.mobile_no:
+                errors.append('Mobile Number is required for account operations')
+            if not lead.account_type:
+                errors.append('Account Type is required for account operations')
+        
+        return {
+            'success': len(errors) == 0,
+            'errors': errors,
+            'can_proceed': len(errors) == 0
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error validating lead {lead_name}: {str(e)}")
+        return {
+            'success': False,
+            'errors': [f'Validation error: {str(e)}'],
+            'can_proceed': False
+        } 
+
+@frappe.whitelist()
+def bulk_insert_pod_id(doctype, docnames, pod_id):
+    """
+    Bulk insert POD ID to multiple leads with validation:
+    - If a lead already has a POD ID, skip it (don't overwrite)
+    - If a lead did not have a POD ID and we set it now, automatically set status to 'Sent to HO'
+    Returns a detailed summary of updates and skips.
+    """
+    try:
+        if not doctype or not docnames or not pod_id:
+            frappe.throw("Missing required parameters")
+
+        if doctype != "CRM Lead":
+            frappe.throw("This function is only available for CRM Lead doctype")
+
+        # Convert docnames to list if it's a string
+        if isinstance(docnames, str):
+            docnames = frappe.parse_json(docnames)
+
+        if not isinstance(docnames, list):
+            frappe.throw("Invalid docnames format")
+
+        # Validate POD ID
+        pod_id = str(pod_id).strip()
+        if not pod_id:
+            frappe.throw("POD ID cannot be empty")
+
+        # Check permissions
+        if not frappe.has_permission("CRM Lead", "write"):
+            frappe.throw("Insufficient permissions to update leads")
+
+        updated_count = 0
+        skipped_with_existing_pod = []
+        failed_leads = []
+
+        for lead_name in docnames:
+            try:
+                # Check if lead exists
+                if not frappe.db.exists("CRM Lead", lead_name):
+                    failed_leads.append(f"{lead_name} (not found)")
+                    continue
+
+                current_values = frappe.db.get_value(
+                    "CRM Lead", lead_name, ["pod_id", "status"], as_dict=True
+                )
+
+                # If already has a POD ID, skip updating
+                if current_values and current_values.get("pod_id"):
+                    skipped_with_existing_pod.append(lead_name)
+                    continue
+
+                # Set POD ID
+                frappe.db.set_value(
+                    'CRM Lead',
+                    lead_name,
+                    'pod_id',
+                    pod_id,
+                    update_modified=False
+                )
+
+                # If we just set a POD ID, auto set status to 'Sent to HO'
+                frappe.db.set_value(
+                    'CRM Lead',
+                    lead_name,
+                    'status',
+                    'Sent to HO',
+                    update_modified=False
+                )
+
+                updated_count += 1
+
+            except Exception as e:
+                failed_leads.append(f"{lead_name} ({str(e)})")
+                frappe.log_error(f"Error updating POD ID for lead {lead_name}: {str(e)}")
+
+        # Commit all changes
+        frappe.db.commit()
+
+        # Prepare response
+        result = {
+            "success": True,
+            "message": (
+                f"Processed {len(docnames)} lead(s): set POD ID for {updated_count}, "
+                f"skipped {len(skipped_with_existing_pod)} with existing POD ID, "
+                f"failed {len(failed_leads)}"
+            ),
+            "data": {
+                "pod_id": pod_id,
+                "total_leads": len(docnames),
+                "updated_count": updated_count,
+                "skipped_existing_count": len(skipped_with_existing_pod),
+                "skipped_existing": skipped_with_existing_pod,
+                "failed_count": len(failed_leads),
+                "failed_leads": failed_leads,
+            },
+        }
+
+        # Log the operation
+        frappe.logger().info(f"Bulk POD ID insertion: {result['message']}")
+
+        return result
+
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error in bulk_insert_pod_id: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@frappe.whitelist()
+def update_lead_status_with_pod_id(lead_name, new_status, pod_id=None):
+    """
+    Update lead status with POD ID validation for 'Sent to HO' status
+    """
+    try:
+        if not lead_name or not new_status:
+            frappe.throw("Lead name and new status are required")
+        
+        # Get the lead document
+        lead = frappe.get_doc('CRM Lead', lead_name)
+        
+        # Debug logging
+        frappe.logger().info(f"Updating lead {lead_name} to status '{new_status}', POD ID: {pod_id}")
+        frappe.logger().info(f"Current lead POD ID: {lead.pod_id}")
+        
+        # Check if status requires POD ID
+        if new_status == 'Sent to HO':
+            # Check if POD ID is already present in the lead
+            if not lead.pod_id and not pod_id:
+                frappe.throw("POD ID is required for 'Sent to HO' status")
+            
+            # Update POD ID if provided
+            if pod_id:
+                lead.pod_id = pod_id
+        
+        # Update the status
+        lead.status = new_status
+        lead.save()
+        
+        frappe.db.commit()
+        
+        frappe.logger().info(f"Successfully updated lead {lead_name} to status '{new_status}'")
+        
+        return {
+            "success": True,
+            "message": f"Lead status updated to '{new_status}' successfully",
+            "data": {
+                "lead_name": lead_name,
+                "new_status": new_status,
+                "pod_id": lead.pod_id if new_status == 'Sent to HO' else None
+            }
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating lead status with POD ID: {str(e)}")
+        frappe.logger().error(f"Error updating lead {lead_name} to status '{new_status}': {str(e)}")
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@frappe.whitelist()
+def save_pod_id_without_validation(lead_name, pod_id):
+    """
+    Save POD ID to lead without triggering validation
+    This is used when POD ID is provided through modal before status change
+    """
+    try:
+        if not lead_name or not pod_id:
+            frappe.throw("Lead name and POD ID are required")
+        
+        # Update POD ID directly in database to avoid validation
+        frappe.db.set_value('CRM Lead', lead_name, 'pod_id', pod_id.strip())
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "message": f"POD ID '{pod_id}' saved successfully",
+            "data": {
+                "lead_name": lead_name,
+                "pod_id": pod_id.strip()
+            }
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error saving POD ID: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

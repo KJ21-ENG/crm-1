@@ -106,7 +106,44 @@ else
     print_warning "Some frontend processes still running"
 fi
 
-# 2. Stop Frappe Bench (screen session + processes)
+# 2. Stop Frappe Scheduler (screen session + processes)
+echo -e "${BLUE}⏰ Stopping Frappe Scheduler...${NC}"
+if screen -list | grep -q "frappe_scheduler"; then
+    screen -S frappe_scheduler -X quit
+    sleep 2
+fi
+
+if check_service "frappe.*schedule"; then
+    pkill -f "frappe.*schedule"
+    sleep 1
+fi
+
+if ! check_service "frappe.*schedule"; then
+    print_status "Frappe Scheduler stopped"
+else
+    print_warning "Frappe Scheduler still running"
+fi
+
+# 3. Stop Task Notification Worker (screen session + processes)
+echo -e "${BLUE}🔔 Stopping Task Notification Worker...${NC}"
+if screen -list | grep -q "crm_worker"; then
+    screen -S crm_worker -X quit
+    sleep 2
+fi
+
+if check_service "frappe.*worker.*default"; then
+    pkill -f "frappe.*worker.*default"
+    sleep 1
+fi
+
+if ! check_service "frappe.*worker.*default"; then
+    print_status "Task Notification Worker stopped"
+else
+    print_warning "Task Notification Worker still running"
+fi
+
+
+# 5. Stop Frappe Bench (screen session + processes)
 echo -e "${BLUE}🏗️  Stopping Frappe Bench...${NC}"
 if screen -list | grep -q "frappe_bench"; then
     screen -S frappe_bench -X quit
@@ -114,13 +151,11 @@ if screen -list | grep -q "frappe_bench"; then
 fi
 
 # Kill any remaining frappe processes more thoroughly
-echo -e "${BLUE}🔄 Stopping Frappe processes...${NC}"
+echo -e "${BLUE}🔄 Stopping remaining Frappe processes...${NC}"
 frappe_patterns=(
-    "frappe.*serve"
-    "frappe.*worker"
-    "frappe.*schedule"
+    "frappe.*serve.*8001"
     "frappe.*socketio"
-    "bench.*start"
+    "bench.*serve"
 )
 
 for pattern in "${frappe_patterns[@]}"; do
@@ -131,26 +166,26 @@ for pattern in "${frappe_patterns[@]}"; do
 done
 
 # Additional cleanup for any remaining bench processes
-if check_service "bench start"; then
-    pkill -f "bench start"
+if check_service "bench serve"; then
+    pkill -f "bench serve"
     sleep 1
 fi
 
-if ! check_service "frappe.*serve.*8000" && ! check_service "frappe.*socketio" && ! check_service "bench.*start"; then
+if ! check_service "frappe.*serve.*8001" && ! check_service "frappe.*socketio" && ! check_service "bench.*serve"; then
     print_status "Frappe Bench stopped"
 else
     print_warning "Some Frappe processes still running"
 fi
 
-# 3. Stop Redis Queue (port 11000)
+# 6. Stop Redis Queue (port 11001)
 echo -e "${BLUE}📋 Stopping Redis Queue...${NC}"
-stop_redis_port 11000 "Redis Queue"
+stop_redis_port 11001 "Redis Queue"
 
-# 4. Stop Redis Cache (port 13000)  
+# 7. Stop Redis Cache (port 13001)  
 echo -e "${BLUE}💾 Stopping Redis Cache...${NC}"
-stop_redis_port 13000 "Redis Cache"
+stop_redis_port 13001 "Redis Cache"
 
-# 5. Optionally stop default Redis and MariaDB
+# 8. Optionally stop default Redis and MariaDB
 read -p "$(echo -e ${YELLOW}🔄 Stop Redis and MariaDB services too? [y/N]: ${NC})" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -174,18 +209,20 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-# 6. Clean up any remaining screen sessions
+# 9. Clean up any remaining screen sessions
 echo -e "${BLUE}🧹 Cleaning up screen sessions...${NC}"
 screen -wipe > /dev/null 2>&1
 
-# 7. Final verification
+# 10. Final verification
 echo -e "\n${BLUE}🔍 Verifying services are stopped...${NC}"
 
 crm_services=(
     "node.*vite:Frontend Dev Server"
-    "frappe.*serve.*8000|frappe.*socketio|bench.*start:Frappe Bench"
-    "redis-server.*11000:Redis Queue"
-    "redis-server.*13000:Redis Cache"
+    "frappe.*serve.*8001|frappe.*socketio|bench.*serve:Frappe Bench"
+    "frappe.*schedule:Frappe Scheduler"
+    "frappe.*worker.*default:Task Notification Worker"
+    "redis-server.*11001:Redis Queue"
+    "redis-server.*13001:Redis Cache"
 )
 
 all_stopped=true
@@ -234,6 +271,6 @@ else
     
     # Show what's still running
     echo -e "${YELLOW}🔍 Currently running processes:${NC}"
-    ps aux | grep -E "(frappe|vite|esbuild|redis-server.*1[13]000)" | grep -v grep || echo "  None found"
+    ps aux | grep -E "(frappe|vite|esbuild|redis-server.*1[13]001)" | grep -v grep || echo "  None found"
     echo
 fi 

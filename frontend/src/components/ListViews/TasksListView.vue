@@ -32,22 +32,42 @@
         </Button>
       </ListHeaderItem>
     </ListHeader>
-    <ListRows
+  <ListRows
       class="mx-3 sm:mx-5"
       :rows="rows"
       v-slot="{ idx, column, item }"
       doctype="CRM Task"
     >
       <div v-if="column.key === 'due_date'">
-        <Tooltip :text="item && formatDate(item, 'ddd, MMM D, YYYY | hh:mm a')">
+        <Tooltip :text="item && item.original ? formatDate(item.original, 'ddd, MMM D, YYYY | hh:mm a') : ''">
           <div class="flex items-center gap-2 truncate text-base">
             <div><CalendarIcon /></div>
-            <div v-if="item" class="truncate">
-              {{ formatDate(item, 'D MMM, hh:mm a') }}
+            <div v-if="item && item.display" class="truncate">
+              {{ item.display }}
+            </div>
+            <div v-else class="text-gray-400 text-sm">
+              No date set
             </div>
           </div>
         </Tooltip>
       </div>
+      <div v-else-if="column.key === '_assign'" class="flex items-center">
+        <MultipleAvatar
+          :avatars="item"
+          size="sm"
+          @click="
+            (event) =>
+              emit('applyFilter', {
+                event,
+                idx,
+                column,
+                item,
+                firstColumn: columns[0],
+              })
+          "
+        />
+      </div>
+
       <ListRowItem v-else :item="item" :align="column.align">
         <template #prefix>
           <div v-if="column.key === 'status'">
@@ -139,7 +159,7 @@
       </template>
     </ListSelectBanner>
   </ListView>
-  <ListFooter
+  <!-- <ListFooter
     class="border-t px-3 py-2 sm:px-5"
     v-model="pageLengthCount"
     :options="{
@@ -147,6 +167,15 @@
       totalCount: options.totalCount,
     }"
     @loadMore="emit('loadMore')"
+  /> -->
+  <Pagination
+    v-if="pageLengthCount && options.totalCount > 0"
+    class="border-t sm:px-5 px-3 py-2"
+    :current-page="currentPage"
+    :page-size="pageLengthCount"
+    :total-count="options.totalCount"
+    @page-change="handlePageChange"
+    @page-size-change="handlePageSizeChange"
   />
   <ListBulkActions
     ref="listBulkActionsRef"
@@ -164,6 +193,7 @@ import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
 import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
 import ListRows from '@/components/ListViews/ListRows.vue'
+import Pagination from '@/components/Pagination.vue'
 import { formatDate } from '@/utils'
 import {
   Avatar,
@@ -172,7 +202,6 @@ import {
   ListHeaderItem,
   ListSelectBanner,
   ListRowItem,
-  ListFooter,
   Dropdown,
   Tooltip,
 } from 'frappe-ui'
@@ -209,6 +238,8 @@ const emit = defineEmits([
   'applyLikeFilter',
   'likeDoc',
   'selectionsChanged',
+  'pageChange',
+  'pageSizeChange',
 ])
 
 const pageLengthCount = defineModel()
@@ -239,4 +270,36 @@ defineExpose({
     () => listBulkActionsRef.value?.customListActions,
   ),
 })
+
+// Add pagination computed properties
+const currentPage = computed(() => {
+  // Use the current page from the list data if available, otherwise fallback to 1
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  const pageLength = list.value.data.page_length
+  const calculatedPage = Math.floor(start / pageLength) + 1
+  
+  console.log('🔍 LeadsListView Debug - Current page calculation:', {
+    start,
+    pageLength,
+    calculatedPage,
+    listData: list.value?.data
+  })
+  
+  return calculatedPage
+})
+
+const totalPages = computed(() => {
+  if (!list.value?.data?.total_count || !list.value?.data?.page_length) return 1
+  return Math.ceil(list.value.data.total_count / list.value.data.page_length)
+})
+
+// Add pagination methods
+function handlePageChange(page) {
+  emit('pageChange', page)
+}
+
+function handlePageSizeChange(pageSize) {
+  emit('pageSizeChange', pageSize)
+}
 </script>

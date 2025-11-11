@@ -23,7 +23,9 @@
           :label="
             task.reference_doctype == 'CRM Deal'
               ? __('Open Deal')
-              : __('Open Lead')
+              : task.reference_doctype == 'CRM Ticket'
+                ? __('Open Ticket')
+                : __('Open Lead')
           "
           @click="redirect()"
         >
@@ -68,37 +70,23 @@
               </template>
             </Button>
           </Dropdown>
-          <Link
-            class="form-control"
-            :value="getUser(_task.assigned_to).full_name"
-            doctype="User"
-            @change="(option) => (_task.assigned_to = option)"
-            :placeholder="__('John Doe')"
-            :filters="{
-              name: ['in', users.data.crmUsers?.map((user) => user.name)],
-            }"
-            :hideMe="true"
-          >
-            <template #prefix>
-              <UserAvatar class="mr-2 !h-4 !w-4" :user="_task.assigned_to" />
-            </template>
-            <template #item-prefix="{ option }">
-              <UserAvatar class="mr-2" :user="option.value" size="sm" />
-            </template>
-            <template #item-label="{ option }">
-              <Tooltip :text="option.value">
-                <div class="cursor-pointer text-ink-gray-9">
-                  {{ getUser(option.value).full_name }}
-                </div>
-              </Tooltip>
-            </template>
-          </Link>
-          <DateTimePicker
-            class="datepicker w-36"
+          <!-- Assign To (only when opening from Lead/Ticket detail page and it has assignees) -->
+          <div v-if="showManualAssignee" class="min-w-[220px] flex-1">
+            <Link
+              class="form-control"
+              doctype="User"
+              :filters="assignedUserFilter"
+              :value="_task.assigned_to"
+              :placeholder="__('Assign To')"
+              @change="(v) => (_task.assigned_to = v)"
+            />
+          </div>
+          <CustomDateTimePicker
+            class="datepicker"
             v-model="_task.due_date"
-            :placeholder="__('01/04/2024 11:30 PM')"
-            :formatter="(date) => getFormat(date, '', true, true)"
-            input-class="border-none"
+            :placeholder="currentDateTimePlaceholder"
+            :input-class="'border-none'"
+            :disable-teleport="true"
           />
           <Dropdown :options="taskPriorityOptions(updateTaskPriority)">
             <Button :label="_task.priority" class="justify-between w-full">
@@ -108,6 +96,20 @@
             </Button>
           </Dropdown>
         </div>
+        
+        <!-- Assignment notification (hide when manual assignee select is visible) -->
+        <div v-if="!showManualAssignee" class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center gap-2">
+            <FeatherIcon name="info" class="h-4 w-4 text-blue-600" />
+            <p class="text-sm text-blue-800">
+              {{ isRoleAssignment ? 
+                __('Task will be automatically assigned to a user from "{0}" role using round-robin logic', [props.roleForAssignment]) :
+                __('Task will be automatically assigned to you')
+              }}
+            </p>
+          </div>
+        </div>
+        
         <ErrorMessage class="mt-4" v-if="error" :message="__(error)" />
       </div>
     </template>
@@ -120,13 +122,17 @@ import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
 import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import Link from '@/components/Controls/Link.vue'
-import { taskStatusOptions, taskPriorityOptions, getFormat } from '@/utils'
+import { taskStatusOptions, taskPriorityOptions, getFormat, formatDate } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { capture } from '@/telemetry'
-import { TextEditor, Dropdown, Tooltip, call, DateTimePicker } from 'frappe-ui'
+import { TextEditor, Dropdown, Tooltip, call, createResource } from 'frappe-ui'
 import { useOnboarding } from 'frappe-ui/frappe'
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
+
+// Placeholder showing current date/time for the due date picker
+const currentDateTimePlaceholder = formatDate(new Date(), 'MM/DD/YYYY hh:mm A')
 
 const props = defineProps({
   task: {
@@ -138,6 +144,10 @@ const props = defineProps({
     default: 'CRM Lead',
   },
   doc: {
+    type: String,
+    default: '',
+  },
+  roleForAssignment: {
     type: String,
     default: '',
   },
@@ -155,15 +165,54 @@ const { updateOnboardingStep } = useOnboarding('frappecrm')
 const error = ref(null)
 const title = ref(null)
 const editMode = ref(false)
+const isRoleAssignment = ref(false)
 const _task = ref({
   title: '',
   description: '',
   assigned_to: '',
   due_date: '',
-  status: 'Backlog',
+  status: 'Todo',
   priority: 'Low',
   reference_doctype: props.doctype,
   reference_docname: null,
+})
+
+// Load parent doc assignees from _assign (JSON array)
+const assignedUsers = createResource({
+  url: 'frappe.client.get_value',
+  params: {
+    doctype: props.doctype,
+    filters: { name: props.doc },
+    fieldname: '_assign',
+  },
+  auto: false,
+  transform: (data) => {
+    try {
+      const raw = data?._assign || ''
+      const arr = raw ? JSON.parse(raw) : []
+      return Array.isArray(arr) ? arr : []
+    } catch (e) {
+      return []
+    }
+  },
+  onSuccess: (ids) => {
+    if (!ids?.length) return
+    // Prefer current user if present in allowed assignees; otherwise pick first
+    const current = getUser().name
+    if (ids.includes(current)) {
+      _task.value.assigned_to = current
+    } else if (!_task.value.assigned_to || !ids.includes(_task.value.assigned_to)) {
+      _task.value.assigned_to = ids[0]
+    }
+  },
+})
+
+const showManualAssignee = computed(() => {
+  return Boolean(props.doc) && Array.isArray(assignedUsers.data) && assignedUsers.data.length > 0
+})
+
+const assignedUserFilter = computed(() => {
+  return assignedUsers.data?.length ? { name: ['in', assignedUsers.data] } : {}
 })
 
 function updateTaskStatus(status) {
@@ -176,18 +225,31 @@ function updateTaskPriority(priority) {
 
 function redirect() {
   if (!props.task?.reference_docname) return
-  let name = props.task.reference_doctype == 'CRM Deal' ? 'Deal' : 'Lead'
+  let name = 'Lead'
   let params = { leadId: props.task.reference_docname }
-  if (name == 'Deal') {
+  if (props.task.reference_doctype == 'CRM Deal') {
+    name = 'Deal'
     params = { dealId: props.task.reference_docname }
+  } else if (props.task.reference_doctype == 'CRM Ticket') {
+    name = 'Ticket'
+    params = { ticketId: props.task.reference_docname }
   }
-  router.push({ name: name, params: params })
+  router.push({ name, params })
 }
 
 async function updateTask() {
   if (!_task.value.assigned_to) {
     _task.value.assigned_to = getUser().name
   }
+  
+  // Ensure due_date is sent; default to current datetime if empty
+  if (!_task.value.due_date) {
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const iso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    _task.value.due_date = iso
+  }
+  
   if (_task.value.name) {
     let d = await call('frappe.client.set_value', {
       doctype: 'CRM Task',
@@ -195,10 +257,31 @@ async function updateTask() {
       fieldname: _task.value,
     })
     if (d.name) {
-      tasks.value?.reload()
+      // Only reload if tasks resource is available (e.g., when used in Tasks page)
+      if (tasks.value && typeof tasks.value.reload === 'function') {
+        tasks.value.reload()
+      }
       emit('after', d)
     }
   } else {
+    // ✅ FIX: Defer task creation when parent document doesn't exist yet (Lead/Ticket)
+    // If no reference document (props.doc is empty/null) and doctype is CRM Lead or CRM Ticket,
+    // this is being called before the parent is created from the modal. Return task data only.
+    if ((!props.doc || props.doc === '') && (props.doctype === 'CRM Lead' || props.doctype === 'CRM Ticket')) {
+      // Don't create the task yet - just return the task data
+      // This prevents duplicate creation from LeadModal
+      console.log('Task creation deferred - no reference document exists yet')
+      emit('after', {
+        ..._task.value,
+        reference_doctype: props.doctype,
+        reference_docname: props.doc || '',
+        name: null // No actual task created yet
+      }, true) // Mark as "new" for proper handling
+      show.value = false
+      return
+    }
+    // Normal task creation with proper reference
+    console.log('Creating task with data:', _task.value)
     let d = await call(
       'frappe.client.insert',
       {
@@ -211,6 +294,7 @@ async function updateTask() {
       },
       {
         onError: (err) => {
+          console.error('Task creation error:', err)
           if (err.error.exc_type == 'MandatoryError') {
             error.value = 'Title is mandatory'
           }
@@ -220,7 +304,10 @@ async function updateTask() {
     if (d.name) {
       updateOnboardingStep('create_first_task')
       capture('task_created')
-      tasks.value?.reload()
+      // Only reload if tasks resource is available (e.g., when used in Tasks page)
+      if (tasks.value && typeof tasks.value.reload === 'function') {
+        tasks.value.reload()
+      }
       emit('after', d, true)
     }
   }
@@ -232,17 +319,56 @@ function render() {
   nextTick(() => {
     title.value?.el?.focus?.()
     _task.value = { ...props.task }
+    // Default to current user if no assignee specified
+    if (!_task.value.assigned_to) {
+      _task.value.assigned_to = getUser().name
+    }
     if (_task.value.title) {
       editMode.value = true
     }
   })
 }
 
+// Handle automatic assignment
+watch(
+  () => props.roleForAssignment,
+  async (role) => {
+    if (role) {
+      isRoleAssignment.value = true
+      
+      try {
+        // Get the next user for this role
+        const result = await call('crm.api.role_assignment.preview_next_assignment', {
+          role_name: role
+        })
+        
+        if (result.success && result.next_user) {
+          _task.value.assigned_to = result.next_user
+          console.log(`Pre-selected user ${result.next_user} for role ${role}`)
+        } else {
+          console.warn('Could not get next user for role:', role)
+        }
+      } catch (err) {
+        console.error('Error getting next user for role:', err)
+      }
+    } else {
+      isRoleAssignment.value = false
+      // If no role selected, assign to current user
+      _task.value.assigned_to = getUser().name
+      console.log(`Pre-selected current user ${getUser().name} for task`)
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(() => show.value && render())
 
 watch(show, (value) => {
   if (!value) return
   render()
+  if (props.doc) {
+    assignedUsers.fetch()
+  }
 })
 </script>
 

@@ -1,0 +1,877 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/rendering.dart';
+
+import '../api_service.dart';
+import '../call_log_sync_service.dart';
+import '../background_task.dart';
+import '../update_service.dart';
+import 'login_page.dart';
+import 'permissions_page.dart';
+import 'update_dialog.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String _lastSync = 'Never';
+  String _lastSyncLabel = 'Never';
+  String _lastSyncLocal = 'Never';
+  int _syncedCount = 0;
+  int _pendingCount = 0;
+  bool _serviceRunning = false;
+  List<Map<String, dynamic>> _recent = [];
+  bool _loading = true;
+  Timer? _ticker;
+  final ScrollController _scrollController = ScrollController();
+  bool _isUserScrolling = false;
+  Timer? _scrollIdleDebounce;
+  
+  // Pagination variables
+  int _currentPage = 1;
+  int _logsPerPage = 50;
+  bool _hasMoreLogs = true;
+  bool _loadingMore = false;
+  final List<Map<String, dynamic>> _allLogs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+    _setupScrollListener();
+  }
+
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= 
+          _scrollController.position.maxScrollExtent - 200) {
+        // Load more when user is 200 pixels from bottom
+        _loadMoreLogs();
+      }
+    });
+  }
+
+  String _formatRelative(int? ts) {
+    if (ts == null) return 'Never';
+    final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  Future<void> _init() async {
+    await ApiService.instance.init();
+    await _ensureCriticalPermissions();
+    await _refreshStats();
+    await _loadRecent();
+    _serviceRunning = await FlutterForegroundTask.isRunningService;
+    if (mounted) setState(() => _loading = false);
+    // periodic real-time refresh
+    _ticker = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await _refreshStats();
+      await _loadRecent();
+    });
+  }
+
+  Future<void> _refreshStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    int? localTs = prefs.getInt('last_call_log_sync');
+    try {
+      // Prefer server stats so auto-sync is reflected
+      final server = await ApiService.instance.getSyncStats();
+      final data = (server['data'] ?? server['message'] ?? {}) as Map?;
+      if (data != null) {
+        final todayLogs = data['today_logs'] as int?;
+        final lastSyncStr = data['last_sync_time']?.toString();
+        DateTime? lastDt;
+        if (lastSyncStr != null && lastSyncStr.isNotEmpty) {
+          lastDt = DateTime.tryParse(lastSyncStr);
+        }
+        setState(() {
+          _syncedCount = todayLogs ?? _syncedCount;
+          if (lastDt != null) {
+            _lastSync = lastDt.toIso8601String();
+            _lastSyncLabel = _formatRelative(lastDt.millisecondsSinceEpoch);
+          } else {
+            // fallback to local preference timestamp
+            if (localTs != null) {
+              // Normalize seconds -> milliseconds if necessary
+              final int normalized = localTs < 1000000000000 ? localTs * 1000 : localTs;
+              _lastSync = DateTime.fromMillisecondsSinceEpoch(normalized).toIso8601String();
+              _lastSyncLabel = _formatRelative(normalized);
+            } else {
+              _lastSync = 'Never';
+              _lastSyncLabel = _formatRelative(localTs);
+            }
+          }
+
+          // Always set local readable last sync for debugging
+          if (localTs != null) {
+            final int normalizedLocal = localTs < 1000000000000 ? localTs * 1000 : localTs;
+            try {
+              _lastSyncLocal = DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.fromMillisecondsSinceEpoch(normalizedLocal));
+            } catch (_) {
+              _lastSyncLocal = DateTime.fromMillisecondsSinceEpoch(normalizedLocal).toIso8601String();
+            }
+          } else {
+            _lastSyncLocal = 'Never';
+          }
+        });
+      }
+    } catch (_) {
+      // fallback to local
+      setState(() {
+        _lastSync = localTs != null
+            ? DateTime.fromMillisecondsSinceEpoch(localTs).toIso8601String()
+            : 'Never';
+        _lastSyncLabel = _formatRelative(localTs);
+      });
+    }
+  }
+
+  Future<void> _ensureCriticalPermissions() async {
+    // Phone permission (call logs)
+    final phoneStatus = await Permission.phone.status;
+    if (!phoneStatus.isGranted) {
+      await Permission.phone.request();
+    }
+    // Notifications (Android 13+)
+    final noti = await Permission.notification.status;
+    if (!noti.isGranted) {
+      await Permission.notification.request();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _scrollIdleDebounce?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRecent() async {
+    try {
+      if (_currentPage == 1) {
+        // First page - load initial data
+        final list = await ApiService.instance.getUserCallLogs(limit: _logsPerPage);
+        if (mounted) {
+          setState(() {
+            _allLogs.clear();
+            _allLogs.addAll(list);
+            _recent = _allLogs.take(_logsPerPage).toList();
+            _hasMoreLogs = list.length >= _logsPerPage;
+            _currentPage = 1;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadMoreLogs() async {
+    if (_loadingMore || !_hasMoreLogs) return;
+    
+    try {
+      setState(() => _loadingMore = true);
+      
+      final nextPage = _currentPage + 1;
+      final offset = _currentPage * _logsPerPage;
+      final list = await ApiService.instance.getUserCallLogs(limit: _logsPerPage, offset: offset);
+      
+      if (mounted && list.isNotEmpty) {
+        setState(() {
+          _allLogs.addAll(list);
+          _recent = _allLogs.take((_currentPage + 1) * _logsPerPage).toList();
+          _hasMoreLogs = list.length >= _logsPerPage;
+          _currentPage = nextPage;
+        });
+      } else {
+        setState(() => _hasMoreLogs = false);
+      }
+    } catch (_) {
+      // Handle error silently for now
+    } finally {
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      }
+    }
+  }
+
+  void _resetPagination() {
+    _currentPage = 1;
+    _hasMoreLogs = true;
+    _allLogs.clear();
+    _recent.clear();
+  }
+
+  Future<void> _requestPermissions() async {
+    await Permission.notification.request();
+    await Permission.phone.request();
+    final status = await Permission.phone.status;
+    if (!status.isGranted) {
+      openAppSettings();
+    }
+  }
+
+  Future<void> _requestIgnoreBatteryOptimizations() async {
+    const intent = AndroidIntent(
+      action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+      data: 'package:com.eshin.crm',
+    );
+    await intent.launch();
+  }
+  
+  static int _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
+  }
+
+  static String _formatDuration(int seconds) {
+    final d = Duration(seconds: seconds);
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hh = d.inHours;
+    if (hh > 0) {
+      return '${hh}h ${mm}m ${ss}s';
+    }
+    if (d.inMinutes > 0) {
+      return '${d.inMinutes}m ${ss}s';
+    }
+    return '${d.inSeconds}s';
+  }
+
+  static String _formatListDate(String raw) {
+    if (raw.isEmpty) return '—';
+    // Try robust parsing and convert to 12-hour format with AM/PM
+    DateTime? dt = DateTime.tryParse(raw);
+    dt ??= DateTime.tryParse(raw.replaceFirst(' ', 'T'));
+    if (dt != null) {
+      return DateFormat('yyyy-MM-dd hh:mm:ss a').format(dt);
+    }
+    // Fallback: normalize then convert hour part manually
+    final normalized = raw.replaceFirst('T', ' ').split('.').first;
+    final parts = normalized.split(' ');
+    if (parts.length == 2) {
+      final date = parts[0];
+      final timeParts = parts[1].split(':');
+      if (timeParts.length >= 2) {
+        final h = int.tryParse(timeParts[0]) ?? 0;
+        final m = timeParts[1];
+        final s = timeParts.length > 2 ? timeParts[2] : '00';
+        final isPm = h >= 12;
+        final hh = (h % 12 == 0) ? 12 : h % 12;
+        final hhStr = hh.toString().padLeft(2, '0');
+        return '$date $hhStr:$m:$s ${isPm ? 'PM' : 'AM'}';
+      }
+    }
+    return normalized;
+  }
+
+  Future<void> _startForeground() async {
+    // Ensure notification permission (Android 13+)
+    final notifStatus = await Permission.notification.status;
+    if (!notifStatus.isGranted) {
+      final granted = await Permission.notification.request();
+      if (!granted.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enable notifications to show background sync indicator.')),
+          );
+        }
+        return;
+      }
+    }
+
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        // Use a new channel id to ensure channel is created with LOW importance
+        channelId: 'crm_sync_low',
+        channelName: 'CRM Sync',
+        channelDescription: 'Syncs call logs periodically',
+        // Use LOW importance and priority so notification appears only in drawer
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+        iconData: const NotificationIconData(
+          resType: ResourceType.mipmap,
+          resPrefix: ResourcePrefix.ic,
+          name: 'launcher',
+        ),
+        buttons: const [NotificationButton(id: 'stop', text: 'Stop')],
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(showNotification: false),
+      foregroundTaskOptions: const ForegroundTaskOptions(
+        interval: 1000,
+        autoRunOnBoot: true,
+        allowWakeLock: true,
+      ),
+    );
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'CRM Call Logs Sync',
+      notificationText: 'Running background sync',
+      callback: startCallback,
+    );
+    _serviceRunning = await FlutterForegroundTask.isRunningService;
+    setState(() {});
+  }
+
+  Future<void> _stopForeground() async {
+    await FlutterForegroundTask.stopService();
+    _serviceRunning = false;
+    setState(() {});
+  }
+
+  Future<void> _manualSync() async {
+    final res = await CallLogSyncService.instance.syncOnce();
+    _resetPagination();
+    await _refreshStats();
+    await _loadRecent();
+    if (!(res['success'] == true)) {
+      final msg = (res['error'] ?? res['message'] ?? 'Unknown error').toString();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sync failed: $msg')),
+        );
+      }
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Checking for updates...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final updateInfo = await UpdateService().checkForUpdates(silent: false);
+      
+      if (updateInfo != null && mounted) {
+        // Show update dialog
+        showUpdateDialog(
+          context,
+          updateInfo: updateInfo,
+          isForceUpdate: updateInfo.isForceUpdate,
+        );
+      } else if (mounted) {
+        // No update available
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are using the latest version!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update check failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      floatingActionButton: _loading
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _manualSync,
+              icon: const Icon(Icons.sync),
+              label: const Text('Sync Now'),
+            ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: () async {
+                _resetPagination();
+                await _refreshStats();
+                await _loadRecent();
+              },
+              child: NotificationListener<UserScrollNotification>(
+                onNotification: (n) {
+                  if (n.direction == ScrollDirection.idle) {
+                    _scrollIdleDebounce?.cancel();
+                    _scrollIdleDebounce = Timer(const Duration(milliseconds: 250), () {
+                      _isUserScrolling = false;
+                    });
+                  } else {
+                    _isUserScrolling = true;
+                  }
+                  return false;
+                },
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  cacheExtent: 800,
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                  SliverAppBar(
+                    pinned: true,
+                    expandedHeight: 140,
+                    actions: [
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.menu),
+                        onSelected: (value) async {
+                          switch (value) {
+                            case 'permissions':
+                              if (!mounted) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const PermissionsPage()),
+                              );
+                              break;
+                            case 'check_update':
+                              await _checkForUpdates();
+                              break;
+                            case 'logout':
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Logout'),
+                                  content: const Text('Are you sure you want to logout?'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Logout')),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true) return;
+                              try { await FlutterForegroundTask.stopService(); } catch (_) {}
+                              await ApiService.instance.logout();
+                              if (!mounted) return;
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => LoginPage(
+                                    onLoggedIn: () {
+                                      Navigator.of(_).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (_) => const HomePage()),
+                                        (route) => false,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                (route) => false,
+                              );
+                              break;
+                          }
+                        },
+                        itemBuilder: (ctx) => const [
+                          PopupMenuItem(value: 'permissions', child: Text('Request Permissions')),
+                          PopupMenuItem(value: 'check_update', child: Text('Check for Updates')),
+                          PopupMenuItem(value: 'logout', child: Text('Logout')),
+                        ],
+                      ),
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                      titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 16),
+                      title: Text(
+                        'Eshin',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      background: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [cs.primary, cs.primary.withOpacity(0.6)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _OverviewRow(
+                        lastSync: _lastSyncLabel,
+                        syncedCount: _syncedCount,
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Local last sync: $_lastSyncLocal', style: const TextStyle(color: Color(0xFFB0B6BB))),
+                    ],
+                  ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _BackgroundControl(
+                        running: _serviceRunning,
+                        onToggle: (value) async {
+                          if (value) {
+                            await _startForeground();
+                          } else {
+                            await _stopForeground();
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text(
+                        'Recent Call Logs',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  if (_recent.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+                            ],
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.history, color: Color(0xFF6B7280)),
+                              SizedBox(width: 12),
+                              Expanded(child: Text('No logs yet')),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index >= _recent.length) {
+                            // Show load more button or loading indicator
+                            if (_hasMoreLogs) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: _LoadMoreButton(
+                                  onLoadMore: _loadMoreLogs,
+                                  loading: _loadingMore,
+                                ),
+                              );
+                            } else {
+                              return const SizedBox.shrink();
+                            }
+                          }
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _CallLogTile(
+                              key: ValueKey(_recent[index]['name'] ?? index),
+                              item: _recent[index],
+                            ),
+                          );
+                        },
+                        childCount: _recent.length + (_hasMoreLogs ? 1 : 0),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+class _OverviewRow extends StatelessWidget {
+  final String lastSync;
+  final int syncedCount;
+  const _OverviewRow({
+    required this.lastSync,
+    required this.syncedCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _StatCard(title: 'Last Sync', value: lastSync, icon: Icons.history)),
+        const SizedBox(width: 12),
+        Expanded(child: _StatCard(title: 'Synced (Today)', value: '$syncedCount', icon: Icons.cloud_done_outlined)),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData? icon;
+  const _StatCard({required this.title, required this.value, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null)
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: cs.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: cs.primary),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: cs.primary),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF6B7280)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackgroundControl extends StatelessWidget {
+  final bool running;
+  final ValueChanged<bool> onToggle;
+  const _BackgroundControl({required this.running, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(running ? Icons.play_circle_fill : Icons.pause_circle_filled, color: cs.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Background Sync', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  running ? 'Running in background' : 'Stopped',
+                  style: const TextStyle(color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(value: running, onChanged: onToggle),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadMoreButton extends StatelessWidget {
+  final VoidCallback onLoadMore;
+  final bool loading;
+  
+  const _LoadMoreButton({
+    required this.onLoadMore,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Center(
+        child: loading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : TextButton(
+                onPressed: onLoadMore,
+                child: const Text('Load More Logs'),
+              ),
+      ),
+    );
+  }
+}
+
+class _CallLogTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  
+  const _CallLogTile({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    // Extract values once to avoid repeated map lookups
+    final from = (item['from'] ?? '').toString();
+    final to = (item['to'] ?? '').toString();
+    final type = (item['type'] ?? '').toString();
+    final status = (item['status'] ?? '').toString();
+    final durationSec = _HomePageState._asInt(item['duration']);
+    final durationText = _HomePageState._formatDuration(durationSec);
+    final startRaw = (item['start_time'] ?? '').toString();
+    final startText = _HomePageState._formatListDate(startRaw);
+    final isColdCall = _HomePageState._asInt(item['is_cold_call']) == 1;
+
+    // Pre-calculate colors to avoid switch statement in build
+    final (chipBg, chipFg) = _getChipColors(type);
+    final cardBg = isColdCall ? const Color(0xFFEFF6FF) : Colors.white;
+    final borderColor = isColdCall ? const Color(0xFF2563EB) : Colors.transparent;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor.withOpacity(isColdCall ? 0.5 : 0), width: isColdCall ? 1.2 : 0),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  type.toLowerCase() == 'outgoing' ? to : from,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (isColdCall) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBEAFE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Cold Call',
+                    style: TextStyle(
+                      color: Color(0xFF1D4ED8),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: chipBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  type.toUpperCase(),
+                  style: TextStyle(color: chipFg, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(startText, style: const TextStyle(color: Color(0xFF6B7280))),
+              Text('Duration: $durationText', style: const TextStyle(color: Color(0xFF6B7280))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Status: ${status.isNotEmpty ? status : '—'}', style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  (Color, Color) _getChipColors(String type) {
+    switch (type.toLowerCase()) {
+      case 'incoming':
+        return (const Color(0xFFD1FAE5), const Color(0xFF065F46));
+      case 'outgoing':
+        return (const Color(0xFFDBEAFE), const Color(0xFF1E40AF));
+      case 'missed':
+        return (const Color(0xFFFEE2E2), const Color(0xFF991B1B));
+      default:
+        return (const Color(0xFFE5E7EB), const Color(0xFF374151));
+    }
+  }
+}
+

@@ -1,9 +1,4 @@
 pluginManagement {
-  plugins {
-    id("com.android.application") version "8.6.0"
-    id("com.android.library") version "8.6.0"
-  }
-  
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
@@ -38,7 +33,7 @@ expoAutolinking.useExpoModules()
 
 rootProject.name = 'CRM Call Log Sync'
 
-// expoAutolinking.useExpoVersionCatalog()  // Disabled to fix AGP version
+expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)

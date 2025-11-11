@@ -24,10 +24,10 @@
   },
   {
    "fieldname": "role",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Role",
-   "options": "\nSales User\nSales Manager\nSystem Manager",
+   "options": "Role",
    "reqd": 1
   },
   {
@@ -80,18 +80,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Sales Manager",
    "share": 1,
    "write": 1
@@ -104,6 +92,18 @@
    "report": 1,
    "role": "Sales User",
    "share": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
   }
  ],
  "row_format": "Dynamic",

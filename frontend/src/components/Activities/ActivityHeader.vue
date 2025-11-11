@@ -5,9 +5,18 @@
   >
     <div class="flex h-8 items-center text-xl font-semibold text-ink-gray-8">
       {{ __(title) }}
+      <div v-if="title == 'WhatsApp Support'" class="ml-3 flex items-center space-x-2">
+        <div class="flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+             :class="whatsappStatus?.connected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+          <span class="inline-block h-2 w-2 rounded-full mr-1"
+                :class="whatsappStatus?.connected ? 'bg-green-500' : 'bg-red-500'" />
+          <span>{{ whatsappStatus?.connected ? __('Connected') : __('Disconnected') }}</span>
+          <span v-if="whatsappStatus?.connected && whatsappStatus?.phoneNumber" class="ml-1 opacity-80">- {{ whatsappStatus?.phoneNumber }}</span>
+        </div>
+      </div>
     </div>
     <Button
-      v-if="title == 'Emails'"
+      v-if="canWrite && title == 'Emails'"
       variant="solid"
       @click="emailBox.show = true"
     >
@@ -17,7 +26,7 @@
       <span>{{ __('New Email') }}</span>
     </Button>
     <Button
-      v-else-if="title == 'Comments'"
+      v-else-if="canWrite && title == 'Comments'"
       variant="solid"
       @click="emailBox.showComment = true"
     >
@@ -27,12 +36,12 @@
       <span>{{ __('New Comment') }}</span>
     </Button>
     <MultiActionButton
-      v-else-if="title == 'Calls'"
+      v-else-if="canWrite && title == 'Calls'"
       variant="solid"
       :options="callActions"
     />
     <Button
-      v-else-if="title == 'Notes'"
+      v-else-if="canWrite && title == 'Notes'"
       variant="solid"
       @click="modalRef.showNote()"
     >
@@ -42,7 +51,7 @@
       <span>{{ __('New Note') }}</span>
     </Button>
     <Button
-      v-else-if="title == 'Tasks'"
+      v-else-if="canWrite && title == 'Tasks'"
       variant="solid"
       @click="modalRef.showTask()"
     >
@@ -52,7 +61,7 @@
       <span>{{ __('New Task') }}</span>
     </Button>
     <Button
-      v-else-if="title == 'Attachments'"
+      v-else-if="canWrite && title == 'Attachments'"
       variant="solid"
       @click="showFilesUploader = true"
     >
@@ -73,7 +82,8 @@
         <span>{{ __('New Message') }}</span>
       </Button>
     </div>
-    <Dropdown v-else :options="defaultActions" @click.stop>
+    
+    <Dropdown v-else-if="canWrite && title !== 'WhatsApp Support'" :options="defaultActions" @click.stop>
       <template v-slot="{ open }">
         <Button variant="solid" class="flex items-center gap-1">
           <template #prefix>
@@ -112,7 +122,14 @@ const props = defineProps({
   modalRef: Object,
   emailBox: Object,
   whatsappBox: Object,
+  whatsappStatus: Object,
+  canWrite: {
+    type: Boolean,
+    default: true,
+  },
 })
+
+const emit = defineEmits(['openWhatsAppSetup'])
 
 const { makeCall } = globalStore()
 
@@ -121,6 +138,7 @@ const showWhatsappTemplates = defineModel('showWhatsappTemplates')
 const showFilesUploader = defineModel('showFilesUploader')
 
 const defaultActions = computed(() => {
+  if (!props.canWrite) return []
   let actions = [
     {
       icon: h(Email2Icon, { class: 'h-4 w-4' }),
@@ -137,12 +155,7 @@ const defaultActions = computed(() => {
       label: __('Create Call Log'),
       onClick: () => props.modalRef.createCallLog(),
     },
-    {
-      icon: h(PhoneIcon, { class: 'h-4 w-4' }),
-      label: __('Make a Call'),
-      onClick: () => makeCall(props.doc.data.mobile_no),
-      condition: () => callEnabled.value,
-    },
+    // For read-only mode, calls are not shown (blocked at top-level)
     {
       icon: h(NoteIcon, { class: 'h-4 w-4' }),
       label: __('New Note'),
@@ -172,6 +185,10 @@ const defaultActions = computed(() => {
 
 function getTabIndex(name) {
   return props.tabs.findIndex((tab) => tab.name === name)
+}
+
+function openWhatsAppSetup() {
+  emit('openWhatsAppSetup')
 }
 
 const callActions = computed(() => {

@@ -8,9 +8,16 @@
         v-if="tasksListView?.customListActions"
         :actions="tasksListView.customListActions"
       />
-      <Button variant="solid" :label="__('Create')" @click="createTask">
-        <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
+      <Button 
+        variant="secondary" 
+        :label="showTodayTasks ? 'Show All Tasks' : 'Show Today\'s Tasks'"
+        @click="toggleTodayTasks"
+      >
+        <template #prefix><FeatherIcon name="calendar" class="h-4" /></template>
       </Button>
+      <!-- <Button variant="solid" :label="__('Create')" @click="createTask">
+        <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
+      </Button> -->
     </template>
   </LayoutHeader>
   <ViewControls
@@ -20,6 +27,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Task"
+    :filters="defaultFilters"
     :options="{
       allowedViews: ['list', 'kanban'],
     }"
@@ -29,7 +37,7 @@
     v-model="tasks"
     :options="{
       onClick: (row) => showTask(row.name),
-      onNewClick: (column) => createTask(column),
+      onNewClick: canWriteTasks ? (column) => createTask(column) : undefined,
     }"
     @update="(data) => viewControls.updateKanbanSettings(data)"
     @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
@@ -168,6 +176,8 @@
     @loadMore="() => loadMore++"
     @columnWidthUpdated="() => triggerResize++"
     @updatePageCount="(count) => (updatedPageCount = count)"
+    @pageChange="(page) => viewControls.goToPage(page)"
+    @pageSizeChange="(pageSize) => viewControls.handlePageSizeChange(pageSize)"
     @showTask="showTask"
     @applyFilter="(data) => viewControls.applyFilter(data)"
     @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
@@ -182,9 +192,9 @@
     >
       <Email2Icon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Tasks')]) }}</span>
-      <Button :label="__('Create')" @click="showTaskModal = true">
+      <!-- <Button :label="__('Create')" @click="showTaskModal = true">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-      </Button>
+      </Button> -->
     </div>
   </div>
   <TaskModal
@@ -211,15 +221,18 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { permissionsStore } from '@/stores/permissions'
+import { sessionStore } from '@/stores/session'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
 const { getUser } = usersStore()
 
+const route = useRoute()
 const router = useRouter()
-
+const session = sessionStore()
 const tasksListView = ref(null)
 
 // tasks data is loaded in the ViewControls component
@@ -228,6 +241,115 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+const applyTaskFiltersFromRoute = () => {
+  const payload = route.query.taskFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const normalized = { ...(defaultFilters.value || {}) }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      let resolved = value
+
+      if (resolved === '__current__') {
+        resolved = session.user || ''
+      }
+
+      if (
+        resolved === null ||
+        resolved === undefined ||
+        resolved === '__unset__' ||
+        (typeof resolved === 'string' && resolved.trim() === '')
+      ) {
+        delete normalized[field]
+        return
+      }
+
+      if (Array.isArray(resolved)) {
+        normalized[field] = resolved
+        return
+      }
+
+      if (typeof resolved === 'object') {
+        normalized[field] = resolved
+        return
+      }
+
+      if (field === '_assign') {
+        normalized[field] = ['LIKE', `%${resolved}%`]
+      } else {
+        normalized[field] = resolved
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply task filters from route', error)
+  } finally {
+    if (route.query.taskFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.taskFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.taskFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      setTimeout(() => applyTaskFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
+
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteTasks = computed(() => canWrite('Tasks'))
+
+// Track if showing today's tasks
+const showTodayTasks = ref(true)
+
+// Default filters including today's tasks filter
+const defaultFilters = computed(() => {
+  if (!showTodayTasks.value) return {}
+  
+  return {
+    due_date: ['timespan', 'Today']
+  }
+})
+
+// Toggle today's tasks filter
+async function toggleTodayTasks() {
+  showTodayTasks.value = !showTodayTasks.value
+  // Wait for props (:filters) to propagate to ViewControls before applying
+  await nextTick()
+  // Preserve existing filters and only toggle the due_date constraint
+  const currentFilters = (tasks.value?.params?.filters && { ...tasks.value.params.filters }) || {}
+  if (showTodayTasks.value) {
+    currentFilters.due_date = ['timespan', 'Today']
+  } else {
+    if (currentFilters.due_date) delete currentFilters.due_date
+  }
+  if (viewControls.value) {
+    viewControls.value.updateFilter(currentFilters)
+  }
+}
+
+// Add quick filter button in the header
+const quickActions = [
+  {
+    label: computed(() => showTodayTasks.value ? 'Show All Tasks' : "Show Today's Tasks"),
+    icon: 'calendar',
+    onClick: toggleTodayTasks,
+  }
+]
 
 function getRow(name, field) {
   function getValue(value) {
@@ -277,7 +399,7 @@ function parseRows(rows, columns = []) {
       if (
         fieldType &&
         ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation', 'due_date'].includes(row)
+        !['modified', 'creation'].includes(row)
       ) {
         _rows[row] = formatDate(task[row], '', true, fieldType == 'Datetime')
       }
@@ -300,10 +422,29 @@ function parseRows(rows, columns = []) {
           timeAgo: __(timeAgo(task[row])),
         }
       } else if (row == 'assigned_to') {
+        // Backwards-compatible single-assignee support for assigned_to
         _rows[row] = {
           label: task.assigned_to && getUser(task.assigned_to).full_name,
           ...(task.assigned_to && getUser(task.assigned_to)),
         }
+      } else if (row == '_assign') {
+        // Parse _assign JSON to expose multiple assignees similar to Leads/Tickets
+        try {
+          const assignees = JSON.parse(task._assign || '[]')
+          _rows[row] = assignees.map((user) => ({
+            name: user,
+            image: getUser(user).user_image,
+            label: getUser(user).full_name,
+          }))
+        } catch (e) {
+          _rows[row] = []
+        }
+      } else if (row == 'due_date') {
+        // Store both original date and formatted display string
+        _rows[row] = task[row] ? {
+          original: task[row],
+          display: formatDate(task[row], 'D MMM, hh:mm a')
+        } : null;
       }
     })
     return _rows
@@ -318,7 +459,7 @@ const task = ref({
   description: '',
   assigned_to: '',
   due_date: '',
-  status: 'Backlog',
+  status: 'Todo',
   priority: 'Low',
   reference_doctype: 'CRM Lead',
   reference_docname: '',
@@ -347,7 +488,7 @@ function createTask(column) {
     description: '',
     assigned_to: '',
     due_date: '',
-    status: 'Backlog',
+    status: 'Todo',
     priority: 'Low',
     reference_doctype: 'CRM Lead',
     reference_docname: '',
@@ -403,4 +544,5 @@ const openTaskFromURL = () => {
     window.history.replaceState(null, '', window.location.pathname)
   }
 }
+
 </script>

@@ -20,6 +20,17 @@ createResource({
   },
 })
 
+// WhatsApp Support specific setting
+export const whatsappSupportEnabled = ref(false)
+createResource({
+  url: 'crm.api.whatsapp_support.is_whatsapp_support_enabled',
+  cache: 'Is WhatsApp Support Enabled',
+  auto: true,
+  onSuccess: (data) => {
+    whatsappSupportEnabled.value = Boolean(data)
+  },
+})
+
 export const callEnabled = ref(false)
 export const twilioEnabled = ref(false)
 export const exotelEnabled = ref(false)

@@ -41,20 +41,25 @@
   </Dialog>
 </template>
 <script setup>
-import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+import AppsIcon from '@/components/Icons/AppsIcon.vue'
 import ERPNextIcon from '@/components/Icons/ERPNextIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import EmailTemplateIcon from '@/components/Icons/EmailTemplateIcon.vue'
+import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import Users from '@/components/Settings/Users.vue'
+import Roles from '@/components/Settings/Roles.vue'
 import GeneralSettings from '@/components/Settings/GeneralSettings.vue'
 import InviteUserPage from '@/components/Settings/InviteUserPage.vue'
 import ProfileSettings from '@/components/Settings/ProfileSettings.vue'
 import WhatsAppSettings from '@/components/Settings/WhatsAppSettings.vue'
+import WhatsAppSetup from '@/components/Settings/WhatsAppSetup.vue'
 import ERPNextSettings from '@/components/Settings/ERPNextSettings.vue'
 import EmailTemplatePage from '@/components/Settings/EmailTemplate/EmailTemplatePage.vue'
 import TelephonySettings from '@/components/Settings/TelephonySettings.vue'
 import EmailConfig from '@/components/Settings/EmailConfig.vue'
+import BackupSettings from '@/components/Settings/BackupSettings.vue'
+import OfficeHoursSettings from '@/components/Settings/OfficeHoursSettings.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { usersStore } from '@/stores/users'
 import {
@@ -98,6 +103,12 @@ const tabs = computed(() => {
           condition: () => isManager(),
         },
         {
+          label: __('Roles'),
+          icon: 'shield',
+          component: markRaw(Roles),
+          condition: () => isManager(),
+        },
+        {
           label: __('Invite User'),
           icon: 'user-plus',
           component: markRaw(InviteUserPage),
@@ -114,22 +125,33 @@ const tabs = computed(() => {
           icon: EmailTemplateIcon,
           component: markRaw(EmailTemplatePage),
         },
+        {
+          label: __('Office Hours'),
+          icon: PhoneIcon,
+          component: markRaw(OfficeHoursSettings),
+          condition: () => isManager(),
+        },
+        {
+          label: __('Backup'),
+          icon: 'database',
+          component: markRaw(BackupSettings),
+          condition: () => isManager(),
+        },
       ],
     },
     {
       label: __('Integrations', null, 'FCRM'),
       items: [
         {
-          label: __('Telephony'),
-          icon: PhoneIcon,
-          component: markRaw(TelephonySettings),
-          condition: () => isManager() || isAgent(),
-        },
-        {
           label: __('WhatsApp'),
           icon: WhatsAppIcon,
           component: markRaw(WhatsAppSettings),
           condition: () => isWhatsappInstalled.value && isManager(),
+        },
+        {
+          label: __('Add-ons'),
+          icon: AppsIcon,
+          component: markRaw(WhatsAppSetup),
         },
         {
           label: __('ERPNext'),
@@ -138,7 +160,7 @@ const tabs = computed(() => {
           condition: () => isManager(),
         },
       ],
-      condition: () => isManager() || isAgent(),
+      // Visible to all users so Add-ons is accessible
     },
   ]
 

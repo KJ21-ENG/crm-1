@@ -1,24 +1,19 @@
 <template>
-  <component
-    v-if="assignees?.length"
-    :is="assignees?.length == 1 ? 'Button' : 'div'"
-  >
-    <MultipleAvatar :avatars="assignees" @click="showAssignmentModal = true" />
-  </component>
-  <Button v-else @click="showAssignmentModal = true">
-    {{ __('Assign to') }}
+  <Button @click="showRoleAssignmentModal = true">
+    {{ __('Assign') }}
   </Button>
-  <AssignmentModal
-    v-if="showAssignmentModal"
-    v-model="showAssignmentModal"
-    v-model:assignees="assignees"
+  <RoleAssignmentModal
+    v-if="showRoleAssignmentModal"
+    v-model="showRoleAssignmentModal"
     :doctype="doctype"
     :doc="data"
+    @assigned="handleRoleAssignment"
+    @close="handleModalClose"
   />
 </template>
 <script setup>
-import MultipleAvatar from '@/components/MultipleAvatar.vue'
-import AssignmentModal from '@/components/Modals/AssignmentModal.vue'
+import RoleAssignmentModal from '@/components/Modals/RoleAssignmentModal.vue'
+import { usersStore } from '@/stores/users'
 import { ref } from 'vue'
 
 const props = defineProps({
@@ -26,6 +21,28 @@ const props = defineProps({
   doctype: String,
 })
 
-const showAssignmentModal = ref(false)
+const { getUser } = usersStore()
+
+const showRoleAssignmentModal = ref(false)
 const assignees = defineModel()
+
+const emit = defineEmits(['navigateToActivity'])
+
+function handleRoleAssignment(assignmentData) {
+  // Update assignees list with the newly assigned user
+  const user = getUser(assignmentData.assigned_user)
+  const newAssignee = {
+    name: assignmentData.assigned_user,
+    image: user?.user_image,
+    label: user?.full_name || assignmentData.assigned_user, // Fallback to email if full_name not available
+  }
+  
+  // Update assignees to show the assigned user
+  assignees.value = [newAssignee]
+}
+
+function handleModalClose() {
+  // Emit event to navigate to activity tab
+  emit('navigateToActivity')
+}
 </script>

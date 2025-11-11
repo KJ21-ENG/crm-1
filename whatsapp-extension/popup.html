@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    
+    .header h2 {
+      margin: 0;
+      color: #25D366;
+      font-size: 18px;
+    }
+    
+    .status-section {
+      margin-bottom: 15px;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .status-dot.connected { background: #25D366; }
+    .status-dot.disconnected { background: #ff4444; }
+    .status-dot.connecting { background: #ffaa00; }
+    
+    .btn {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary {
+      background: #25D366;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #128C7E;
+    }
+    
+    .btn-secondary {
+      background: #f8f9fa;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    
+    .btn-secondary:hover {
+      background: #e9ecef;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .info-section {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #666;
+      margin-top: 15px;
+    }
+    
+    .qr-section {
+      text-align: center;
+      margin: 15px 0;
+    }
+    
+    #qr-code-image img {
+      max-width: 200px;
+      height: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .phone-info {
+      background: #e8f5e8;
+      padding: 8px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 12px;
+      color: #2d5a2d;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #25D366;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>CRM WhatsApp</h2>
+  </div>
+  
+  <div class="status-section">
+    <div class="status-indicator">
+      <span id="status-dot" class="status-dot disconnected"></span>
+      <span id="status-text">Status: Disconnected</span>
+    </div>
+    <div id="phone-info" class="phone-info" style="display: none;">
+      <strong>Connected:</strong> <span id="phone-number">Unknown</span>
+    </div>
+  </div>
+  
+  <div class="actions-section">
+    <button id="connect-btn" class="btn btn-primary">Connect WhatsApp</button>
+    <button id="logout-btn" class="btn btn-danger" style="display: none;">Logout WhatsApp</button>
+    <button id="refresh-btn" class="btn btn-secondary">Refresh Status</button>
+  </div>
+  
+  <div id="qr-section" class="qr-section" style="display: none;">
+    <p><strong>Scan QR Code with WhatsApp Mobile</strong></p>
+    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+      Open WhatsApp → Settings → Linked Devices → Link a Device
+    </p>
+    <div id="qr-code-image"></div>
+    <button id="refresh-qr-btn" class="btn btn-secondary" style="margin-top: 10px;">Refresh QR Code</button>
+  </div>
+  
+  <div class="info-section">
+    <p><strong>How to use:</strong></p>
+    <ol>
+      <li>Click "Connect WhatsApp"</li>
+      <li>Scan QR code with your phone</li>
+      <li>Use WhatsApp features in CRM</li>
+      <li>Click "Logout" to disconnect and login with different account</li>
+    </ol>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 

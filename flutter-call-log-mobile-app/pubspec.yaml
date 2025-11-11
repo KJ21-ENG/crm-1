@@ -1,0 +1,39 @@
+name: flutter_call_log_mobile_app
+publish_to: 'none'
+description: CRM Call Log Sync - Flutter replica with background sync
+version: 1.3.0+5
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  dio: ^5.4.0
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+  permission_handler: ^11.3.1
+  call_log: ^4.0.0
+  flutter_foreground_task: ^6.1.2
+  device_info_plus: ^10.1.0
+  android_intent_plus: ^5.0.2
+  intl: ^0.20.2
+  package_info_plus: ^8.0.0
+  path_provider: ^2.1.2
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - raw_assets/eshin_app_splashscreen.gif
+    - raw_assets/eshin_logo.jpeg
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: raw_assets/eshin_logo.jpeg
+  adaptive_icon_background: "#0F2433"
+  min_sdk_android: 23

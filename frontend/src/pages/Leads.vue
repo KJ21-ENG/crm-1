@@ -9,6 +9,7 @@
         :actions="leadsListView.customListActions"
       />
       <Button
+        v-if="canWriteLeads"
         variant="solid"
         :label="__('Create')"
         @click="showLeadModal = true"
@@ -24,7 +25,7 @@
     v-model:resizeColumn="triggerResize"
     v-model:updatedPageCount="updatedPageCount"
     doctype="CRM Lead"
-    :filters="{ converted: 0 }"
+    :filters="baseFilters"
     :options="{
       allowedViews: ['list', 'group_by', 'kanban'],
     }"
@@ -246,6 +247,8 @@
     @loadMore="() => loadMore++"
     @columnWidthUpdated="() => triggerResize++"
     @updatePageCount="(count) => (updatedPageCount = count)"
+    @pageChange="(page) => viewControls.goToPage(page)"
+    @pageSizeChange="(pageSize) => viewControls.handlePageSizeChange(pageSize)"
     @applyFilter="(data) => viewControls.applyFilter(data)"
     @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
     @likeDoc="(data) => viewControls.likeDoc(data)"
@@ -259,7 +262,7 @@
     >
       <LeadsIcon class="h-10 w-10" />
       <span>{{ __('No {0} Found', [__('Leads')]) }}</span>
-      <Button :label="__('Create')" @click="showLeadModal = true">
+      <Button v-if="canWriteLeads" :label="__('Create')" @click="showLeadModal = true">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
       </Button>
     </div>
@@ -275,6 +278,7 @@
     :note="note"
     doctype="CRM Lead"
     :doc="docname"
+    @after="handleNoteCreated"
   />
   <TaskModal
     v-if="showTaskModal"
@@ -282,6 +286,7 @@
     :task="task"
     doctype="CRM Lead"
     :doc="docname"
+    @after="handleTaskCreated"
   />
 </template>
 
@@ -305,13 +310,15 @@ import TaskModal from '@/components/Modals/TaskModal.vue'
 import ViewControls from '@/components/ViewControls.vue'
 import { getMeta } from '@/stores/meta'
 import { globalStore } from '@/stores/global'
-import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/settings'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
-import { useRoute } from 'vue-router'
-import { ref, computed, reactive, h } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, reactive, watch, onMounted, h } from 'vue'
+import { permissionsStore } from '@/stores/permissions'
+import { usersStore } from '@/stores/users'
+import { sessionStore } from '@/stores/session'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -320,11 +327,47 @@ const { getUser } = usersStore()
 const { getLeadStatus } = statusesStore()
 
 const route = useRoute()
+const router = useRouter()
+const session = sessionStore()
 
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
 
-const defaults = reactive({})
+const defaults = reactive({
+  mobile_no: route.query.mobile_no || '',  // Get mobile number from query param if available
+})
+
+// Watch for query parameter to open lead modal
+watch(() => route.query.showLeadModal, (value) => {
+  if (value === 'true') {
+    // Update mobile number in defaults if provided in query
+    if (route.query.mobile_no) {
+      defaults.mobile_no = route.query.mobile_no
+    }
+    showLeadModal.value = true
+    // Remove the query parameters after opening the modal
+    router.replace({ query: {} })
+  }
+})
+
+// Also check on mount in case user refreshes the page
+onMounted(() => {
+  if (route.query.showLeadModal === 'true') {
+    // Update mobile number in defaults if provided in query
+    if (route.query.mobile_no) {
+      defaults.mobile_no = route.query.mobile_no
+    }
+    showLeadModal.value = true
+    router.replace({ query: {} })
+  }
+})
+
+// Permissions
+const { canWrite } = permissionsStore()
+const { isAdmin } = usersStore()
+const canWriteLeads = computed(() => isAdmin() || canWrite('Leads'))
+
+const baseFilters = computed(() => ({ converted: 0 }))
 
 // leads data is loaded in the ViewControls component
 const leads = ref({})
@@ -332,6 +375,73 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+const applyLeadFiltersFromRoute = () => {
+  const payload = route.query.leadFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const normalized = { ...baseFilters.value }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      let resolved = value
+
+      if (resolved === '__current__') {
+        resolved = session.user || ''
+      }
+
+      if (
+        resolved === null ||
+        resolved === undefined ||
+        resolved === '__unset__' ||
+        (typeof resolved === 'string' && resolved.trim() === '')
+      ) {
+        delete normalized[field]
+        return
+      }
+
+      if (Array.isArray(resolved)) {
+        normalized[field] = resolved
+        return
+      }
+
+      if (typeof resolved === 'object') {
+        normalized[field] = resolved
+        return
+      }
+
+      if (field === '_assign') {
+        normalized[field] = ['LIKE', `%${resolved}%`]
+      } else {
+        normalized[field] = resolved
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply lead filters from route', error)
+  } finally {
+    if (route.query.leadFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.leadFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.leadFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      setTimeout(() => applyLeadFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
 
 function getRow(name, field) {
   function getValue(value) {
@@ -567,11 +677,27 @@ const task = ref({
   assigned_to: '',
   due_date: '',
   priority: 'Low',
-  status: 'Backlog',
+  status: 'Todo',
 })
 
 function showTask(name) {
   docname.value = name
   showTaskModal.value = true
+}
+
+function handleNoteCreated() {
+  console.log('Note created, refreshing list...')
+  // Only reload if we have a valid leads resource
+  if (leads.value && typeof leads.value.reload === 'function') {
+    leads.value.reload()
+  }
+}
+
+function handleTaskCreated() {
+  console.log('Task created, refreshing list...')
+  // Only reload if we have a valid leads resource
+  if (leads.value && typeof leads.value.reload === 'function') {
+    leads.value.reload()
+  }
 }
 </script>

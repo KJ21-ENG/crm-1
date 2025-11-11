@@ -11,6 +11,9 @@
  "engine": "InnoDB",
  "field_order": [
   "details",
+  "description",
+  "issue_type",
+  "account_type",
   "organization",
   "website",
   "territory",
@@ -18,21 +21,33 @@
   "job_title",
   "source",
   "lead_owner",
-  "person_tab",
+  "assigned_role",
+  "lead_source",
+  "lead_category",
+  "referral_through",
+  "client_id",
+  "pod_id",
+  "customer_id",
   "salutation",
   "first_name",
   "last_name",
   "email",
   "mobile_no",
+  "alternative_mobile_no",
   "organization_tab",
   "section_break_uixv",
   "naming_series",
   "lead_name",
   "middle_name",
   "gender",
+  "marital_status",
+  "date_of_birth",
+  "anniversary",
   "phone",
   "column_break_dbsv",
   "status",
+  "account_opened_on",
+  "account_activated_on",
   "no_of_employees",
   "annual_revenue",
   "image",
@@ -54,6 +69,10 @@
   "column_break_pweh",
   "first_response_time",
   "first_responded_on",
+  "identity_section",
+  "pan_card_number",
+  "column_break_identity",
+  "aadhaar_card_number",
   "log_tab",
   "status_change_log"
  ],
@@ -69,29 +88,68 @@
    "fieldname": "salutation",
    "fieldtype": "Link",
    "label": "Salutation",
-   "options": "Salutation"
+   "options": "Salutation",
+   "read_only": 1
   },
   {
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name",
-   "reqd": 1
+   "reqd": 0,
+   "read_only": 1
   },
   {
    "fieldname": "middle_name",
    "fieldtype": "Data",
-   "label": "Middle Name"
+   "label": "Middle Name",
+   "read_only": 1
   },
   {
    "fieldname": "last_name",
    "fieldtype": "Data",
-   "label": "Last Name"
+   "label": "Last Name",
+   "read_only": 1
   },
   {
    "fieldname": "gender",
    "fieldtype": "Link",
    "label": "Gender",
-   "options": "Gender"
+   "options": "Gender",
+   "read_only": 1
+  },
+  {
+   "fieldname": "marital_status",
+   "fieldtype": "Select",
+   "label": "Marital Status",
+   "options": "\nMarried\nUnmarried"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "anniversary",
+   "fieldtype": "Date",
+   "label": "Anniversary"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "issue_type",
+   "fieldtype": "Select",
+   "label": "Issue Type",
+   "options": "Technical\nBilling\nGeneral"
+  },
+  {
+   "fieldname": "account_type",
+   "fieldtype": "Link",
+   "label": "Account Type",
+   "options": "CRM Account Type",
+   "reqd": 1
   },
   {
    "default": "New",
@@ -104,11 +162,25 @@
    "search_index": 1
   },
   {
+   "fieldname": "account_opened_on",
+   "fieldtype": "Datetime",
+   "label": "Account Opened On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "account_activated_on",
+   "fieldtype": "Datetime",
+   "label": "Account Activated On",
+   "read_only": 1
+  },
+  {
    "fieldname": "email",
    "fieldtype": "Data",
    "label": "Email",
    "options": "Email",
-   "search_index": 1
+   "search_index": 1,
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "website",
@@ -119,13 +191,81 @@
    "fieldname": "mobile_no",
    "fieldtype": "Data",
    "label": "Mobile No",
-   "options": "Phone"
+   "options": "Phone",
+   "maxlength": 10,
+   "description": "Enter 10-digit mobile number only",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "alternative_mobile_no",
+   "fieldtype": "Data",
+   "label": "Alternative Mobile No",
+   "options": "Phone",
+   "maxlength": 10,
+   "description": "Enter 10-digit mobile number only",
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone",
-   "options": "Phone"
+   "options": "Phone",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "lead_source",
+   "fieldtype": "Select",
+   "label": "Lead Source",
+   "options": "On Call\nOffice Visit",
+   "default": "On Call",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lead_category",
+   "fieldtype": "Select",
+   "label": "Lead Category",
+   "options": "Direct\nIndirect",
+   "default": "Direct",
+   "description": "Select whether this is a direct or indirect lead"
+  },
+  {
+   "fieldname": "referral_through",
+   "fieldtype": "Data",
+   "label": "Referral Through",
+   "description": "Client ID used during lead creation"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "description": "Client identification number assigned when account is opened"
+  },
+  {
+   "fieldname": "account_open_date",
+   "fieldtype": "Date",
+   "label": "Account Open Date",
+   "description": "Date when account was opened (set when status changes to Account Opened or client id is added)",
+   "in_list_view": 1,
+   "read_only": 0
+  },
+  {
+   "fieldname": "pod_id",
+   "fieldtype": "Data",
+   "label": "POD ID",
+   "description": "Proof of Delivery ID - can be same for multiple leads",
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "customer_id",
+   "fieldtype": "Link",
+   "label": "Customer ID",
+   "options": "CRM Customer",
+   "read_only": 1,
+   "description": "Reference to customer record"
   },
   {
    "fieldname": "section_break_uixv",
@@ -151,6 +291,13 @@
    "fieldtype": "Link",
    "label": "Lead Owner",
    "options": "User"
+  },
+  {
+   "fieldname": "assigned_role",
+   "fieldtype": "Data",
+   "label": "Assigned Role",
+   "read_only": 1,
+   "description": "Role used for automatic assignment"
   },
   {
    "fieldname": "source",
@@ -180,7 +327,8 @@
   {
    "fieldname": "job_title",
    "fieldtype": "Data",
-   "label": "Job Title"
+   "label": "Job Title",
+   "read_only": 1
   },
   {
    "fieldname": "organization_tab",
@@ -191,7 +339,8 @@
   {
    "fieldname": "organization",
    "fieldtype": "Data",
-   "label": "Organization"
+   "label": "Organization",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -325,6 +474,31 @@
    "label": "Net Total",
    "options": "currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity Documents"
+  },
+  {
+   "fieldname": "pan_card_number",
+   "fieldtype": "Data",
+   "label": "PAN Card Number",
+   "description": "Permanent Account Number (optional)",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aadhaar_card_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Card Number",
+   "description": "12-digit Aadhaar number (optional)",
+   "read_only": 1,
+   "reqd": 0
   }
  ],
  "grid_page_length": 50,
@@ -363,13 +537,51 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "All",
-   "share": 1
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
   }
  ],
  "row_format": "Dynamic",

@@ -12,8 +12,10 @@
   "telephony_medium",
   "section_break_gyqe",
   "id",
+  "device_call_id",
   "from",
   "status",
+  "is_cold_call",
   "duration",
   "medium",
   "start_time",
@@ -41,6 +43,39 @@
    "unique": 1
   },
   {
+   "fieldname": "device_call_id",
+   "fieldtype": "Data",
+   "label": "Device Call ID",
+   "unique": 1
+  },
+  {
+   "fieldname": "native_call_type",
+   "fieldtype": "Data",
+   "label": "Native Call Type",
+   "description": "Original call type from device call log (missed, rejected, incoming, outgoing)"
+  },
+  {
+   "fieldname": "method",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Method",
+   "options": "Mobile\nManual",
+   "default": "Manual",
+   "description": "How the call log was created - Mobile (synced from app) or Manual (created in CRM)"
+  },
+  {
+   "fieldname": "native_duration",
+   "fieldtype": "Duration",
+   "label": "Native Duration",
+   "description": "Original duration from device call log (seconds)"
+  },
+  {
+   "fieldname": "native_call_status",
+   "fieldtype": "Data",
+   "label": "Native Call Status",
+   "description": "Original call status from device (e.g., missed, rejected, no answer, canceled, completed)"
+  },
+  {
    "fieldname": "from",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -51,8 +86,15 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Initiated\nRinging\nIn Progress\nCompleted\nFailed\nBusy\nNo Answer\nQueued\nCanceled",
+   "options": "Initiated\nRinging\nIn Progress\nCompleted\nFailed\nBusy\nNo Answer\nQueued\nCanceled\nDid Not Picked\nMissed Call",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_cold_call",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Cold Call"
   },
   {
    "fieldname": "start_time",
@@ -214,6 +256,54 @@
    "role": "Sales Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
   }
  ],
  "sort_field": "modified",

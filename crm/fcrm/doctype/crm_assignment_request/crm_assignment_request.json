@@ -1,0 +1,142 @@
+{
+  "doctype": "DocType",
+  "name": "CRM Assignment Request",
+  "module": "FCRM",
+  "autoname": "naming_series:",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "naming_rule": "By \"Naming Series\" field",
+  "allow_import": 0,
+  "allow_rename": 1,
+  "default_view": "List",
+  "field_order": [
+    "section_main",
+    "naming_series",
+    "reference_doctype",
+    "reference_name",
+    "requested_user",
+    "requested_by",
+    "reason",
+    "status",
+    "approved_by",
+    "approved_on",
+    "rejection_reason"
+  ],
+  "fields": [
+    {
+      "fieldname": "section_main",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "CAR-.YYYY.-.#####",
+      "default": "CAR-.YYYY.-.#####"
+    },
+    {
+      "fieldname": "reference_doctype",
+      "fieldtype": "Link",
+      "label": "Reference DocType",
+      "options": "DocType",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reference_name",
+      "fieldtype": "Dynamic Link",
+      "label": "Reference Name",
+      "options": "reference_doctype",
+      "reqd": 1
+    },
+    {
+      "fieldname": "requested_user",
+      "fieldtype": "Link",
+      "label": "Requested User",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "requested_by",
+      "fieldtype": "Link",
+      "label": "Requested By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Small Text",
+      "label": "Reason"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Pending\nApproved\nRejected",
+      "default": "Pending",
+      "in_list_view": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "fieldtype": "Link",
+      "label": "Approved By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_on",
+      "fieldtype": "Datetime",
+      "label": "Approved On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rejection_reason",
+      "fieldtype": "Small Text",
+      "label": "Rejection Reason"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "All",
+      "read": 1,
+      "create": 1
+    },
+    {
+      "role": "Sales User",
+      "read": 1,
+      "create": 1
+    },
+    {
+      "role": "Support User",
+      "read": 1,
+      "create": 1
+    },
+    {
+      "role": "Sales Manager",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Support Manager",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "report": 1,
+      "share": 1,
+      "role": "System Manager"
+    }
+  ],
+  "row_format": "Dynamic",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "show_title_field_in_link": 0
+}

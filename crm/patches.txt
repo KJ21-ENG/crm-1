@@ -15,3 +15,77 @@ crm.patches.v1_0.move_twilio_agent_to_telephony_agent
 crm.patches.v1_0.create_default_scripts # 13-06-2025
 crm.patches.v1_0.migrate_caller_receiver_to_employee_customer # 04-01-2025
 crm.patches.v1_0.update_empty_customer_names # 04-01-2025
+crm.patches.v1_0.update_lead_layouts
+crm.patches.v1_0.add_support_user_role
+crm.patches.v1_0.update_ticket_fields_layout
+crm.patches.v1_0.update_ticket_assignment_fields_layout
+crm.patches.v1_0.remove_assigned_to_field_from_ticket_layout
+crm.patches.v1_0.add_customer_update_history
+crm.patches.v1_0.remove_custom_update_history_field
+crm.patches.v1_0.enhance_quick_filters
+crm.patches.v1_0.add_custom_lead_statuses # 19-07-2025
+crm.patches.v1_0.ensure_sent_to_ho_status # Ensure 'Sent to HO' status exists with correct name and lead_status fields
+crm.patches.v1_0.add_ticket_statuses # 19-07-2025
+crm.patches.v1_0.add_lead_expired_statuses # add Lead Expired statuses for scheduler
+crm.patches.v1_0.add_lead_expiry_status # add Lead Expired status with unique pink color
+crm.patches.v1_0.remove_lead_expiry_status # remove Lead Expiry status
+crm.patches.v1_0.remove_issue_type_add_subject_dropdown
+crm.patches.v1_0.rename_ticket_subjects_to_subject_name
+crm.patches.v1_0.update_existing_tickets_subject_names
+crm.patches.v1_0.update_ticket_list_view_to_use_subject
+crm.patches.v1_0.remove_issue_type_from_ticket_views
+crm.patches.v1_0.add_ticket_subjects_multiselect
+crm.patches.v1_0.update_ticket_layout_add_ticket_subjects
+crm.patches.v1_0.add_parent_columns_to_ticket_subject_item
+crm.patches.v1_0.remove_single_subject_from_ticket_layout
+crm.patches.v1_0.update_ticket_quick_entry_three_column_layout
+crm.patches.v1_0.update_ticket_quick_entry_layout_v2
+crm.patches.v1_0.remove_department_from_ticket_quick_entry_layout
+crm.patches.v1_0.update_ticket_quick_entry_layout_v3
+crm.patches.v1_0.update_lead_quick_entry_three_column_layout
+crm.patches.v1_0.remove_client_id_from_lead_quick_entry_layout
+
+# Mobile sync alignment: add device_call_id field to CRM Call Log for duplicate detection
+crm.patches.v1_0.add_device_call_id_to_crm_call_log
+
+# Update call log statuses for frontend compatibility (remove frontend override logic)
+crm.patches.v1_0.update_call_log_statuses_for_frontend_compatibility
+
+# Add native call type field for debugging purposes
+crm.patches.v1_0.add_native_call_type_field
+
+# Add method and native_duration fields for better debugging
+crm.patches.v1_0.add_method_and_native_duration_fields
+
+# Fix existing call log records where native call type was not properly prioritized
+crm.patches.v1_0.fix_call_log_statuses_native_call_type_priority
+
+# Add native call status field and backfill values
+crm.patches.v1_0.add_native_call_status_field
+
+crm.patches.v1_0.restructure_referral_system # 27-01-2025
+crm.patches.v1_0.update_lead_form_fields # 27-01-2025
+crm.patches.v1_0.fix_lead_modal_referral_fields # 27-01-2025
+crm.patches.v1_0.add_ticket_source_field # 28-01-2025
+crm.patches.v1_0.update_ticket_layout_with_source # 28-01-2025
+crm.patches.v1_0.update_mobile_validation # 28-01-2025
+crm.patches.v1_0.add_client_id_metadata # 28-01-2025
+crm.patches.v1_0.add_support_manager_role # 28-01-2025
+crm.patches.v1_0.update_customer_id_references # 31-07-2025
+crm.patches.v1_0.fix_customer_fields_in_creation_forms # 31-01-2025
+crm.patches.v1_add_final_overdue_fields # 04-08-2025
+crm.patches.v1_0.add_assignment_request_notifications # 27-01-2025
+crm.patches.v1_0.add_crm_account_type_doctype # add account type master and seed defaults
+crm.patches.v1_0.add_lead_and_ticket_personal_fields # 15-08-2025
+crm.patches.v1_0.reposition_quick_entry_contact_fields # 15-08-2025
+crm.patches.v1_0.fix_marital_status_default # 15-08-2025
+crm.patches.v1_0.add_customer_personal_fields # 15-08-2025
+crm.patches.v1_0.update_customer_personal_fields # 15-08-2025
+crm.patches.v1_0.add_admin_notification_settings
+crm.patches.v1_0.create_home_folder
+
+#add alternative mobile number in Lead form for quick view
+crm.patches.v1_0.add_alternative_mobile_no_quick_entry #29-09-2025
+crm.patches.v1_0.add_pod_id_to_lead_side_panel # ensure POD ID shows in side panel
+crm.patches.v1_0.update_pod_id_field_properties # make POD ID read-only and show only when set
+crm.patches.v1_0.remove_pod_id_from_lead_side_panel # remove POD ID from side panel (header only)

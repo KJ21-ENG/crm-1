@@ -1,5 +1,5 @@
 <template>
-  <div class="column flex flex-col gap-4 w-full">
+  <div class="column flex-1 grid grid-cols-1 gap-4">
     <div
       v-if="column.label && !column.hideLabel"
       class="text-ink-gray-9 max-w-fit text-base"

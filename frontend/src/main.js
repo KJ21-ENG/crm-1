@@ -74,3 +74,23 @@ if (import.meta.env.DEV) {
 if (import.meta.env.DEV) {
   window.$dialog = createDialog
 }
+
+// Global safety net: auto-reload once on unhandled chunk-load failures
+window.addEventListener('unhandledrejection', (event) => {
+  try {
+    const reason = event && (event.reason || {})
+    const message = String(reason && (reason.message || reason))
+    const matches =
+      /Failed to fetch dynamically imported module/i.test(message) ||
+      /Loading chunk (\d+|[A-Za-z0-9_-]+) failed/i.test(message) ||
+      /Importing a module script failed/i.test(message) ||
+      /ChunkLoadError/i.test(message)
+    const alreadyReloaded = sessionStorage.getItem('crm_global_chunk_reload') === '1'
+    if (matches && !alreadyReloaded) {
+      sessionStorage.setItem('crm_global_chunk_reload', '1')
+      window.location.reload()
+    }
+  } catch (_) {
+    // ignore
+  }
+})

@@ -1,3 +1,20 @@
+<!--
+  ViewControls Component
+  
+  This component handles the view controls for list views including:
+  - Filters, sorting, and pagination
+  - View switching (list, kanban, group by)
+  - Load more functionality
+  
+  Load More Button Fix:
+  - Ensures page length resets to 20 records when:
+    * Page is refreshed
+    * Navigating between modules
+    * Component is mounted fresh
+    * Manual reload is triggered
+  - This prevents the issue where load more would continue from a previous state
+-->
+
 <template>
   <div
     v-if="isMobileView"
@@ -322,7 +339,7 @@ import {
   FeatherIcon,
   usePageMeta,
 } from 'frappe-ui'
-import { computed, ref, onMounted, watch, h, markRaw } from 'vue'
+import { computed, ref, onMounted, watch, h, markRaw, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { isMobileView } from '@/composables/settings'
@@ -357,6 +374,9 @@ const list = defineModel()
 const loadMore = defineModel('loadMore')
 const resizeColumn = defineModel('resizeColumn')
 const updatedPageCount = defineModel('updatedPageCount')
+
+// Add pagination state
+const currentPage = ref(1)
 
 const route = useRoute()
 const router = useRouter()
@@ -434,6 +454,13 @@ const view = ref({
 const pageLength = computed(() => list.value?.data?.page_length)
 const pageLengthCount = computed(() => list.value?.data?.page_length_count)
 
+// Add computed property to track current page from API response
+const currentPageFromData = computed(() => {
+  if (!list.value?.data?.page_length) return 1
+  const start = list.value.data.start || 0
+  return Math.floor(start / list.value.data.page_length) + 1
+})
+
 watch(loadMore, (value) => {
   if (!value) return
   updatePageLength(value, true)
@@ -488,6 +515,16 @@ function getParams() {
     public: _view?.public || false,
   }
 
+  // Reset page length to default 20 if this is a fresh load or navigation
+  // Check if we should reset page length (fresh load or navigation)
+  const shouldResetPageLength = !list.value?.data || 
+                               !list.value.params || 
+                               list.value.params.page_length === undefined ||
+                               (pageLength.value && pageLength.value > 20 && !defaultParams.value)
+
+  const page_length = shouldResetPageLength ? 20 : (pageLength.value || 20)
+  const page_length_count = shouldResetPageLength ? 20 : (pageLengthCount.value || 20)
+
   const params = {
     doctype: props.doctype,
     filters: filters,
@@ -504,13 +541,16 @@ function getParams() {
     kanban_fields: kanban_fields,
     columns: columns,
     rows: rows,
-    page_length: pageLength.value,
-    page_length_count: pageLengthCount.value,
+    page_length: page_length,
+    page_length_count: page_length_count,
+    start: (currentPage.value - 1) * page_length, // Add start parameter for pagination
   }
 
   // Debug final parameters
   console.log('🔍 ViewControls Debug - Final API params:', params)
   console.log('🔍 ViewControls Debug - default_filters being sent:', params.default_filters)
+  console.log('🔍 ViewControls Debug - Page length reset check:', { shouldResetPageLength, page_length, page_length_count })
+  console.log('🔍 ViewControls Debug - Pagination:', { currentPage: currentPage.value, start: params.start })
 
   return params
 }
@@ -544,13 +584,60 @@ list.value = createResource({
   },
 })
 
-onMounted(() => useDebounceFn(reload, 100)())
+onMounted(() => {
+  // Reset page length to default 20 on component mount
+  resetPageLengthToDefault()
+  useDebounceFn(reload, 100)()
+})
+
+onUnmounted(() => {
+  // Reset page length when component is unmounted to ensure clean state
+  if (list.value?.data?.page_length > 20) {
+    console.log('🔍 ViewControls Debug - Resetting page length to 20 on unmount')
+    list.value.data.page_length = 20
+    list.value.data.page_length_count = 20
+  }
+})
 
 const isLoading = computed(() => list.value?.loading)
 
+// Add pagination methods
+function goToPage(page) {
+  if (page >= 1 && page !== currentPage.value) {
+    currentPage.value = page
+    reload()
+  }
+}
+
+function handlePageSizeChange(newPageSize) {
+  currentPage.value = 1 // Reset to first page when changing page size
+  updatePageLength(newPageSize)
+}
+
+function resetPageLengthToDefault() {
+  if (list.value?.data?.page_length > 20) {
+    console.log('🔍 ViewControls Debug - Resetting page length to 20')
+    updatePageLength(20)
+    currentPage.value = 1 // Reset to first page
+    return true
+  }
+  return false
+}
+
 function reload() {
   if (isLoading.value) return
-  list.value.params = getParams()
+  
+  // Reset page length to 20 if it's greater than 20 (indicating previous load more usage)
+  if (resetPageLengthToDefault()) {
+    return // The updatePageLength function will call reload again
+  }
+  // Preserve currently applied filters across reloads (e.g., when changing page)
+  const currentFilters = list.value?.params?.filters
+  const params = getParams()
+  if (currentFilters) {
+    params.filters = currentFilters
+  }
+  list.value.params = params
   list.value.reload()
 }
 
@@ -796,30 +883,207 @@ const quickFilterOptions = computed(() => {
   return options
 })
 
+// Build quick filters directly from the visible list columns of the current view
+// so that quick filters match the default view columns of each module
 const quickFilterList = computed(() => {
-  let filters = quickFilters.data || []
+  const columns = list.value?.data?.columns || []
+  const fieldsMeta = list.value?.data?.fields || []
+  // Fallback meta from store (contains full DocType field definitions including types and options)
+  const allFieldsMeta = getFields ? getFields() || [] : []
 
+  // Map columns to filter definitions
+  const filters = columns
+    .map((col) => {
+      const key = col.key || col.value
+      if (!key) return null
+
+      // Exclude non-data utility columns from quick filters (e.g., Actions)
+      const normalizedLabel = String(col.label || '').trim().toLowerCase()
+      if (key === '_actions' || normalizedLabel === 'actions') return null
+      
+      const customerStatus = String(col.label || '').trim().toLowerCase()
+      if (props.doctype === 'CRM Customer' && ( key === 'status' || customerStatus === 'status' )) return null
+
+      const meta = fieldsMeta.find((f) => f.fieldname === key)||
+        (allFieldsMeta || []).find((f) => f.fieldname === key)
+
+
+      // derive fieldtype and options
+      let fieldtype = meta?.fieldtype || col.type || 'Data'
+      // Special-case: for Call Logs, treat 'start_time' column as Date so quick filter shows date-only picker
+      if (props.doctype === 'CRM Call Log' && key === 'start_time') {
+        fieldtype = 'Date'
+      }
+      // Special-case: for Assignment Requests, show date-only picker for Created and Approved On
+      if (props.doctype === 'CRM Assignment Request' && ['creation', 'approved_on'].includes(key)) {
+        fieldtype = 'Date'
+      }
+      // Allow Date/Datetime fields to be used as quick filters (e.g., Attended On)
+      const excludedTypes = ['Time', 'Duration']
+      if (excludedTypes.includes(String(fieldtype))) return null
+      let options = meta?.options
+
+      // Debug: log where options are coming from for each quick filter
+      try {
+        const source = fieldsMeta.find((f) => f.fieldname === key)
+          ? 'api'
+          : (allFieldsMeta || []).find((f) => f.fieldname === key)
+          ? 'doctype'
+          : 'none'
+        console.debug('QuickFilter source', { doctype: props.doctype, field: key, source, options: options })
+      } catch (e) {}
+
+      // Normalize Select options to array format expected by FormControl select
+      if (fieldtype === 'Select') {
+        // Provide explicit options when backend meta may not include them
+        // Call Logs Status
+        if (props.doctype === 'CRM Call Log' && key === 'status') {
+          options = [
+            { label: '', value: '' },
+            { label: __('Completed'), value: 'Completed' },
+            { label: __('Did Not Picked'), value: 'Did Not Picked' },
+            { label: __('Missed Call'), value: 'Missed Call' },
+            { label: __('Busy'), value: 'Busy' },
+            { label: __('Failed'), value: 'Failed' },
+            { label: __('Canceled'), value: 'Canceled' },
+            { label: __('No Answer'), value: 'No Answer' },
+            { label: __('In Progress'), value: 'In Progress' },
+            { label: __('Initiated'), value: 'Initiated' },
+            { label: __('Queued'), value: 'Queued' },
+            { label: __('Ringing'), value: 'Ringing' },
+          ]
+        } else if (props.doctype === 'CRM Call Log' && key === 'method') {
+          options = [
+            { label: '', value: '' },
+            { label: __('Mobile'), value: 'Mobile' },
+            { label: __('Manual'), value: 'Manual' },
+          ]
+        } else if (props.doctype === 'CRM Assignment Request' && key === 'status') {
+          // Assignment Requests Status options
+          options = [
+            { label: '', value: '' },
+            { label: __('Pending'), value: 'Pending' },
+            { label: __('Approved'), value: 'Approved' },
+            { label: __('Rejected'), value: 'Rejected' },
+          ]
+        } else if (props.doctype === 'CRM Call Log' && key === 'type') {
+          // Ensure Type gets proper options even if fields meta is not present in response
+          options = [
+            { label: '', value: '' },
+            { label: __('Incoming'), value: 'Incoming' },
+            { label: __('Outgoing'), value: 'Outgoing' },
+          ]
+        } else if (options && typeof options === 'string') {
+          const opts = options.split('\n').map((o) => ({ label: o, value: o }))
+          // Ensure empty option exists if none present
+          if (!opts.some((o) => !o.value)) {
+            opts.unshift({ label: '', value: '' })
+          }
+          options = opts
+        } else if (!options || (Array.isArray(options) && options.length === 0)) {
+          // Fallback: derive Select options from DocType meta if not present in API response
+          const metaField = (allFieldsMeta || []).find((f) => f.fieldname === key)
+          if (metaField && typeof metaField.options === 'string') {
+            const opts = metaField.options.split('\n').map((o) => ({ label: o, value: o }))
+            if (!opts.some((o) => !o.value)) {
+              opts.unshift({ label: '', value: '' })
+            }
+            options = opts
+          }
+        }
+      } else if (fieldtype === 'Link') {
+        // Ensure Link fields carry the target doctype as options
+        if (!options && meta?.options) {
+          options = meta.options
+        }
+      }
+
+      return {
+        label: col.label || meta?.label || key,
+        fieldname: key,
+        fieldtype,
+        options,
+      }
+    })
+    .filter(Boolean)
+
+  // For Notes doctype, ensure Title and Content quick filters are available
+  if (props.doctype === 'FCRM Note') {
+    const requiredQuickFields = ['title', 'content']
+    requiredQuickFields.forEach((fn) => {
+      if (!filters.some((f) => f.fieldname === fn)) {
+        const metaField = fieldsMeta.find((m) => m.fieldname === fn) || {}
+        let fieldtype = metaField.fieldtype || 'Data'
+        let options = metaField.options
+        filters.push({
+          label: metaField.label || (fn === 'title' ? __('Title') : __('Content')),
+          fieldname: fn,
+          fieldtype,
+          options,
+        })
+      }
+    })
+
+    // After ensuring required fields exist, reorder quick filters to preferred sequence
+    const preferredOrder = ['title', 'content', 'name', 'modified']
+    filters.sort((a, b) => {
+      const ia = preferredOrder.indexOf(a.fieldname)
+      const ib = preferredOrder.indexOf(b.fieldname)
+      const va = ia === -1 ? 999 : ia
+      const vb = ib === -1 ? 999 : ib
+      if (va !== vb) return va - vb
+      return (a.label || '').localeCompare(b.label || '')
+    })
+  }
+
+  // Initialize values and hydrate from current applied filters
   filters.forEach((filter) => {
-    filter['value'] = filter.fieldtype == 'Check' ? false : ''
-    if (list.value.params?.filters[filter.fieldname]) {
-      let value = list.value.params.filters[filter.fieldname]
-      if (Array.isArray(value)) {
+    // For date/datetime quick filters we want the picker to start empty (no default to now)
+    if (['Date', 'Datetime'].includes(filter.fieldtype)) {
+      filter.value = null
+    } else {
+      filter.value = filter.fieldtype === 'Check' ? false : ''
+    }
+    const active = list.value?.params?.filters?.[filter.fieldname]
+    if (active !== undefined) {
+      if (Array.isArray(active)) {
+        const op = active[0]?.toLowerCase?.()
+        const rhs = active[1]
         if (
-          (['Check', 'Select', 'Link', 'Date', 'Datetime'].includes(
-            filter.fieldtype,
-          ) &&
-            value[0]?.toLowerCase() == 'like') ||
-          value[0]?.toLowerCase() != 'like'
-        )
-          return
-        filter['value'] = value[1]?.replace(/%/g, '')
-      } else if (typeof value == 'boolean') {
-        filter['value'] = value
+          (['check', 'select', 'link', 'date', 'datetime'].includes(
+            filter.fieldtype?.toLowerCase?.() || '',
+          ) && op === 'like') || op !== 'like'
+        ) {
+          // do nothing (handled by non-LIKE semantics)
+        } else if (typeof rhs === 'string') {
+          filter.value = rhs.replace(/%/g, '')
+        }
+      } else if (typeof active === 'boolean') {
+        filter.value = active
+      } else if (typeof active === 'string') {
+        filter.value = active.replace(/%/g, '')
       } else {
-        filter['value'] = value?.replace(/%/g, '')
+        filter.value = active
       }
     }
   })
+  // For Notes doctype, ensure Title and Content quick filters are available
+  if (props.doctype === 'FCRM Note') {
+    const requiredQuickFields = ['title', 'content']
+    requiredQuickFields.forEach((fn) => {
+      if (!filters.some((f) => f.fieldname === fn)) {
+        const metaField = fieldsMeta.find((m) => m.fieldname === fn) || {}
+        let fieldtype = metaField.fieldtype || 'Data'
+        let options = metaField.options
+        filters.push({
+          label: metaField.label || (fn === 'title' ? __('Title') : __('Content')),
+          fieldname: fn,
+          fieldtype,
+          options,
+        })
+      }
+    })
+  }
 
   return filters
 })
@@ -845,9 +1109,51 @@ function setupNewQuickFilters(filters) {
 
 function applyQuickFilter(filter, value) {
   let filters = { ...list.value.params.filters }
-  let field = filter.fieldname
+  const field = filter.fieldname
+
+  // Special handling for Call Logs status quick filter
+  if (props.doctype === 'CRM Call Log' && field === 'status') {
+    // Clear any previous status filter and our derived conditions first
+    delete filters['status']
+    delete filters['duration']
+    // We only add type constraint for DNP/Missed
+    // Remove any previously injected type if it was from a status selection
+    // (do not remove user-chosen type filters, but we cannot distinguish reliably here;
+    // keeping existing type if present is fine — it will just narrow the results.)
+
+    if (!value) {
+      // clearing selection
+      filter['value'] = ''
+      return updateFilter(filters)
+    }
+
+    filter['value'] = value
+    if (value === 'Completed') {
+      // Any call with duration > 0
+      filters['duration'] = ['>', 0]
+    } else if (value === 'Did Not Picked') {
+      // Outgoing call with zero duration
+      filters['type'] = filters['type'] || 'Outgoing'
+      filters['duration'] = 0
+    } else if (value === 'Missed Call') {
+      // Incoming call with zero duration
+      filters['type'] = filters['type'] || 'Incoming'
+      filters['duration'] = 0
+    }
+
+    return updateFilter(filters)
+  }
+
+  // Default behavior for all other filters
   if (value) {
-    if (
+    // Special-case: For Assignment Requests, make requested_user/requested_by use LIKE
+    const forceLike =
+      props.doctype === 'CRM Assignment Request' &&
+      ['requested_user', 'requested_by'].includes(field)
+
+    if (forceLike && typeof value === 'string') {
+      filters[field] = ['LIKE', `%${value}%`]
+    } else if (
       ['Check', 'Select', 'Link', 'Date', 'Datetime'].includes(filter.fieldtype)
     ) {
       filters[field] = value
@@ -863,21 +1169,19 @@ function applyQuickFilter(filter, value) {
 }
 
 function updateFilter(filters) {
+  if (list.value.loading) return
   viewUpdated.value = true
-  if (!defaultParams.value) {
-    defaultParams.value = getParams()
-  }
+  // Rebuild params so default_filters reflects latest props.filters
+  defaultParams.value = getParams()
   list.value.params = defaultParams.value
   list.value.params.filters = filters
   view.value.filters = filters
+  currentPage.value = 1 // Reset to first page when filters change
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateSort(order_by) {
+  if (list.value.loading) return
   viewUpdated.value = true
   if (!defaultParams.value) {
     defaultParams.value = getParams()
@@ -885,14 +1189,12 @@ function updateSort(order_by) {
   list.value.params = defaultParams.value
   list.value.params.order_by = order_by
   view.value.order_by = order_by
+  currentPage.value = 1 // Reset to first page when sort changes
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateGroupBy(group_by_field) {
+  if (list.value.loading) return
   viewUpdated.value = true
   if (!defaultParams.value) {
     defaultParams.value = getParams()
@@ -900,11 +1202,8 @@ function updateGroupBy(group_by_field) {
   list.value.params = defaultParams.value
   list.value.params.view.group_by_field = group_by_field
   view.value.group_by_field = group_by_field
+  currentPage.value = 1 // Reset to first page when group by changes
   list.value.reload()
-
-  if (!route.query.view) {
-    createOrUpdateStandardView()
-  }
 }
 
 function updateColumns(obj) {
@@ -1308,6 +1607,33 @@ function applyFilter({ event, idx, column, item, firstColumn }) {
 
   let filters = { ...list.value.params.filters }
 
+  // Special handling for clicking on Status chip in Call Logs list
+  if (props.doctype === 'CRM Call Log' && column.key === 'status') {
+    // Reset previous status/duration constraints
+    delete filters['status']
+    delete filters['duration']
+
+    const label = item?.label || (typeof item === 'string' ? item : '')
+    if (!label) {
+      return updateFilter(filters)
+    }
+
+    if (label === 'Completed') {
+      filters['duration'] = ['>', 0]
+    } else if (label === 'Did Not Picked') {
+      filters['type'] = filters['type'] || 'Outgoing'
+      filters['duration'] = 0
+    } else if (label === 'Missed Call') {
+      filters['type'] = filters['type'] || 'Incoming'
+      filters['duration'] = 0
+    } else {
+      // Fallback: use original behavior if label not one of our derived statuses
+      const fallback = item.name || item.label || item
+      if (fallback) filters[column.key] = fallback
+    }
+    return updateFilter(filters)
+  }
+
   let value = item.name || item.label || item
 
   if (value) {
@@ -1359,6 +1685,15 @@ defineExpose({
   viewsDropdownOptions,
   currentView,
   updateSelections,
+  updateFilter,
+  // Expose to allow pages to programmatically set/reset page length
+  updatePageLength,
+  resetPageLengthToDefault,
+  // Expose pagination methods
+  goToPage,
+  handlePageSizeChange,
+  currentPage,
+  currentPageFromData, // Expose the computed current page
 })
 
 // Watchers
@@ -1366,6 +1701,9 @@ watch(
   () => getView(route.query.view, route.params.viewType, props.doctype),
   (value, old_value) => {
     if (_.isEqual(value, old_value)) return
+    // Reset page length when view changes
+    resetPageLengthToDefault()
+    currentPage.value = 1 // Reset to first page when view changes
     reload()
   },
   { deep: true },
@@ -1373,6 +1711,9 @@ watch(
 
 watch([() => route, () => route.params.viewType], (value, old_value) => {
   if (value[0] === old_value[0] && value[1] === value[0]) return
+  // Reset page length when route changes (navigation between modules)
+  resetPageLengthToDefault()
+  currentPage.value = 1 // Reset to first page when route changes
   reload()
 })
 </script>

@@ -10,6 +10,7 @@ from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 	add_status_change_log,
 )
+from crm.api.activities import emit_activity_update
 
 
 class CRMDeal(Document):
@@ -29,6 +30,10 @@ class CRMDeal(Document):
 	def after_insert(self):
 		if self.deal_owner:
 			self.assign_agent(self.deal_owner)
+		emit_activity_update("CRM Deal", self.name)
+
+	def on_update(self):
+		emit_activity_update("CRM Deal", self.name)
 
 	def before_save(self):
 		self.apply_sla()

@@ -1,4 +1,5 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import DebugLogger from './DebugLogger';
 import CallLogs from 'react-native-call-log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -38,6 +39,7 @@ class DeviceCallLogService {
     
     try {
       console.log('Initializing DeviceCallLogService...');
+      await DebugLogger.log('DEV', 'init start')
       
       if (Platform.OS !== 'android') {
         console.log('Call log service is only supported on Android');
@@ -47,9 +49,11 @@ class DeviceCallLogService {
 
       // Load stored data
       await this.loadLastSyncTimestamp();
+      await DebugLogger.log('DEV', 'loaded last sync', { lastSyncTimestamp: this.lastSyncTimestamp })
       
       // Check permissions
       this.hasPermission = await this.checkPermissions();
+      await DebugLogger.log('DEV', 'checkPermissions', { has: this.hasPermission })
       
       this.isInitialized = true;
       console.log('DeviceCallLogService initialized successfully:', {
@@ -57,10 +61,12 @@ class DeviceCallLogService {
         userMobileNumber: this.userMobileNumber,
         lastSyncTimestamp: this.lastSyncTimestamp
       });
+      await DebugLogger.log('DEV', 'init done', { hasPermission: this.hasPermission, userMobileNumber: this.userMobileNumber, lastSyncTimestamp: this.lastSyncTimestamp })
       
       return true;
     } catch (error) {
       console.error('Error initializing DeviceCallLogService:', error);
+      await DebugLogger.error('DEV', 'init failed', { message: error?.message })
       this.isInitialized = false;
       return false;
     }
@@ -81,9 +87,11 @@ class DeviceCallLogService {
       );
       
       console.log('Call log permission status:', granted);
+      await DebugLogger.log('DEV', 'permission status', { granted })
       return granted;
     } catch (error) {
       console.error('Error checking call log permissions:', error);
+       await DebugLogger.error('DEV', 'permission check failed', { message: error?.message })
       return false;
     }
   }
@@ -104,34 +112,50 @@ class DeviceCallLogService {
     try {
       console.log('Requesting call log permissions...');
       
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-        {
-          title: 'Call Log Access Permission',
-          message: 'CRM Call Log Sync needs access to your call logs to sync them with your CRM system.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-
-      const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
-      this.hasPermission = isGranted;
-      
-      console.log('Call log permission result:', granted, 'isGranted:', isGranted);
-      
-      if (!isGranted) {
+      // Show our custom permission dialog first
+      return new Promise((resolve) => {
         Alert.alert(
-          'Permission Required',
-          'Call log access is required to sync your call logs with the CRM system. Please enable it in app settings.',
+          'Call Log Access Permission',
+          'CRM Call Log Sync needs access to your call logs to sync them with your CRM system.',
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: this.openAppSettings }
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                this.hasPermission = false;
+                resolve(false);
+              }
+            },
+            {
+              text: 'OK',
+              onPress: async () => {
+                const granted = await PermissionsAndroid.request(
+                  PermissionsAndroid.PERMISSIONS.READ_CALL_LOG
+                );
+
+                const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+                this.hasPermission = isGranted;
+                await DebugLogger.log('DEV', 'permission request result', { granted, isGranted })
+                
+                // Only show settings dialog if permission is permanently denied
+                if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+                  Alert.alert(
+                    'Permission Required',
+                    'Call log access is required. Please enable it in app settings.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Open Settings', onPress: this.openAppSettings }
+                    ]
+                  );
+                }
+                
+                resolve(isGranted);
+              }
+            }
           ]
         );
-      }
+      });
       
-      return isGranted;
     } catch (error) {
       console.error('Error requesting call log permissions:', error);
       Alert.alert('Error', 'Failed to request call log permissions.');
@@ -156,11 +180,9 @@ class DeviceCallLogService {
    */
   async getDeviceCallLogs(options = {}) {
     if (!this.hasPermission) {
-      console.log('No call log permission, requesting...');
-      const granted = await this.requestPermissions();
-      if (!granted) {
-        throw new Error('Call log permission not granted');
-      }
+      console.log('No call log permission');
+      await DebugLogger.log('DEV', 'getDeviceCallLogs: no permission')
+      throw new Error('PERMISSION_REQUIRED');
     }
 
     try {
@@ -174,8 +196,10 @@ class DeviceCallLogService {
       
       const callLogOptions = { ...defaultOptions, ...options };
       console.log('Call log fetch options:', callLogOptions);
+      await DebugLogger.log('DEV', 'fetch options', callLogOptions)
       
       const callLogs = await CallLogs.load(callLogOptions.limit, callLogOptions.offset);
+      await DebugLogger.log('DEV', 'device logs fetched', { count: callLogs?.length || 0 })
       
       // Filter by timestamp if needed
       let filteredLogs = callLogs;
@@ -186,10 +210,15 @@ class DeviceCallLogService {
       }
       
       console.log(`Fetched ${filteredLogs.length} call logs from device`);
+      await DebugLogger.log('DEV', 'device logs filtered', { count: filteredLogs.length })
       return filteredLogs;
       
     } catch (error) {
       console.error('Error fetching device call logs:', error);
+      await DebugLogger.error('DEV', 'fetch failed', { message: error?.message })
+      if (error.message.includes('permission')) {
+        throw new Error('PERMISSION_REQUIRED');
+      }
       throw new Error(`Failed to fetch call logs: ${error.message}`);
     }
   }
@@ -266,9 +295,14 @@ class DeviceCallLogService {
 
       // Validate and sanitize timestamp - be less aggressive with validation
       let validTimestamp = deviceCallLog.timestamp;
-      
-      console.log('Original timestamp:', validTimestamp, 'Date:', new Date(validTimestamp));
-      
+
+      // Convert to number if it's a string
+      if (typeof validTimestamp === 'string') {
+        validTimestamp = parseInt(validTimestamp, 10);
+      }
+
+      console.log('Original timestamp:', deviceCallLog.timestamp, 'Converted:', validTimestamp, 'Date test:', new Date(validTimestamp));
+
       // Check if timestamp is valid - only fallback for truly invalid values
       if (!validTimestamp || isNaN(validTimestamp) || validTimestamp < 0) {
         console.warn('Invalid timestamp detected, using current time:', validTimestamp);
@@ -344,7 +378,7 @@ class DeviceCallLogService {
 
       // Adjust from/to based on call direction
       const userNumber = this.getUserMobileNumber();
-      const cleanUserNumber = userNumber.replace(/[^\d]/g, ''); // Remove non-digits for comparison
+      const cleanUserNumber = (userNumber || '').replace(/[^\d]/g, ''); // Remove non-digits for comparison
       const cleanPhoneNumber = (deviceCallLog.phoneNumber || '').replace(/[^\d]/g, '');
       
       // First set the from/to based on the device call type
@@ -360,13 +394,24 @@ class DeviceCallLogService {
 
       // Double check and correct the type based on the actual numbers
       if (cleanPhoneNumber && cleanUserNumber) {
-        // If the 'to' number matches user's number, it's an incoming call
-        if (crmCallLog.to.replace(/[^\d]/g, '') === cleanUserNumber) {
-          crmCallLog.type = 'Incoming';
+        const toClean = (crmCallLog.to || '').replace(/[^\d]/g, '')
+        const fromClean = (crmCallLog.from || '').replace(/[^\d]/g, '')
+        const normalizeToUser = (n) => {
+          if (!n) return n
+          // Normalize numbers that end with the user number (handles country code prefixes)
+          if (n.endsWith(cleanUserNumber)) return cleanUserNumber
+          return n
         }
-        // If the 'from' number matches user's number, it's an outgoing call
-        else if (crmCallLog.from.replace(/[^\d]/g, '') === cleanUserNumber) {
-          crmCallLog.type = 'Outgoing';
+        const normTo = normalizeToUser(toClean)
+        const normFrom = normalizeToUser(fromClean)
+        if (normTo === cleanUserNumber) {
+          crmCallLog.type = 'Incoming'
+          crmCallLog.from = deviceCallLog.phoneNumber
+          crmCallLog.to = userNumber
+        } else if (normFrom === cleanUserNumber) {
+          crmCallLog.type = 'Outgoing'
+          crmCallLog.from = userNumber
+          crmCallLog.to = deviceCallLog.phoneNumber
         }
       }
 

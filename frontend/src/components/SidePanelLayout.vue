@@ -1,6 +1,23 @@
 <template>
   <div
-    v-if="!document.get?.loading"
+    v-if="document.get?.loading"
+    class="flex h-full items-center justify-center"
+  >
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+      <div class="text-lg text-ink-gray-6">{{ __('Loading...') }}</div>
+    </div>
+  </div>
+  <div
+    v-else-if="!document.doc"
+    class="flex h-full items-center justify-center"
+  >
+    <div class="text-center">
+      <div class="text-lg text-ink-gray-6">{{ __('No data available') }}</div>
+    </div>
+  </div>
+  <div
+    v-else-if="!document.get?.loading && document.doc"
     class="sections flex flex-col overflow-y-auto"
   >
     <template v-for="(section, i) in _sections" :key="section.name">
@@ -242,30 +259,24 @@
                           v-else-if="field.fieldtype === 'Datetime'"
                           class="form-control"
                         >
-                          <DateTimePicker
-                            icon-left=""
-                            :value="document.doc[field.fieldname]"
-                            :formatter="
-                              (date) => getFormat(date, '', true, true)
-                            "
+                          <CustomDateTimePicker
+                            :model-value="document.doc[field.fieldname]"
                             :placeholder="field.placeholder"
-                            placement="left-start"
-                            :hideIcon="true"
-                            @change="(v) => fieldChange(v, field)"
+                            :input-class="'border-none'"
+                            @update:modelValue="(v) => fieldChange(v, field)"
                           />
                         </div>
                         <div
                           v-else-if="field.fieldtype === 'Date'"
                           class="form-control"
                         >
-                          <DatePicker
-                            icon-left=""
-                            :value="document.doc[field.fieldname]"
-                            :formatter="(date) => getFormat(date, '', true)"
+                          <CustomDateTimePicker
+                            mode="date"
+                            :show-time="false"
+                            :model-value="document.doc[field.fieldname]"
                             :placeholder="field.placeholder"
-                            placement="left-start"
-                            :hideIcon="true"
-                            @change="(v) => fieldChange(v, field)"
+                            :input-class="'border-none'"
+                            @update:modelValue="(v) => fieldChange(v, field)"
                           />
                         </div>
                         <FormattedInput
@@ -337,6 +348,11 @@
                           :placeholder="field.placeholder"
                           :debounce="500"
                           @change.stop="fieldChange($event.target.value, field)"
+                          @mounted="() => {
+                            if (['first_name', 'last_name', 'email', 'mobile_no', 'pan_card_number', 'aadhaar_card_number'].includes(field.fieldname)) {
+                              console.log(`Field ${field.fieldname}:`, document.doc[field.fieldname])
+                            }
+                          }"
                         />
                       </div>
                       <div class="ml-1">
@@ -398,9 +414,10 @@ import { usersStore } from '@/stores/users'
 import { isMobileView } from '@/composables/settings'
 import { getFormat, evaluateDependsOnValue } from '@/utils'
 import { flt } from '@/utils/numberFormat.js'
-import { Tooltip, DateTimePicker, DatePicker } from 'frappe-ui'
+import { Tooltip } from 'frappe-ui'
 import { useDocument } from '@/data/document'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import CustomDateTimePicker from './CustomDateTimePicker.vue'
 
 const props = defineProps({
   sections: {
@@ -422,6 +439,11 @@ const props = defineProps({
   addContact: {
     type: Function,
   },
+  // Add new prop for document data
+  documentData: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['afterFieldChange', 'reload'])
@@ -429,14 +451,32 @@ const emit = defineEmits(['afterFieldChange', 'reload'])
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta(props.doctype)
 
-const { users, isManager, getUser } = usersStore()
+const { users, isManager, getUser, isAdmin } = usersStore()
 
 const showSidePanelModal = ref(false)
 
 let document = { doc: {} }
 let triggerOnChange
 
-if (props.docname) {
+// Use provided document data if available, otherwise fetch it
+if (props.documentData) {
+  document = { doc: props.documentData }
+  console.log('SidePanelLayout received documentData:', props.documentData)
+  console.log('Customer data in SidePanelLayout:', {
+    first_name: props.documentData.first_name,
+    last_name: props.documentData.last_name,
+    email: props.documentData.email,
+    mobile_no: props.documentData.mobile_no,
+    pan_card_number: props.documentData.pan_card_number,
+    aadhaar_card_number: props.documentData.aadhaar_card_number
+  })
+  // Create a simple triggerOnChange function for the provided data
+  triggerOnChange = (fieldname, value) => {
+    if (document.doc) {
+      document.doc[fieldname] = value
+    }
+  }
+} else if (props.docname) {
   let d = useDocument(props.doctype, props.docname)
   document = d.document
   triggerOnChange = d.triggerOnChange
@@ -458,6 +498,15 @@ const _sections = computed(() => {
     return _section
   })
 })
+
+// Watch for lead_category changes to update referral_through field state
+watch(() => document.doc?.lead_category, (newLeadCategory, oldLeadCategory) => {
+  if (newLeadCategory !== oldLeadCategory && props.doctype === 'CRM Lead') {
+    console.log('🔍 [SIDE PANEL] Lead category changed:', oldLeadCategory, '->', newLeadCategory)
+    // Force re-computation of sections to update field states
+    // The computed property will automatically re-evaluate
+  }
+}, { immediate: false })
 
 function parsedField(field) {
   if (field.fieldtype == 'Select' && typeof field.options === 'string') {
@@ -492,6 +541,42 @@ function parsedField(field) {
     ),
   }
 
+  // Ensure Lead Owner and Ticket Owner are read-only for non-admins in side panel too
+  if (['lead_owner', 'ticket_owner'].includes(field.fieldname)) {
+    if (!isAdmin()) {
+      _field.read_only = true
+      _field.description = 'Only Administrator can change this field'
+    }
+  }
+
+  // Special handling for lead_category and referral_through fields
+  if (field.fieldname === 'lead_category') {
+    // Make lead_category read-only in side panel
+    _field.read_only = true
+    _field.description = 'Lead category cannot be changed from this view'
+  }
+  
+  if (field.fieldname === 'referral_through' && document.doc?.lead_category) {
+    // Make referral_through read-only when lead_category is 'Direct'
+    _field.read_only = document.doc.lead_category === 'Direct'
+    _field.description = document.doc.lead_category === 'Direct' ? 
+      'Referral through is locked for Direct leads' : 
+      'Referral through can be updated for Indirect leads'
+  }
+  
+  if (field.fieldname === 'account_type') {
+    // Make account_type read-only in side panel
+    _field.read_only = true
+    _field.description = 'Account type cannot be changed from this view'
+  }
+  
+  if (field.fieldname === 'client_id') {
+    // Hide client_id field in side panel
+    _field.hidden = true
+  }
+  
+
+
   _field.visible = isFieldVisible(_field)
   return _field
 }
@@ -499,15 +584,31 @@ function parsedField(field) {
 async function fieldChange(value, df) {
   if (props.preview) return
 
-  await triggerOnChange(df.fieldname, value)
+  try {
+    await triggerOnChange(df.fieldname, value)
 
-  document.save.submit(null, {
-    onSuccess: () => {
-      emit('afterFieldChange', {
-        [df.fieldname]: value,
-      })
-    },
-  })
+    await document.save.submit(null, {
+      onSuccess: () => {
+        emit('afterFieldChange', {
+          [df.fieldname]: value,
+        })
+      },
+      onError: (error) => {
+        console.error('Error saving field change:', error)
+        
+        // Handle TimestampMismatchError
+        if (error.message?.includes('TimestampMismatchError') || 
+            error.message?.includes('timestamp')) {
+          // Refresh the document data
+          if (document.reload) {
+            document.reload()
+          }
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Error during field change:', error)
+  }
 }
 
 function parsedSection(section, editButtonAdded) {

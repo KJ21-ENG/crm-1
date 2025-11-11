@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "CRM Call Log Sync",
+    "slug": "crm-call-log-sync",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.anonymous.calllogmobileapp",
+      "permissions": [
+        "READ_CALL_LOG",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "POST_NOTIFICATIONS",
+        "SYSTEM_ALERT_WINDOW",
+        "WAKE_LOCK"
+      ],
+      "plugins": [
+        "./app.plugin.js"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.calllogmobileapp"
+    }
+  }
+}

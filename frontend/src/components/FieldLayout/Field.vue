@@ -1,11 +1,13 @@
 <template>
-  <div v-if="field.visible" class="field">
-    <div v-if="field.fieldtype != 'Check'" class="mb-2 text-sm text-ink-gray-5">
+  <div v-if="field.visible && shouldRenderField(field)" class="field w-full">
+    <div v-if="field.fieldtype != 'Check' && field.label" class="mb-2 text-sm text-ink-gray-5 truncate" style="min-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
       {{ __(field.label) }}
       <span
         v-if="
           field.reqd ||
-          (field.mandatory_depends_on && field.mandatory_via_depends_on)
+          (field.mandatory_depends_on && field.mandatory_via_depends_on) ||
+          field.fieldname === 'ticket_subject' ||
+          field.fieldname === 'ticket_subjects'
         "
         class="text-ink-red-2"
         >*</span
@@ -74,7 +76,28 @@
       class="flex gap-1"
       v-else-if="['Link', 'Dynamic Link'].includes(field.fieldtype)"
     >
+      <!-- Special handling for ticket subject field -->
+      <TicketSubjectInput
+        v-if="field.fieldname === 'ticket_subject' && field.options === 'CRM Ticket Subject'"
+        class="form-control flex-1 truncate"
+        :value="data[field.fieldname]"
+        :doctype="field.options"
+        :filters="field.filters"
+        @change="(v) => fieldChange(v, field)"
+        :placeholder="getPlaceholder(field)"
+      />
+      <!-- Special handling for account type: allow inline creation like ticket subject -->
+      <AccountTypeInput
+        v-else-if="field.fieldname === 'account_type' && field.options === 'CRM Account Type'"
+        class="form-control flex-1 truncate"
+        :value="data[field.fieldname]"
+        :doctype="field.options"
+        :filters="field.filters"
+        @change="(v) => fieldChange(v, field)"
+        :placeholder="getPlaceholder(field)"
+      />
       <Link
+        v-else
         class="form-control flex-1 truncate"
         :value="data[field.fieldname]"
         :doctype="
@@ -101,6 +124,7 @@
       v-else-if="field.fieldtype === 'Table MultiSelect'"
       v-model="data[field.fieldname]"
       :doctype="field.options"
+      :placeholder="getPlaceholder(field)"
       @change="(v) => fieldChange(v, field)"
     />
 
@@ -133,22 +157,28 @@
         </Tooltip>
       </template>
     </Link>
-    <DateTimePicker
-      v-else-if="field.fieldtype === 'Datetime'"
-      :value="data[field.fieldname]"
-      :formatter="(date) => getFormat(date, '', true, true)"
-      :placeholder="getPlaceholder(field)"
-      input-class="border-none"
-      @change="(v) => fieldChange(v, field)"
-    />
-    <DatePicker
-      v-else-if="field.fieldtype === 'Date'"
-      :value="data[field.fieldname]"
-      :formatter="(date) => getFormat(date, '', true)"
-      :placeholder="getPlaceholder(field)"
-      input-class="border-none"
-      @change="(v) => fieldChange(v, field)"
-    />
+    <div v-else-if="field.fieldtype === 'Datetime'" class="relative">
+      <div @click="focusDateTimeInput" class="absolute inset-0 cursor-pointer z-10"></div>
+      <CustomDateTimePicker
+        ref="dateTimeInputRef"
+        :model-value="data[field.fieldname]"
+        :placeholder="getPlaceholder(field)"
+        :input-class="'border-none'"
+        @update:modelValue="(v) => fieldChange(v, field)"
+      />
+    </div>
+    <div v-else-if="field.fieldtype === 'Date'" class="relative">
+      <CustomDateTimePicker
+        :model-value="data[field.fieldname]"
+        :placeholder="getPlaceholder(field)"
+        :input-class="'border-none'"
+        :mode="'date'"
+        :show-time="false"
+        :auto-default="false"
+        :year-quick-select="true"
+        @update:modelValue="(v) => fieldChange(v, field)"
+      />
+    </div>
     <FormControl
       v-else-if="
         ['Small Text', 'Text', 'Long Text', 'Code'].includes(field.fieldtype)
@@ -202,7 +232,17 @@
       :description="field.description"
       @change="fieldChange(flt($event.target.value), field)"
     />
-    <FormControl
+    <Button
+      v-else-if="field.fieldtype === 'Button'"
+      :variant="field.buttonVariant || 'outline'"
+      :size="field.buttonSize || 'sm'"
+      :label="field.buttonLabel || field.label"
+      :icon="field.buttonIcon"
+      :disabled="Boolean(field.read_only)"
+      @click="field.onClick && field.onClick()"
+      class="mt-1"
+    />
+    <!-- <FormControl
       v-else
       type="text"
       :placeholder="getPlaceholder(field)"
@@ -210,7 +250,33 @@
       :disabled="Boolean(field.read_only)"
       :description="field.description"
       @change="fieldChange($event.target.value, field)"
-    />
+    /> -->
+    <div v-else class="flex items-center gap-2 w-full">
+      <FormControl
+        class="flex-1"
+        type="text"
+        :placeholder="getPlaceholder(field)"
+        :value="getDataValue(data[field.fieldname], field)"
+        :disabled="Boolean(field.read_only)"
+        :description="field.description"
+        @change="fieldChange($event.target.value, field)"
+      />
+
+      <!-- Only show Swap for mobile_no -->
+      <Tooltip text="Swap Mobile with Alternate">
+        <div @click="$emit('swap')" class="inline-flex">
+          <Button
+            v-if="field.fieldname === 'mobile_no'"
+            size="sm"
+            variant="outline"
+            class="!p-1"
+          >
+            <FeatherIcon name="repeat" class="h-2 w-2" />
+          </Button>
+        </div>
+      </Tooltip>
+    </div>
+
   </div>
 </template>
 <script setup>
@@ -221,6 +287,8 @@ import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import TableMultiselectInput from '@/components/Controls/TableMultiselectInput.vue'
 import Link from '@/components/Controls/Link.vue'
+import TicketSubjectInput from '@/components/Controls/TicketSubjectInput.vue'
+import AccountTypeInput from '@/components/Controls/AccountTypeInput.vue'
 import Grid from '@/components/Controls/Grid.vue'
 import { createDocument } from '@/composables/document'
 import { getFormat, evaluateDependsOnValue } from '@/utils'
@@ -228,8 +296,9 @@ import { flt } from '@/utils/numberFormat.js'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { useDocument } from '@/data/document'
-import { Tooltip, DatePicker, DateTimePicker } from 'frappe-ui'
-import { computed, provide, inject } from 'vue'
+import { Tooltip } from 'frappe-ui'
+import { ref, computed, provide, inject, nextTick } from 'vue'
+import CustomDateTimePicker from '../CustomDateTimePicker.vue'
 
 const props = defineProps({
   field: Object,
@@ -315,19 +384,40 @@ const field = computed(() => {
 
 function isFieldVisible(field) {
   if (preview.value) return true
-  return (
-    (field.fieldtype == 'Check' ||
-      (field.read_only && data.value[field.fieldname]) ||
-      !field.read_only) &&
-    (!field.depends_on || field.display_via_depends_on) &&
-    !field.hidden
-  )
+  // Always respect depends_on/hidden, but do not hide read-only fields when empty
+  return (!field.depends_on || field.display_via_depends_on) && !field.hidden
+}
+
+const shouldRenderField = (field) => {
+  // Don't render fields without labels or with empty labels
+  if (!field.label || field.label.trim() === '') {
+    return false
+  }
+  
+  // Don't render hidden fields
+  if (field.hidden) {
+    return false
+  }
+  
+  // Section breaks and column breaks should not render as input fields
+  if (['Section Break', 'Column Break', 'Tab Break'].includes(field.fieldtype)) {
+    return false
+  }
+  
+  return true
 }
 
 const getPlaceholder = (field) => {
   if (field.placeholder) {
     return __(field.placeholder)
   }
+  
+  // Only show placeholder if field has a proper label
+  if (!field.label || field.label.trim() === '') {
+    console.warn('Field without proper label detected:', field)
+    return ''
+  }
+  
   if (['Select', 'Link'].includes(field.fieldtype)) {
     return __('Select {0}', [__(field.label)])
   } else {
@@ -348,6 +438,16 @@ function getDataValue(value, field) {
     return value || 0
   }
   return value
+}
+
+const dateTimeInputRef = ref(null)
+function focusDateTimeInput() {
+  nextTick(() => {
+    if (dateTimeInputRef.value && dateTimeInputRef.value.$el) {
+      const input = dateTimeInputRef.value.$el.querySelector('input')
+      if (input) input.focus()
+    }
+  })
 }
 </script>
 <style scoped>

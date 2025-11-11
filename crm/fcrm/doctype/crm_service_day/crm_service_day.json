@@ -22,6 +22,14 @@
    "reqd": 1
   },
   {
+   "default": "1",
+   "fieldname": "office_open",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Office Open",
+   "description": "If unchecked, office is considered closed for this day and reassignments are skipped"
+  },
+  {
    "fieldname": "section_break_uegc",
    "fieldtype": "Section Break"
   },
@@ -52,7 +60,20 @@
  "module": "FCRM",
  "name": "CRM Service Day",
  "owner": "Administrator",
- "permissions": [],
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
+  }
+ ],
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -19,25 +19,40 @@ def get_users():
 		distinct=True,
 	).run(as_dict=1)
 
+	# Fetch enabled roles and which have desk access
+	enabled_roles = frappe.get_all(
+		"Role",
+		filters={"disabled": 0},
+		fields=["name", "desk_access"],
+	)
+	enabled_role_names = {r.name for r in enabled_roles}
+	enabled_desk_roles = {r.name for r in enabled_roles if int(r.desk_access or 0) == 1}
+
 	for user in users:
 		if frappe.session.user == user.name:
 			user.session_user = True
 
-		user.is_manager = "Sales Manager" in frappe.get_roles(user.name)
+		user_roles = frappe.get_roles(user.name)
+		user.is_manager = ("Sales Manager" in user_roles) or ("Support Manager" in user_roles)
 		user.is_admin = user.name == "Administrator"
 
-		user.roles = frappe.get_roles(user.name)
+		user.roles = user_roles
 
+		# Primary role selection (generic):
+		# 1) System Manager, else first enabled desk-access role, else first enabled role, else Guest
 		user.role = ""
-
-		if "System Manager" in user.roles:
+		if "System Manager" in user_roles:
 			user.role = "System Manager"
-		elif "Sales Manager" in user.roles:
-			user.role = "Sales Manager"
-		elif "Sales User" in user.roles:
-			user.role = "Sales User"
-		elif "Guest" in user.roles:
-			user.role = "Guest"
+		else:
+			desk_matches = [r for r in user_roles if r in enabled_desk_roles]
+			if desk_matches:
+				user.role = desk_matches[0]
+			else:
+				any_enabled = [r for r in user_roles if r in enabled_role_names]
+				if any_enabled:
+					user.role = any_enabled[0]
+				elif "Guest" in user_roles:
+					user.role = "Guest"
 
 		if frappe.session.user == user.name:
 			user.session_user = True
@@ -46,9 +61,9 @@ def get_users():
 
 	crm_users = []
 
-	# crm users are users with role Sales User or Sales Manager
+	# CRM users are System Managers or users with any enabled desk-access role
 	for user in users:
-		if "Sales User" in user.roles or "Sales Manager" in user.roles:
+		if ("System Manager" in user.roles) or any(role in enabled_desk_roles for role in user.roles):
 			crm_users.append(user)
 
 	return users, crm_users

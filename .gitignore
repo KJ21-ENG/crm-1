@@ -33,13 +33,102 @@ components.d.ts
 dev-dist/
 tags/
 build/
+app_old_versions/
 
 # CRM Specific  
 crm/public/frontend/
 frontend/yarn.lock
 crm/www/crm.html
 
+# Shell Scripts
+start_crm_dev.sh
+stop_crm_dev.sh
+status_crm_dev.sh
+
 # Temporary Files
 *.tmp
 *.bak
 *~
+
+#document
+project_analysis.md
+
+#whatsapp
+.wwebjs_cache/
+.wwebjs_cache
+.wwebjs_cache/
+.wwebjs_cache/
+.wwebjs
+.wwebjs_auth
+.wwebjs_auth/
+
+# Expo/React Native
+.expo/
+.expo/devices.json
+
+# React Native Android Build Artifacts
+call-log-mobile-app/android/app/build/
+call-log-mobile-app/android/build/
+call-log-mobile-app/android/.gradle/
+call-log-mobile-app/android/local.properties
+call-log-mobile-app/android/app/debug.keystore
+call-log-mobile-app/android/*.iml
+call-log-mobile-app/android/.idea/
+
+# Generated Android Assets (keep source, ignore generated)
+call-log-mobile-app/android/app/src/main/res/mipmap-*/ic_launcher*.webp
+call-log-mobile-app/android/app/src/main/res/mipmap-*/ic_launcher*.png
+call-log-mobile-app/android/app/src/main/res/drawable*/splashscreen_logo.png
+
+# Keep the source Android project but ignore build outputs
+!call-log-mobile-app/android/app/src/main/java/
+!call-log-mobile-app/android/app/src/main/AndroidManifest.xml
+!call-log-mobile-app/android/build.gradle
+!call-log-mobile-app/android/app/build.gradle
+!call-log-mobile-app/android/settings.gradle
+!call-log-mobile-app/android/gradle.properties
+!call-log-mobile-app/android/gradlew
+!call-log-mobile-app/android/gradlew.bat
+!call-log-mobile-app/android/proguard-rules.pro
+
+# Flutter Build Artifacts
+flutter-call-log-mobile-app/.dart_tool/
+flutter-call-log-mobile-app/.flutter-plugins
+flutter-call-log-mobile-app/.flutter-plugins-dependencies
+flutter-call-log-mobile-app/.packages
+flutter-call-log-mobile-app/build/
+flutter-call-log-mobile-app/ios/Pods/
+flutter-call-log-mobile-app/ios/.symlinks/
+flutter-call-log-mobile-app/ios/Flutter/Flutter.framework/
+flutter-call-log-mobile-app/ios/Flutter/Flutter.podspec
+flutter-call-log-mobile-app/ios/Flutter/Generated.xcconfig
+flutter-call-log-mobile-app/ios/Flutter/ephemeral/
+flutter-call-log-mobile-app/ios/Runner/GeneratedPluginRegistrant.*
+flutter-call-log-mobile-app/android/.gradle/
+flutter-call-log-mobile-app/android/local.properties
+flutter-call-log-mobile-app/android/app/build/
+flutter-call-log-mobile-app/android/build/
+flutter-call-log-mobile-app/android/captures/
+flutter-call-log-mobile-app/android/**/generated/**
+flutter-call-log-mobile-app/android/**/intermediates/**
+flutter-call-log-mobile-app/android/**/outputs/**
+flutter-call-log-mobile-app/android/**/release/**
+flutter-call-log-mobile-app/**/Thumbs.db
+flutter-call-log-mobile-app/**/.DS_Store
+
+# Keep Flutter source, Android and iOS project files
+!flutter-call-log-mobile-app/lib/**
+!flutter-call-log-mobile-app/pubspec.yaml
+!flutter-call-log-mobile-app/README.md
+!flutter-call-log-mobile-app/android/app/src/main/**
+!flutter-call-log-mobile-app/android/app/src/main/AndroidManifest.xml
+!flutter-call-log-mobile-app/android/build.gradle
+!flutter-call-log-mobile-app/android/app/build.gradle
+!flutter-call-log-mobile-app/android/settings.gradle
+!flutter-call-log-mobile-app/android/gradle.properties
+!flutter-call-log-mobile-app/android/gradlew
+!flutter-call-log-mobile-app/android/gradlew.bat
+!flutter-call-log-mobile-app/android/proguard-rules.pro
+!flutter-call-log-mobile-app/ios/Runner/**
+!flutter-call-log-mobile-app/ios/Runner.xcodeproj/**
+!flutter-call-log-mobile-app/ios/Runner.xcworkspace/**

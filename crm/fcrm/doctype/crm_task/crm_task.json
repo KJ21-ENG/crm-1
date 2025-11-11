@@ -17,6 +17,8 @@
   "assigned_to",
   "status",
   "due_date",
+  "notification_time",
+  "notification_status",
   "section_break_bzhd",
   "description"
  ],
@@ -61,6 +63,22 @@
    "fieldname": "due_date",
    "fieldtype": "Datetime",
    "label": "Due Date"
+  },
+  {
+   "fieldname": "notification_time",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Notification Time",
+   "read_only": 1
+  },
+  {
+   "default": "Not Sent",
+   "fieldname": "notification_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Notification Status",
+   "options": "Not Sent\nSent\nRead",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_bzhd",
@@ -117,6 +135,43 @@
    "role": "Sales Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "role": "Support User"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "role": "Support Manager"
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
   }
  ],
  "sort_field": "modified",

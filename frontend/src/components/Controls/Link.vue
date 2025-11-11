@@ -191,4 +191,9 @@ const labelClasses = computed(() => {
     'text-ink-gray-5',
   ]
 })
+
+// Expose a minimal API for parents (e.g., TableMultiselectInput) to refresh
+defineExpose({
+  reload: () => options.reload(),
+})
 </script>

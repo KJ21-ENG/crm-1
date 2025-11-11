@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 
 class ApiService {
   constructor() {
-    this.baseURL = '';
+    // Default to production CRM base URL; can be overridden via AsyncStorage 'server_url'
+    this.baseURL = 'https://eshin.in';
     this.sessionId = null;
   }
 
@@ -13,6 +14,7 @@ class ApiService {
       const serverUrl = await AsyncStorage.getItem('server_url');
       const sessionId = await SecureStore.getItemAsync('session_id');
       
+      // If a server URL was previously stored, honor it; otherwise keep default
       if (serverUrl) {
         this.baseURL = serverUrl;
       }

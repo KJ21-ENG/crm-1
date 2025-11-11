@@ -29,8 +29,8 @@
         <FieldLayout
           v-if="tabs.data?.length"
           :tabs="tabs.data"
-          :data="organization.doc"
-          doctype="CRM Organization"
+          v-model="organization.doc"
+          :doctype="'CRM Organization'"
         />
         <ErrorMessage class="mt-8" v-if="error" :message="__(error)" />
       </div>
@@ -131,7 +131,7 @@ const tabs = createResource({
   params: { doctype: 'CRM Organization', type: 'Quick Entry' },
   auto: true,
   transform: (_tabs) => {
-    return _tabs.forEach((tab) => {
+    _tabs.forEach((tab) => {
       tab.sections.forEach((section) => {
         section.columns.forEach((column) => {
           column.fields.forEach((field) => {
@@ -149,11 +149,23 @@ const tabs = createResource({
         })
       })
     })
+    return _tabs
   },
 })
 
 onMounted(() => {
-  organization.doc = { no_of_employees: '1-10' }
+  // Initialize organization document with required properties
+  organization.doc = {
+    doctype: 'CRM Organization',
+    name: '', // Required for Field.vue
+    organization_name: '',
+    website: '',
+    no_of_employees: '1-10',
+    annual_revenue: '',
+    // ... other default values
+  }
+  
+  // Merge with any provided data
   Object.assign(organization.doc, props.data)
 })
 

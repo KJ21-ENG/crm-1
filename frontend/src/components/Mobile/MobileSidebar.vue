@@ -17,23 +17,7 @@
             <UserDropdown class="p-2" :isCollapsed="!sidebarOpened" />
           </div>
           <div class="flex-1 overflow-y-auto">
-            <div class="mb-3 flex flex-col">
-              <SidebarLink
-                id="notifications-btn"
-                :label="__('Notifications')"
-                :icon="NotificationsIcon"
-                :to="{ name: 'Notifications' }"
-                class="relative mx-2 my-0.5"
-              >
-                <template #right>
-                  <Badge
-                    v-if="unreadNotificationsCount"
-                    :label="unreadNotificationsCount"
-                    variant="subtle"
-                  />
-                </template>
-              </SidebarLink>
-            </div>
+            <div class="mb-3 flex flex-col" />
             <div v-for="view in allViews" :key="view.label">
               <Section
                 :label="view.name"
@@ -94,16 +78,19 @@ import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import PinIcon from '@/components/Icons/PinIcon.vue'
 import UserDropdown from '@/components/UserDropdown.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
-import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
-import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
+// Commented out - Deal module not in use
+// import DealsIcon from '@/components/Icons/DealsIcon.vue'
+// Commented out - Contacts module not in use
+// import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
+import CustomersIcon from '@/components/Icons/CustomersIcon.vue'
+// Commented out - Organizations module not in use
+// import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
-import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
+import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { viewsStore } from '@/stores/views'
-import { unreadNotificationsCount } from '@/stores/notifications'
 import { createResource } from 'frappe-ui'
 import { TrialBanner } from 'frappe-ui/frappe'
 import { computed, h, provide } from 'vue'
@@ -113,24 +100,42 @@ const { getPinnedViews, getPublicViews } = viewsStore()
 
 const links = [
   {
+    label: 'Dashboard',
+    icon: 'bar-chart-2',
+    to: 'Dashboard',
+  },
+  {
     label: 'Leads',
     icon: LeadsIcon,
     to: 'Leads',
   },
+  // Commented out - Deal module not in use
+  // {
+  //   label: 'Deals',
+  //   icon: DealsIcon,
+  //   to: 'Deals',
+  // },
+  // Commented out - Contacts module not in use
+  // {
+  //   label: 'Contacts',
+  //   icon: ContactsIcon,
+  //   to: 'Contacts',
+  // },
   {
-    label: 'Deals',
-    icon: DealsIcon,
-    to: 'Deals',
+    label: 'Customers',
+    icon: CustomersIcon,
+    to: 'Customers',
   },
+  // Commented out - Organizations module not in use
+  // {
+  //   label: 'Organizations',
+  //   icon: OrganizationsIcon,
+  //   to: 'Organizations',
+  // },
   {
-    label: 'Contacts',
-    icon: ContactsIcon,
-    to: 'Contacts',
-  },
-  {
-    label: 'Organizations',
-    icon: OrganizationsIcon,
-    to: 'Organizations',
+    label: 'Support Pages',
+    icon: SupportPagesIcon,
+    to: 'Support Pages',
   },
   {
     label: 'Notes',
@@ -201,12 +206,17 @@ function getIcon(routeName, icon) {
   switch (routeName) {
     case 'Leads':
       return LeadsIcon
-    case 'Deals':
-      return DealsIcon
-    case 'Contacts':
-      return ContactsIcon
-    case 'Organizations':
-      return OrganizationsIcon
+    // Commented out - Deal module not in use
+    // case 'Deals':
+    //   return DealsIcon
+    // Commented out - Contacts module not in use
+    // case 'Contacts':
+    //   return ContactsIcon
+    case 'Customers':
+      return CustomersIcon
+    // Commented out - Organizations module not in use
+    // case 'Organizations':
+    //   return OrganizationsIcon
     case 'Notes':
       return NoteIcon
     case 'Call Logs':

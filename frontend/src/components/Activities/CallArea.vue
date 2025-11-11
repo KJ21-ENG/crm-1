@@ -2,24 +2,26 @@
   <div @click="showCallLogDetailModal = true" class="cursor-pointer">
     <div class="mb-1 flex items-center justify-stretch gap-2 py-1 text-base">
       <div class="inline-flex items-center flex-wrap gap-1 text-ink-gray-5">
-        <Avatar
-          :image="activity._caller.image"
-          :label="activity._caller.label"
-          size="md"
-        />
-        <span class="font-medium text-ink-gray-8 ml-1">
-          {{ activity._caller.label }}
-        </span>
-        <span>{{
-          activity.type == 'Incoming'
-            ? __('has reached out')
-            : __('has made a call')
-        }}</span>
+        <template v-if="activity._caller">
+          <Avatar
+            :image="activity._caller.image"
+            :label="activity._caller.label"
+            size="md"
+          />
+          <span class="font-medium text-ink-gray-8 ml-1">
+            {{ activity._caller.label }}
+          </span>
+          <span>{{
+            activity.type == 'Incoming'
+              ? __('has reached out')
+              : __('has made a call')
+          }}</span>
+        </template>
       </div>
       <div class="ml-auto whitespace-nowrap">
-        <Tooltip :text="formatDate(activity.creation)">
+        <Tooltip :text="formatDate(activity.start_time || activity.creation)">
           <div class="text-sm text-ink-gray-5">
-            {{ __(timeAgo(activity.creation)) }}
+            {{ __(timeAgo(activity.start_time || activity.creation)) }}
           </div>
         </Tooltip>
       </div>
@@ -36,9 +38,26 @@
                 : __('Outbound Call')
             }}
           </div>
+          <!-- Special indicator for original call that created ticket -->
+          <Badge
+            v-if="activity.data?.is_original"
+            label="Original"
+            theme="blue"
+            variant="subtle"
+            class="text-xs"
+          />
+          <!-- Indicator for calls during ticket lifecycle -->
+          <Badge
+            v-else-if="activity.data?.description"
+            label="Lifecycle"
+            theme="gray"
+            variant="subtle"
+            class="text-xs"
+          />
         </div>
         <div>
           <MultipleAvatar
+            v-if="activity._caller && activity._receiver"
             :avatars="[
               {
                 image: activity._caller.image,
@@ -56,13 +75,13 @@
         </div>
       </div>
       <div class="flex items-center flex-wrap gap-2">
-        <Badge :label="formatDate(activity.creation, 'MMM D, dddd')">
+        <Badge :label="formatDate(activity.start_time || activity.creation, 'MMM D, h:mm A')">
           <template #prefix>
             <CalendarIcon class="size-3" />
           </template>
         </Badge>
         <Badge
-          v-if="activity.status == 'Completed'"
+          v-if="status.label == 'Completed'"
           :label="activity._duration"
         >
           <template #prefix>
@@ -79,10 +98,15 @@
             <PlayIcon class="size-3" />
           </template>
         </Badge>
-        <Badge
-          :label="statusLabelMap[activity.status]"
-          :theme="statusColorMap[activity.status]"
-        />
+        <div class="inline-flex items-center gap-1">
+          <Badge
+            :label="status.label"
+            :theme="status.color"
+          />
+          <Tooltip :text="__('Original status: {0}', [activity.status || __('Unknown')])">
+            <FeatherIcon name="info" class="size-3 text-ink-gray-5" />
+          </Tooltip>
+        </div>
       </div>
       <div
         v-if="activity.show_recording && activity.recording_url"
@@ -112,10 +136,10 @@ import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import AudioPlayer from '@/components/Activities/AudioPlayer.vue'
 import CallLogDetailModal from '@/components/Modals/CallLogDetailModal.vue'
 import CallLogModal from '@/components/Modals/CallLogModal.vue'
-import { statusLabelMap, statusColorMap } from '@/utils/callLog.js'
+import { getCallLogDetail } from '@/utils/callLog.js'
 import { formatDate, timeAgo } from '@/utils'
 import { Avatar, Badge, Tooltip, createResource } from 'frappe-ui'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   activity: Object,
@@ -129,4 +153,7 @@ const callLog = createResource({
 })
 const showCallLogDetailModal = ref(false)
 const showCallLogModal = ref(false)
+
+// Unified status computation (handles duration + direction)
+const status = computed(() => getCallLogDetail('status', props.activity))
 </script>

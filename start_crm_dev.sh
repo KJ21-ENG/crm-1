@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 🏢 Eshin Broking CRM Development Environment Startup Script
-# This script starts all required services for Eshin Broking CRM development
+# 🏢 CRM Development Environment Startup Script
+# This script starts all required services for CRM development
 
 set -e  # Exit on any error
 
@@ -12,11 +12,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration - Updated for Eshin Broking
-BENCH_PATH="/Volumes/MacSSD/Development/CursorAI_Project/frappe-bench"
+# Configuration
+BENCH_PATH="/Volumes/MacSSD/Development/CursorAI_Project/frappe-crm-bench"
 CRM_PATH="$BENCH_PATH/apps/crm"
 
-echo -e "${BLUE}🏢 Starting Eshin Broking CRM Development Environment...${NC}\n"
+echo -e "${BLUE}🏢 Starting CRM Development Environment...${NC}\n"
 
 # Function to print status
 print_status() {
@@ -56,35 +56,49 @@ wait_for_service() {
     return 1
 }
 
-# 1. Start MariaDB
-echo -e "${BLUE}📊 Starting MariaDB...${NC}"
-if check_service "mariadb"; then
-    print_warning "MariaDB already running"
+# Kill existing processes
+echo -e "${BLUE}🧹 Cleaning up existing processes...${NC}"
+pkill -f "redis-server" || true
+pkill -f "bench serve" || true
+pkill -f "bench start" || true
+pkill -f "yarn.*dev" || true
+print_status "Cleanup completed"
+
+# 1. Start Redis Cache
+echo -e "${BLUE}💾 Starting Redis Cache...${NC}"
+if check_service "redis-server.*13001"; then
+    print_warning "Redis Cache already running"
 else
-    brew services start mariadb
-    if wait_for_service "mariadb"; then
-        print_status "MariaDB started successfully"
+    screen -dmS redis_cache bash -c "cd '$BENCH_PATH' && redis-server config/redis_cache.conf"
+    if wait_for_service "redis-server.*13001"; then
+        print_status "Redis Cache started successfully"
     else
-        print_error "Failed to start MariaDB"
+        print_error "Failed to start Redis Cache"
         exit 1
     fi
 fi
 
-# 2. Start Redis (default instance)
-echo -e "${BLUE}🔄 Starting Redis (default)...${NC}"
-if check_service "redis-server.*6379"; then
-    print_warning "Redis (default) already running"
+# 2. Start Redis Queue
+echo -e "${BLUE}📋 Starting Redis Queue...${NC}"
+if check_service "redis-server.*11001"; then
+    print_warning "Redis Queue already running"
 else
-    brew services start redis
-    if wait_for_service "redis-server.*6379"; then
-        print_status "Redis (default) started successfully"
+    screen -dmS redis_queue bash -c "cd '$BENCH_PATH' && redis-server config/redis_queue.conf"
+    if wait_for_service "redis-server.*11001"; then
+        print_status "Redis Queue started successfully"
     else
-        print_error "Failed to start Redis (default)"
+        print_error "Failed to start Redis Queue"
         exit 1
     fi
 fi
 
-# 3. Navigate to bench directory
+# 3. Configure Redis instances
+echo -e "${BLUE}🔧 Configuring Redis instances...${NC}"
+redis-cli -p 13001 CONFIG SET stop-writes-on-bgsave-error no > /dev/null 2>&1
+redis-cli -p 11001 CONFIG SET stop-writes-on-bgsave-error no > /dev/null 2>&1
+print_status "Redis instances configured successfully"
+
+# 4. Navigate to bench directory
 if [ ! -d "$BENCH_PATH" ]; then
     print_error "Bench directory not found: $BENCH_PATH"
     exit 1
@@ -93,67 +107,24 @@ fi
 cd "$BENCH_PATH"
 print_status "Changed to bench directory: $BENCH_PATH"
 
-# 4. Start Redis Cache (port 13000)
-echo -e "${BLUE}💾 Starting Redis Cache (port 13000)...${NC}"
-if check_service "redis-server.*13000"; then
-    print_warning "Redis Cache already running"
-else
-    redis-server config/redis_cache.conf --daemonize yes
-    sleep 2
-    if check_service "redis-server.*13000"; then
-        print_status "Redis Cache started successfully"
-    else
-        print_error "Failed to start Redis Cache"
-        exit 1
-    fi
-fi
-
-# 5. Start Redis Queue (port 11000)
-echo -e "${BLUE}📋 Starting Redis Queue (port 11000)...${NC}"
-if check_service "redis-server.*11000"; then
-    print_warning "Redis Queue already running"
-else
-    redis-server config/redis_queue.conf --daemonize yes
-    sleep 2
-    if check_service "redis-server.*11000"; then
-        print_status "Redis Queue started successfully"
-    else
-        print_error "Failed to start Redis Queue"
-        exit 1
-    fi
-fi
-
-# 5.1. Configure Redis instances to prevent disk persistence issues
-echo -e "${BLUE}🔧 Configuring Redis instances...${NC}"
-redis-cli -p 11000 CONFIG SET stop-writes-on-bgsave-error no > /dev/null 2>&1
-redis-cli -p 13000 CONFIG SET stop-writes-on-bgsave-error no > /dev/null 2>&1
-print_status "Redis instances configured successfully"
-
-# 6. Check if bench is already running
+# 5. Check if bench is already running
 echo -e "${BLUE}🏗️  Checking Frappe Bench status...${NC}"
-if check_service "frappe.*serve.*8000"; then
+if check_service "bench serve.*8001"; then
     print_warning "Frappe Bench already running"
     BENCH_RUNNING=true
 else
     BENCH_RUNNING=false
 fi
 
-# 7. Check if frontend dev server is running
-echo -e "${BLUE}🎨 Checking Frontend Dev Server status...${NC}"
-if check_service "node.*vite"; then
-    print_warning "Frontend Dev Server already running"
-    FRONTEND_RUNNING=true
-else
-    FRONTEND_RUNNING=false
-fi
-
-# 8. Start Frappe Bench if not running
+# 6. Start Frappe Bench if not running
 if [ "$BENCH_RUNNING" = false ]; then
     echo -e "${BLUE}🏗️  Starting Frappe Bench...${NC}"
-    # Create a detached screen session for bench
-    screen -dmS frappe_bench bash -c "cd '$BENCH_PATH' && bench start"
+    # Start bench with our specific configuration
+    export FRAPPE_SITE=crm.localhost
+    screen -dmS frappe_bench bash -c "cd '$BENCH_PATH' && bench serve --port 8001"
     sleep 5
-    if check_service "frappe.*serve.*8000"; then
+    
+    if check_service "bench serve.*8001"; then
         print_status "Frappe Bench started in background (screen session: frappe_bench)"
     else
         print_error "Failed to start Frappe Bench"
@@ -161,18 +132,50 @@ if [ "$BENCH_RUNNING" = false ]; then
     fi
 fi
 
-# 9. Start Frontend Dev Server if not running
-if [ "$FRONTEND_RUNNING" = false ]; then
-    echo -e "${BLUE}🎨 Starting Frontend Dev Server...${NC}"
-    if [ ! -d "$CRM_PATH" ]; then
-        print_error "CRM app directory not found: $CRM_PATH"
+# 7. Start Frappe Scheduler
+echo -e "${BLUE}⏰ Starting Frappe Scheduler...${NC}"
+if check_service "frappe.*schedule"; then
+    print_warning "Frappe Scheduler already running"
+else
+    screen -dmS frappe_scheduler bash -c "cd '$BENCH_PATH' && bench schedule"
+    sleep 3
+    if check_service "frappe.*schedule"; then
+        print_status "Frappe Scheduler started in background (screen session: frappe_scheduler)"
+    else
+        print_error "Failed to start Frappe Scheduler"
+        exit 1
+    fi
+fi
+
+# 8. Start Task Notification Worker
+echo -e "${BLUE}🔔 Starting Task Notification Worker...${NC}"
+if check_service "frappe.*worker.*default"; then
+    print_warning "Task Notification Worker already running"
+else
+    screen -dmS crm_worker bash -c "cd '$BENCH_PATH' && bench worker --queue default"
+    sleep 3
+    if check_service "frappe.*worker.*default"; then
+        print_status "Task Notification Worker started in background (screen session: crm_worker)"
+    else
+        print_error "Failed to start Task Notification Worker"
+        exit 1
+    fi
+fi
+
+# 9. Start Frontend Development Server
+echo -e "${BLUE}🎨 Starting Frontend Dev Server...${NC}"
+if check_service "yarn.*dev"; then
+    print_warning "Frontend Dev Server already running"
+else
+    if [ ! -d "$CRM_PATH/frontend" ]; then
+        print_error "Frontend directory not found: $CRM_PATH/frontend"
         exit 1
     fi
     
     # Create a detached screen session for frontend
-    screen -dmS crm_frontend bash -c "cd '$CRM_PATH' && yarn dev"
-    sleep 3
-    if check_service "node.*vite"; then
+    screen -dmS crm_frontend bash -c "cd '$CRM_PATH/frontend' && yarn && yarn dev"
+    sleep 5
+    if check_service "yarn.*dev"; then
         print_status "Frontend Dev Server started in background (screen session: crm_frontend)"
     else
         print_error "Failed to start Frontend Dev Server"
@@ -180,16 +183,17 @@ if [ "$FRONTEND_RUNNING" = false ]; then
     fi
 fi
 
-# 10. Verify all services are running
-echo -e "\n${BLUE}🔍 Verifying all services...${NC}"
+
+# 11. Verify all services are running
+echo -e "\n${BLUE}🔍 Verifying services...${NC}"
 
 services=(
-    "mariadb:MariaDB Database"
-    "redis-server.*6379:Redis Default"
-    "redis-server.*11000:Redis Queue"
-    "redis-server.*13000:Redis Cache"
-    "frappe.*serve.*8000:Frappe Bench"
-    "node.*vite:Frontend Dev Server"
+    "redis-server.*13001:Redis Cache"
+    "redis-server.*11001:Redis Queue"
+    "bench serve.*8001:Frappe Bench"
+    "frappe.*schedule:Frappe Scheduler"
+    "frappe.*worker.*default:Task Notification Worker"
+    "yarn.*dev:Frontend Dev Server"
 )
 
 all_running=true
@@ -207,27 +211,20 @@ if [ "$all_running" = true ]; then
     echo -e "\n${GREEN}🎉 SUCCESS! All services are running!${NC}\n"
     
     echo -e "${BLUE}📱 Access your CRM:${NC}"
-    echo -e "   ${GREEN}🔥 Development (Hot Reload): ${NC}http://localhost:8080"
-    echo -e "   ${GREEN}🌐 Production Build:         ${NC}http://127.0.0.1:8000/crm"
-    echo -e "   ${GREEN}⚙️  Admin Panel:             ${NC}http://127.0.0.1:8000"
-    
-    echo -e "\n${BLUE}🔐 Login Credentials:${NC}"
-    echo -e "   ${GREEN}Username: ${NC}Administrator"
-    echo -e "   ${GREEN}Password: ${NC}admin"
+    echo -e "   ${GREEN}🌐 Backend Server:     ${NC}http://192.168.1.71:8001"
+    echo -e "   ${GREEN}🌐 Frontend Dev:       ${NC}http://192.168.1.71:5173"
+    echo -e "   ${GREEN}🌐 Local Backend:      ${NC}http://127.0.0.1:8001"
+    echo -e "   ${GREEN}🌐 Local Frontend:     ${NC}http://127.0.0.1:5173"
     
     echo -e "\n${BLUE}📱 Useful Commands:${NC}"
-    echo -e "   ${GREEN}View Bench Logs:    ${NC}screen -r frappe_bench"
-    echo -e "   ${GREEN}View Frontend Logs: ${NC}screen -r crm_frontend"
-    echo -e "   ${GREEN}Stop All Services:  ${NC}./stop_crm_dev.sh"
-    echo -e "   ${GREEN}List Screen Sessions:${NC}screen -ls"
-    
-    # Optional: Open browser automatically
-    read -p "$(echo -e ${YELLOW}🌐 Open CRM in browser automatically? [y/N]: ${NC})" -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        sleep 2
-        open "http://localhost:8080" 2>/dev/null || print_warning "Could not open browser automatically"
-    fi
+    echo -e "   ${GREEN}Redis Cache Logs:     ${NC}screen -r redis_cache"
+    echo -e "   ${GREEN}Redis Queue Logs:     ${NC}screen -r redis_queue"
+    echo -e "   ${GREEN}Backend Logs:         ${NC}screen -r frappe_bench"
+    echo -e "   ${GREEN}Scheduler Logs:       ${NC}screen -r frappe_scheduler"
+    echo -e "   ${GREEN}Notification Worker:  ${NC}screen -r crm_worker"
+    echo -e "   ${GREEN}Frontend Logs:        ${NC}screen -r crm_frontend"
+    echo -e "   ${GREEN}List Sessions:        ${NC}screen -ls"
+    echo -e "   ${GREEN}Stop All:             ${NC}./stop_crm_dev.sh"
     
 else
     echo -e "\n${RED}❌ Some services failed to start. Please check the logs.${NC}"

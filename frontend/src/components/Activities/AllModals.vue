@@ -48,7 +48,7 @@ function showTask(t) {
     assigned_to: '',
     due_date: '',
     priority: 'Low',
-    status: 'Backlog',
+    status: 'Todo',
   }
   showTaskModal.value = true
 }
@@ -103,7 +103,7 @@ const route = useRoute()
 const router = useRouter()
 
 function redirect(tabName) {
-  if (route.name == 'Lead' || route.name == 'Deal') {
+  if (route.name == 'Lead') {
     let hash = '#' + tabName
     if (route.hash != hash) {
       router.push({ ...route, hash })

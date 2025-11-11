@@ -8,17 +8,8 @@
         v-if="callLogsListView?.customListActions"
         :actions="callLogsListView.customListActions"
       />
-      <Button variant="solid" :label="__('Create')" @click="createCallLog">
+      <Button v-if="canWriteCallLogs" variant="solid" :label="__('Create')" @click="createCallLog">
         <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-      </Button>
-      <!-- Debug button for testing user filtering -->
-      <Button 
-        variant="ghost" 
-        :label="`Debug: ${session.user || 'No User'}`" 
-        @click="debugUserFiltering"
-        class="text-xs"
-      >
-        <template #prefix><FeatherIcon name="user" class="h-4" /></template>
       </Button>
     </template>
   </LayoutHeader>
@@ -48,9 +39,12 @@
     @loadMore="() => loadMore++"
     @columnWidthUpdated="() => triggerResize++"
     @updatePageCount="(count) => (updatedPageCount = count)"
+    @pageChange="(page) => viewControls.goToPage(page)"
+    @pageSizeChange="(pageSize) => viewControls.handlePageSizeChange(pageSize)"
     @applyFilter="(data) => viewControls.applyFilter(data)"
     @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
     @likeDoc="(data) => viewControls.likeDoc(data)"
+    @toggleColdCall="handleToggleColdCall"
     @selectionsChanged="
       (selections) => viewControls.updateSelections(selections)
     "
@@ -89,9 +83,11 @@ import CallLogsListView from '@/components/ListViews/CallLogsListView.vue'
 import CallLogDetailModal from '@/components/Modals/CallLogDetailModal.vue'
 import CallLogModal from '@/components/Modals/CallLogModal.vue'
 import { getCallLogDetail } from '@/utils/callLog'
-import { createResource } from 'frappe-ui'
+import { call, createResource, toast } from 'frappe-ui'
 import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { sessionStore } from '@/stores/session'
+import { permissionsStore } from '@/stores/permissions'
 
 const callLogsListView = ref(null)
 const showCallLogModal = ref(false)
@@ -106,78 +102,134 @@ const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
 
-// Debug current user and filters
-const currentUserFilters = computed(() => {
-  const filters = { owner: session.user }
-  console.log('🔍 Call Logs Debug - Current User:', session.user)
-  console.log('🔍 Call Logs Debug - Filters:', filters)
-  console.log('🔍 Call Logs Debug - Session isLoggedIn:', session.isLoggedIn)
-  return filters
-})
+// Permissions
+const { canWrite } = permissionsStore()
+const canWriteCallLogs = computed(() => canWrite('Call Logs'))
+
+const route = useRoute()
+const router = useRouter()
 
 // Create a more robust user filter that waits for session
 const userOwnerFilter = computed(() => {
-  // Only apply filter if user is logged in and session is available
-  if (!session.isLoggedIn || !session.user) {
-    console.log('🔍 Call Logs Debug - No user session, returning empty filters')
-    return {}
-  }
-  
-  const filters = { owner: session.user }
-  console.log('🔍 Call Logs Debug - User logged in, applying owner filter:', filters)
-  return filters
+  if (!session.isLoggedIn || !session.user) return {}
+  if (session.user === 'Administrator') return {}
+  return { owner: session.user }
 })
 
 // Watch for session changes
-watch(() => session.user, (newUser, oldUser) => {
-  console.log('🔍 Session User Changed:', { oldUser, newUser })
+watch(() => session.user, (newUser) => {
   if (newUser && viewControls.value) {
-    console.log('🔍 Reloading call logs due to user change')
     setTimeout(() => {
       viewControls.value.reload?.()
-    }, 100) // Small delay to ensure session is fully updated
+    }, 100)
   }
 }, { immediate: true })
 
+// Ensure employee column uses display name for header filters/search (map backend employee_display)
+watch(
+  () => callLogs.value?.data,
+  (data) => {
+    if (!data || !data.data) return
+    try {
+      data.data = data.data.map((row) => {
+        // If backend provided employee_display, use it for the employee column so header filters/search show names
+        if (row && row.employee_display) {
+          return { ...row, employee: row.employee_display }
+        }
+        return row
+      })
+    } catch (e) {
+      // swallow
+    }
+  },
+  { immediate: true },
+)
+
 // Watch for login state changes
 watch(() => session.isLoggedIn, (isLoggedIn) => {
-  console.log('🔍 Login state changed:', isLoggedIn)
   if (isLoggedIn && viewControls.value) {
-    console.log('🔍 User logged in, reloading call logs')
     setTimeout(() => {
       viewControls.value.reload?.()
     }, 200)
   }
 }, { immediate: true })
 
+const applyCallLogFiltersFromRoute = () => {
+  const payload = route.query.calllogFilters
+  if (!payload || !viewControls.value?.updateFilter) return
+
+  try {
+    const raw = Array.isArray(payload) ? payload[0] : payload
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return
+
+    const baseFilters = { ...(userOwnerFilter.value || {}) }
+    const normalized = { ...baseFilters }
+
+    Object.entries(parsed).forEach(([field, value]) => {
+      if (field === 'owner') {
+        if (value === '__all__') {
+          delete normalized.owner
+        } else if (value === '__current__') {
+          if (session.user) normalized.owner = session.user
+          else delete normalized.owner
+        } else if (value) {
+          normalized.owner = value
+        } else {
+          delete normalized.owner
+        }
+      } else if (value === null || value === undefined || value === '__unset__') {
+        delete normalized[field]
+      } else {
+        normalized[field] = value
+      }
+    })
+
+    viewControls.value.updateFilter(normalized)
+  } catch (error) {
+    console.error('Failed to apply call log filters from route', error)
+  } finally {
+    if (route.query.calllogFilters !== undefined) {
+      const newQuery = { ...route.query }
+      delete newQuery.calllogFilters
+      router.replace({ query: newQuery })
+    }
+  }
+}
+
+watch(
+  () => [route.query.calllogFilters, viewControls.value],
+  ([filtersParam, vc]) => {
+    if (filtersParam && vc) {
+      // Delay to ensure ViewControls settled before applying filters
+      setTimeout(() => applyCallLogFiltersFromRoute())
+    }
+  },
+  { immediate: true },
+)
+
 // Enhanced filtering with manual data filtering as fallback
 const filteredRows = computed(() => {
-  if (!callLogs.value?.data?.data || !session.user) {
-    return []
-  }
-  
-  // Manual client-side filtering as backup
-  const userCallLogs = callLogs.value.data.data.filter(log => {
-    const isUserLog = log.owner === session.user || log._owner === session.user
-    if (!isUserLog) {
-      console.log('🔍 Filtering out log owned by:', log.owner || log._owner, 'Current user:', session.user)
-    }
-    return isUserLog
-  })
-  
-  console.log('🔍 Total logs:', callLogs.value.data.data.length, 'User logs:', userCallLogs.length)
-  
-  return userCallLogs.map((callLog) => {
-    let _rows = {}
-    callLogs.value?.data.rows.forEach((row) => {
-      _rows[row] = getCallLogDetail(row, callLog, callLogs.value?.data.columns)
+  const data = callLogs.value?.data?.data
+  if (!data || !session.user) return []
+  const rowKeys = callLogs.value?.data?.rows || []
+  const columns = callLogs.value?.data?.columns || []
+
+  // Rely on backend filtering; just format current page
+  return data.map((callLog) => {
+    const _rows = {}
+    rowKeys.forEach((row) => {
+      _rows[row] = getCallLogDetail(row, callLog, columns)
     })
+    _rows.__doc = callLog
+    _rows.__isColdCall = Boolean(callLog.is_cold_call)
     return _rows
   })
 })
 
 const showCallLogDetailModal = ref(false)
 const callLog = ref({})
+const togglingColdCalls = new Set()
 
 function showCallLog(name) {
   showCallLogDetailModal.value = true
@@ -194,30 +246,43 @@ function createCallLog() {
   showCallLogModal.value = true
 }
 
-// Debug function to test user filtering
-function debugUserFiltering() {
-  console.log('🔍 MANUAL DEBUG - Current session state:', {
-    user: session.user,
-    isLoggedIn: session.isLoggedIn,
-    userOwnerFilter: userOwnerFilter.value,
-    currentUserFilters: currentUserFilters.value,
-    viewControlsRef: !!viewControls.value
-  })
-  
-  // Force reload with current filters
-  if (viewControls.value) {
-    console.log('🔍 MANUAL DEBUG - Forcing reload...')
-    viewControls.value.reload()
-  } else {
-    console.log('🔍 MANUAL DEBUG - ViewControls ref not available')
-  }
-  
-  alert(`Debug Info:
-User: ${session.user || 'Not logged in'}
-Filter: ${JSON.stringify(userOwnerFilter.value)}
-Logged In: ${session.isLoggedIn}
+function handleToggleColdCall({ name, nextValue }) {
+  if (!name || togglingColdCalls.has(name)) return
 
-Check console for detailed logs.`)
+  togglingColdCalls.add(name)
+
+  call('crm.api.call_log.set_cold_call', {
+    call_log: name,
+    cold_call: nextValue ? 1 : 0,
+  })
+    .then(() => {
+      const message = nextValue ? __('Marked as cold call') : __('Cold call removed')
+      const toastFn = nextValue ? toast.success : toast.info
+      toastFn(message)
+
+      const rawList = callLogs.value?.data?.data
+      if (Array.isArray(rawList)) {
+        const idx = rawList.findIndex((entry) => entry.name === name)
+        if (idx !== -1) {
+          const updated = {
+            ...rawList[idx],
+            is_cold_call: nextValue ? 1 : 0,
+          }
+          rawList.splice(idx, 1, updated)
+          // Trigger computed consumers
+          callLogs.value.data.data = [...rawList]
+        }
+      }
+
+      viewControls.value?.reload?.()
+    })
+    .catch((error) => {
+      const message = error?.messages?.[0] || error?.message || __('Failed to update cold call flag')
+      toast.error(message)
+    })
+    .finally(() => {
+      togglingColdCalls.delete(name)
+    })
 }
 
 const openCallLogFromURL = () => {
@@ -234,18 +299,16 @@ const openCallLogFromURL = () => {
 onMounted(() => {
   openCallLogFromURL()
   
-  // Debug session state on mount
-  console.log('🔍 CallLogs mounted - Session state:', {
-    user: session.user,
-    isLoggedIn: session.isLoggedIn,
-    userFilter: userOwnerFilter.value
-  })
-  
   // Ensure we reload data after component is mounted with proper session
   if (session.isLoggedIn && session.user) {
-    console.log('🔍 Session ready on mount, triggering reload')
     setTimeout(() => {
       if (viewControls.value?.reload) {
+        // Force a sane default page length on first load to avoid huge data pulls
+        try {
+          if (typeof viewControls.value.updatePageLength === 'function') {
+            viewControls.value.updatePageLength(20)
+          }
+        } catch (e) {}
         viewControls.value.reload()
       }
     }, 500) // Longer delay to ensure everything is initialized

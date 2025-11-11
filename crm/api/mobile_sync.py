@@ -138,37 +138,17 @@ def check_duplicate_call_log(call_log_data):
         str: Name of existing call log document if duplicate, None otherwise
     """
     try:
-        # Check by device call ID if available
-        if call_log_data.get('device_call_id'):
-            existing = frappe.db.get_value(
-                'CRM Call Log',
-                {'device_call_id': call_log_data['device_call_id']},
-                'name'
-            )
-            if existing:
-                return existing
-        
-        # Check by timestamp, phone numbers, and duration
-        start_time = get_datetime(call_log_data['start_time'])
-        
-        # Search within 1 minute window to account for timing differences
-        time_window = timedelta(minutes=1)
-        start_range = start_time - time_window
-        end_range = start_time + time_window
-        
-        filters = {
-            'from': call_log_data['from'],
-            'to': call_log_data['to'],
-            'start_time': ['between', [start_range, end_range]]
-        }
-        
-        # Add duration filter if available
-        if call_log_data.get('duration'):
-            filters['duration'] = call_log_data['duration']
-        
-        existing = frappe.db.get_value('CRM Call Log', filters, 'name')
+        if not call_log_data.get('device_call_id'):
+            return None
+
+        existing = frappe.db.get_value(
+            'CRM Call Log',
+            {'device_call_id': call_log_data['device_call_id']},
+            'name'
+        )
+
         return existing
-        
+
     except Exception as e:
         frappe.logger().error(f"Error checking duplicate call log: {e}")
         return None
@@ -205,18 +185,51 @@ def prepare_call_log_document(call_log_data):
         else:
             call_type = 'Outgoing'
     
-    # Map status to valid options
-    status = call_log_data.get('status', 'Completed')
-    valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled']
-    if status not in valid_statuses:
-        if status in ['Missed']:
-            status = 'No Answer'
-        elif status in ['Rejected']:
-            status = 'Canceled'
-        elif status in ['Blocked']:
-            status = 'Failed'
+    # Map status to frontend-compatible options prioritizing native/original status
+    duration = flt(call_log_data.get('duration', 0))
+    original_status = call_log_data.get('status', '').strip() or call_log_data.get('native_call_status', '').strip() or 'Completed'
+
+    # Normalize original/native status keywords
+    orig_norm = original_status.lower()
+    native_type_norm = (call_log_data.get('native_call_type') or '').strip().lower()
+    native_status_norm = (call_log_data.get('native_call_status') or '').strip().lower()
+
+    is_incoming_unanswered = orig_norm in ['missed', 'no answer', 'no_answer']
+    is_incoming_rejected = orig_norm in ['rejected', 'canceled', 'cancelled', 'declined']
+    is_outgoing_unanswered = orig_norm in ['no answer', 'no_answer', 'did not pick', 'did_not_pick', 'canceled', 'cancelled']
+
+    flagged_incoming_missed = (
+        is_incoming_unanswered
+        or native_type_norm in ['missed']
+        or native_status_norm in ['missed', 'no answer', 'no_answer']
+    )
+    flagged_incoming_rejected = (
+        is_incoming_rejected
+        or native_type_norm in ['rejected', 'cancelled', 'canceled', 'declined']
+        or native_status_norm in ['rejected', 'cancelled', 'canceled', 'declined']
+    )
+    flagged_outgoing_unanswered = (
+        is_outgoing_unanswered
+        or native_status_norm in ['no answer', 'no_answer', 'did not pick', 'did_not_pick', 'canceled', 'cancelled']
+    )
+
+    # Apply prioritized mapping rules with original/native status taking precedence
+    if call_type == 'Incoming':
+        if flagged_incoming_rejected or flagged_incoming_missed or duration <= 0:
+            # Normalize rejected/missed incoming calls to Missed Call even if OEM reported ring duration
+            status = 'Missed Call'
         else:
             status = 'Completed'
+    else:  # Outgoing
+        if flagged_outgoing_unanswered or duration <= 0:
+            status = 'Did Not Picked'
+        else:
+            status = 'Completed'
+
+    # Validate against allowed statuses (including new ones)
+    valid_statuses = ['Initiated', 'Ringing', 'In Progress', 'Completed', 'Failed', 'Busy', 'No Answer', 'Queued', 'Canceled', 'Did Not Picked', 'Missed Call']
+    if status not in valid_statuses:
+        status = 'Completed'  # Fallback
 
     # Determine employee and customer based on call type
     employee = current_user  # The mobile app user is always the employee
@@ -236,12 +249,31 @@ def prepare_call_log_document(call_log_data):
         caller = None
         receiver = current_user
     
-    # Get customer name from contact/lead info or generate default
+    # Get customer name from contact/lead/customer info or generate default
     if contact_info and contact_info.get('contact_name'):
         customer_name = contact_info['contact_name']
     else:
-        # Generate default name for unknown customers
-        customer_name = f"Lead from call {customer}"
+        # Try to get customer name directly from CRM Customer table as fallback
+        try:
+            customer_record = search_crm_customer_by_phone(customer)
+            if customer_record:
+                customer_name = customer_record.get('customer_name') or customer_record.get('full_name')
+                if not customer_name:
+                    first_name = customer_record.get('first_name', '')
+                    last_name = customer_record.get('last_name', '')
+                    customer_name = f"{first_name} {last_name}".strip()
+        except Exception as e:
+            frappe.logger().error(f"Error getting customer name for {customer}: {e}")
+        
+        # If still no customer name, generate default
+        if not customer_name:
+            customer_name = f"Call From {customer}"
+
+    # Force duration=0 for missed/unanswered outcomes; preserve native_duration separately
+    final_duration = flt(call_log_data.get('duration', 0))
+    if status in ['Missed Call', 'Did Not Picked']:
+        # keep original via native_duration if provided or set below
+        final_duration = 0
 
     doc_data = {
         'doctype': 'CRM Call Log',
@@ -250,11 +282,12 @@ def prepare_call_log_document(call_log_data):
         'to': to_number,
         'type': call_type,
         'status': status,
-        'duration': flt(call_log_data.get('duration', 0)),
+        'duration': final_duration,
         'start_time': get_datetime(call_log_data['start_time']),
         'end_time': get_datetime(call_log_data.get('end_time', call_log_data['start_time'])),
         'telephony_medium': 'Manual',  # Indicates mobile app source
         'medium': 'Mobile App',
+        'method': 'Mobile',  # Indicate this came from mobile app
         'owner': current_user,
         
         # New employee/customer fields
@@ -270,12 +303,22 @@ def prepare_call_log_document(call_log_data):
     # Add optional fields
     optional_fields = [
         'device_call_id', 'contact_name', 'recording_url',
-        'reference_doctype', 'reference_docname'
+        'reference_doctype', 'reference_docname', 'native_call_type',
+        'native_call_status', 'native_duration', 'method'
     ]
-    
+
     for field in optional_fields:
-        if call_log_data.get(field):
+        if call_log_data.get(field) is not None:
             doc_data[field] = call_log_data[field]
+
+    # Ensure native_duration captures original non-zero value if we zeroed duration
+    if status in ['Missed Call', 'Did Not Picked']:
+        if not doc_data.get('native_duration'):
+            try:
+                orig = flt(call_log_data.get('duration', 0))
+                doc_data['native_duration'] = orig
+            except Exception:
+                pass
     
     # Add contact/lead references if found
     if contact_info:
@@ -288,7 +331,7 @@ def prepare_call_log_document(call_log_data):
 
 def identify_contact(from_number, to_number, call_type):
     """
-    Try to identify contact or lead based on phone numbers
+    Try to identify contact, lead, or CRM customer based on phone numbers
     
     Args:
         from_number: Caller number
@@ -296,11 +339,20 @@ def identify_contact(from_number, to_number, call_type):
         call_type: Type of call (Incoming/Outgoing)
         
     Returns:
-        dict: Contact/Lead information if found
+        dict: Contact/Lead/Customer information if found
     """
     try:
         # Determine which number to search for
         search_number = from_number if call_type == 'Incoming' else to_number
+        
+        # First, search in CRM Customer table (highest priority)
+        customer = search_crm_customer_by_phone(search_number)
+        if customer:
+            return {
+                'reference_doctype': 'CRM Customer',
+                'reference_docname': customer['name'],
+                'contact_name': customer.get('customer_name', ''),
+            }
         
         # Search in contacts
         contact = search_contact_by_phone(search_number)
@@ -353,8 +405,10 @@ def search_contact_by_phone(phone_number):
 
 
 def search_lead_by_phone(phone_number):
-    """Search for lead by phone number"""
+    """Search for lead by phone number. Guard if Lead doctype is not present."""
     try:
+        if not frappe.db.table_exists('Lead'):
+            return None
         clean_phone = clean_phone_number(phone_number)
         
         # Search in multiple phone fields
@@ -377,6 +431,51 @@ def search_lead_by_phone(phone_number):
         return None
 
 
+def search_crm_customer_by_phone(phone_number):
+    """Search for CRM customer by phone number"""
+    try:
+        clean_phone = clean_phone_number(phone_number)
+        
+        # Search in CRM Customer table by mobile_no field
+        customer = frappe.db.get_value(
+            'CRM Customer',
+            {'mobile_no': phone_number},  # Exact match first
+            ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'mobile_no'],
+            as_dict=True
+        )
+        
+        if customer:
+            return customer
+        
+        # If not found, try with cleaned number
+        if clean_phone != phone_number:
+            customer = frappe.db.get_value(
+                'CRM Customer',
+                {'mobile_no': clean_phone},
+                ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'mobile_no'],
+                as_dict=True
+            )
+            if customer:
+                return customer
+        
+        # Also search in phone field if it exists
+        customer = frappe.db.get_value(
+            'CRM Customer',
+            {'phone': phone_number},
+            ['name', 'customer_name', 'first_name', 'last_name', 'full_name', 'phone'],
+            as_dict=True
+        )
+        
+        if customer:
+            return customer
+        
+        return None
+        
+    except Exception as e:
+        frappe.logger().error(f"Error searching CRM customer: {e}")
+        return None
+
+
 def clean_phone_number(phone_number):
     """Clean and normalize phone number"""
     if not phone_number:
@@ -395,12 +494,13 @@ def clean_phone_number(phone_number):
 
 
 @frappe.whitelist()
-def get_user_call_logs(limit=50, from_date=None, to_date=None):
+def get_user_call_logs(limit=50, offset=0, from_date=None, to_date=None):
     """
     Get call logs for the current user
     
     Args:
         limit: Number of records to return
+        offset: Number of records to skip (for pagination)
         from_date: Start date filter
         to_date: End date filter
         
@@ -422,10 +522,10 @@ def get_user_call_logs(limit=50, from_date=None, to_date=None):
                 filters['start_time'] = ['<=', get_datetime(to_date)]
         
         fields = [
-            'name', 'from', 'to', 'type', 'status', 'duration',
-            'start_time', 'end_time', 'telephony_medium', 'medium',
-            'employee', 'customer', 'customer_name',
-            'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
+            'name', 'from', 'to', 'type', 'status', 'duration', 'native_duration',
+            'start_time', 'end_time', 'telephony_medium', 'medium', 'method',
+            'employee', 'customer', 'customer_name', 'is_cold_call', 'native_call_type',
+            'native_call_status', 'caller', 'receiver', 'reference_doctype', 'reference_docname', 'creation'
         ]
         
         call_logs = frappe.get_list(
@@ -433,7 +533,8 @@ def get_user_call_logs(limit=50, from_date=None, to_date=None):
             filters=filters,
             fields=fields,
             order_by='start_time desc',
-            limit=limit
+            limit=limit,
+            start=offset
         )
         
         return {
@@ -465,10 +566,10 @@ def get_sync_stats():
         # Total call logs
         total_logs = frappe.db.count('CRM Call Log', {'owner': current_user})
         
-        # Mobile app logs (using telephony_medium = 'Manual' as indicator)
+        # Mobile app logs (using medium = 'Mobile App' as indicator to be explicit)
         mobile_logs = frappe.db.count('CRM Call Log', {
             'owner': current_user,
-            'telephony_medium': 'Manual'
+            'medium': 'Mobile App'
         })
         
         # Today's logs
@@ -483,7 +584,7 @@ def get_sync_stats():
             'CRM Call Log',
             {
                 'owner': current_user,
-                'telephony_medium': 'Manual'
+                'medium': 'Mobile App'
             },
             'creation',
             order_by='creation desc'

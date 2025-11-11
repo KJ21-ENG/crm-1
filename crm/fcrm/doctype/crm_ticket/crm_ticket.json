@@ -1,0 +1,488 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-01-04 12:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "email_append_to": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "details",
+  "ticket_subject",
+  "ticket_subjects",
+  "subject",
+  "description",
+  "priority",
+  "issue_type",
+  "department",
+  "ticket_source",
+  "assigned_to",
+  "ticket_owner",
+  "customer_id",
+  "person_tab",
+  "salutation",
+  "first_name",
+  "last_name",
+  "marital_status",
+  "date_of_birth",
+  "anniversary",
+  "email",
+  "mobile_no",
+  "organization_tab",
+  "section_break_uixv",
+  "naming_series",
+  "customer_name",
+  "middle_name",
+  "phone",
+  "column_break_dbsv",
+  "status",
+  "organization",
+  "image",
+  "resolved",
+  "sla_tab",
+  "sla",
+  "sla_creation",
+  "column_break_ffnp",
+  "sla_status",
+  "communication_status",
+  "response_details_section",
+  "response_by",
+  "column_break_pweh",
+  "first_response_time",
+  "first_responded_on",
+  "resolution_details_section",
+  "resolution",
+  "resolution_time",
+  "resolved_on",
+  "identity_section",
+  "pan_card_number",
+  "column_break_identity",
+  "aadhaar_card_number",
+  "log_tab",
+  "status_change_log"
+ ],
+ "fields": [
+  {
+   "default": "CRM-TICKET-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "CRM-TICKET-.YYYY.-"
+  },
+  {
+   "fieldname": "ticket_subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "CRM Ticket Subject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ticket_subjects",
+   "fieldtype": "Table MultiSelect",
+   "label": "Subjects",
+   "options": "CRM Ticket Subject Item",
+   "depends_on": "eval:1==1",
+   "in_list_view": 0,
+   "reqd": 0,
+   "description": "Select one or more subjects"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "Low\nMedium\nHigh\nUrgent",
+   "default": "Medium",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "issue_type",
+   "fieldtype": "Select",
+   "label": "Issue Type",
+   "options": "Technical\nBilling\nAccount\nGeneral\nComplaint",
+   "reqd": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Select",
+   "label": "Department",
+   "options": "Support\nTechnical\nBilling\nGeneral",
+   "default": "Support"
+  },
+  {
+   "fieldname": "ticket_source",
+   "fieldtype": "Select",
+   "label": "Ticket Source",
+   "options": "On Call\nOffice Visit",
+   "default": "On Call",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "fieldname": "ticket_owner",
+   "fieldtype": "Link",
+   "label": "Ticket Owner",
+   "options": "User"
+  },
+  {
+   "fieldname": "customer_id",
+   "fieldtype": "Link",
+   "label": "Customer ID",
+   "options": "CRM Customer",
+   "read_only": 1,
+   "description": "Reference to customer record"
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Link",
+   "label": "Salutation",
+   "options": "Salutation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name",
+   "reqd": 0,
+   "read_only": 1
+  },
+  {
+   "fieldname": "middle_name",
+   "fieldtype": "Data",
+   "label": "Middle Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "marital_status",
+   "fieldtype": "Select",
+   "label": "Marital Status",
+   "options": "\nMarried\nUnmarried"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "anniversary",
+   "fieldtype": "Date",
+   "label": "Anniversary"
+  },
+  {
+   "default": "New",
+   "fieldname": "status",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "CRM Ticket Status",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "search_index": 1,
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "options": "Phone",
+   "maxlength": 10,
+   "description": "Enter 10-digit mobile number only",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "options": "Phone",
+   "read_only": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Data",
+   "label": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "search_index": 1
+  },
+  {
+   "fieldname": "resolution",
+   "fieldtype": "Text Editor",
+   "label": "Resolution"
+  },
+  {
+   "default": "0",
+   "fieldname": "resolved",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Resolved"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Image",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "section_break_uixv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_dbsv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "person_tab",
+   "fieldtype": "Tab Break",
+   "label": "Person"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "organization_tab",
+   "fieldtype": "Tab Break",
+   "label": "Others",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sla_tab",
+   "fieldtype": "Tab Break",
+   "label": "SLA",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sla",
+   "fieldtype": "Link",
+   "label": "SLA",
+   "options": "CRM Service Level Agreement"
+  },
+  {
+   "fieldname": "sla_creation",
+   "fieldtype": "Datetime",
+   "label": "SLA Creation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ffnp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sla_status",
+   "fieldtype": "Link",
+   "label": "SLA Status",
+   "options": "\nFirst Response Due\nFailed\nFulfilled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_details_section",
+   "fieldtype": "Section Break",
+   "label": "Response Details"
+  },
+  {
+   "fieldname": "response_by",
+   "fieldtype": "Datetime",
+   "label": "Response By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pweh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "first_response_time",
+   "fieldtype": "Duration",
+   "label": "First Response Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_responded_on",
+   "fieldtype": "Datetime",
+   "label": "First Responded On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolution_details_section",
+   "fieldtype": "Section Break",
+   "label": "Resolution Details"
+  },
+  {
+   "fieldname": "resolution_time",
+   "fieldtype": "Duration",
+   "label": "Resolution Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolved_on",
+   "fieldtype": "Datetime",
+   "label": "Resolved On",
+   "read_only": 1
+  },
+  {
+   "default": "Open",
+   "fieldname": "communication_status",
+   "fieldtype": "Link",
+   "label": "Communication Status",
+   "options": "CRM Communication Status"
+  },
+  {
+   "fieldname": "log_tab",
+   "fieldtype": "Tab Break",
+   "label": "Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status_change_log",
+   "fieldtype": "Table",
+   "label": "Status Change Log",
+   "options": "CRM Status Change Log"
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity Documents"
+  },
+  {
+   "fieldname": "pan_card_number",
+   "fieldtype": "Data",
+   "label": "PAN Card Number",
+   "description": "Permanent Account Number (optional)",
+   "read_only": 1,
+   "reqd": 0
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aadhaar_card_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Card Number",
+   "description": "12-digit Aadhaar number (optional)",
+   "read_only": 1,
+   "reqd": 0
+  }
+ ],
+ "grid_page_length": 50,
+ "image_field": "image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-04 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Ticket",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sender_field": "email",
+ "sender_name_field": "first_name",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "customer_name",
+ "track_changes": 1
+}

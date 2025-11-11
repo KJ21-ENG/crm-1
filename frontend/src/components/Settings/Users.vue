@@ -81,12 +81,7 @@
         <FormControl
           type="select"
           v-model="currentRole"
-          :options="[
-            { label: __('All'), value: 'All' },
-            { label: __('Admin'), value: 'System Manager' },
-            { label: __('Manager'), value: 'Sales Manager' },
-            { label: __('Sales User'), value: 'Sales User' },
-          ]"
+          :options="roleFilterOptions"
         />
       </div>
       <ul class="divide-y divide-outline-gray-modals overflow-y-auto px-2">
@@ -119,23 +114,32 @@
                 }"
                 placement="right"
               />
-              <Tooltip
-                v-if="isManager() && user.role == 'System Manager'"
-                :text="__('Cannot change role of user with Admin access')"
-              >
-                <Button :label="__('Admin')" icon-left="shield" />
-              </Tooltip>
+              <div v-if="!isAdmin()">
+                <Button :label="(roleMap[user.role] || user.role)" :icon-left="
+                  user.role === 'System Manager'
+                    ? 'shield'
+                    : user.role === 'Sales Manager'
+                      ? 'briefcase'
+                      : user.role === 'Support User'
+                        ? 'headphones'
+                        : 'user-check'
+                " />
+              </div>
               <Dropdown
                 v-else
                 :options="getDropdownOptions(user)"
                 :button="{
-                  label: roleMap[user.role],
+                  label: (roleMap[user.role] || user.role),
                   iconRight: 'chevron-down',
                   iconLeft:
                     user.role === 'System Manager'
                       ? 'shield'
                       : user.role === 'Sales Manager'
                         ? 'briefcase'
+                        : user.role === 'Support Manager'
+                          ? 'headphones'
+                        : user.role === 'Support User'
+                          ? 'headphones'
                         : 'user-check',
                 }"
                 placement="right"
@@ -170,7 +174,7 @@ import AddExistingUserModal from '@/components/Modals/AddExistingUserModal.vue'
 import { activeSettingsPage } from '@/composables/settings'
 import { usersStore } from '@/stores/users'
 import { TemplateOption, DropdownOption } from '@/utils'
-import { Avatar, TextInput, toast, call, FeatherIcon, Tooltip } from 'frappe-ui'
+import { Avatar, TextInput, toast, call, FeatherIcon, Tooltip, createListResource, FormControl } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
 
 const { users, isAdmin, isManager } = usersStore()
@@ -180,15 +184,26 @@ const searchRef = ref(null)
 const search = ref('')
 const currentRole = ref('All')
 
+const enabledRoles = createListResource({
+  doctype: 'Role',
+  fields: ['name'],
+  filters: { disabled: 0 },
+  orderBy: 'name asc',
+  auto: true,
+})
+
 const roleMap = {
   'System Manager': __('Admin'),
-  'Sales Manager': __('Manager'),
+  'Sales Manager': __('Sales Manager'),
+  'Support Manager': __('Support Manager'),
   'Sales User': __('Sales User'),
+  'Support User': __('Support User'),
 }
 
+const roleFilterOptions = computed(() => [{ label: __('All'), value: 'All' }].concat((enabledRoles.data || []).map(r => ({ label: __(r.name), value: r.name }))))
+
 const usersList = computed(() => {
-  let filteredUsers =
-    users.data?.crmUsers?.filter((user) => user.name !== 'Administrator') || []
+  let filteredUsers = users.data?.crmUsers || []
 
   return filteredUsers
     .filter(
@@ -238,46 +253,40 @@ function getMoreOptions(user) {
   return options.filter((option) => option.condition?.() || true)
 }
 
-function getDropdownOptions(user) {
-  let options = [
-    {
-      label: __('Admin'),
-      component: (props) =>
-        DropdownOption({
-          option: __('Admin'),
-          icon: 'shield',
-          active: props.active,
-          selected: user.role === 'System Manager',
-          onClick: () => updateRole(user, 'System Manager'),
-        }),
-      condition: () => isAdmin(),
-    },
-    {
-      label: __('Manager'),
-      component: (props) =>
-        DropdownOption({
-          option: __('Manager'),
-          icon: 'briefcase',
-          active: props.active,
-          selected: user.role === 'Sales Manager',
-          onClick: () => updateRole(user, 'Sales Manager'),
-        }),
-      condition: () => isManager(),
-    },
-    {
-      label: __('Sales User'),
-      component: (props) =>
-        DropdownOption({
-          option: __('Sales User'),
-          icon: 'user-check',
-          active: props.active,
-          selected: user.role === 'Sales User',
-          onClick: () => updateRole(user, 'Sales User'),
-        }),
-    },
-  ]
+function roleIcon(roleName) {
+  if (roleName === 'System Manager') return 'shield'
+  if (roleName === 'Sales Manager') return 'briefcase'
+  if (roleName === 'Support Manager') return 'headphones'
+  if (roleName === 'Sales User') return 'user-check'
+  if (roleName === 'Support User') return 'headphones'
+  return 'user'
+}
 
-  return options.filter((option) => option.condition?.() || true)
+function getDropdownOptions(user) {
+  const roles = enabledRoles.data || []
+  const options = roles.map((r) => {
+    const roleName = r.name
+    const condition = () => {
+      if (roleName === 'System Manager') return isAdmin()
+      if (roleName === 'Sales Manager' || roleName === 'Support Manager') return isManager()
+      return true
+    }
+
+    return {
+      label: __(roleName),
+      component: (props) =>
+        DropdownOption({
+          option: __(roleName),
+          icon: roleIcon(roleName),
+          active: props.active,
+          selected: user.role === roleName,
+          onClick: () => updateRole(user, roleName),
+        }),
+      condition,
+    }
+  })
+
+  return options.filter((opt) => opt.condition?.() || true)
 }
 
 function updateRole(user, newRole) {
