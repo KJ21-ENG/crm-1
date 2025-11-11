@@ -133,9 +133,9 @@
 
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:shadow-md transition"
-        @click="navigateTo('calls', { dateField: 'start_time' })"
-        @keydown.enter.prevent="navigateTo('calls', { dateField: 'start_time' })"
-        @keydown.space.prevent="navigateTo('calls', { dateField: 'start_time' })"
+        @click="navigateTo('calls')"
+        @keydown.enter.prevent="navigateTo('calls')"
+        @keydown.space.prevent="navigateTo('calls')"
         role="button"
         tabindex="0"
       >
