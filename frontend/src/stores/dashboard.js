@@ -323,7 +323,7 @@ export function useDashboard() {
         change: null,
         clickable: true,
         target: 'calls',
-        filters: { dateField: 'creation' }
+        filters: { dateField: 'start_time' }
       },
       {
         title: 'Account Opened',

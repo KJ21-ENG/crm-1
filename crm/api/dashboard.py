@@ -378,17 +378,26 @@ def get_date_range(view, custom_start_date=None, custom_end_date=None):
     return start_date, end_date
 
 
+def get_call_time_filter(start_date, end_date):
+    """Build a filter dict that scopes call logs by actual call timestamp."""
+    return {"start_time": ["between", [start_date, end_date]]}
+
+
 def get_overview_stats(view='daily', custom_start_date=None, custom_end_date=None):
     """Get high-level overview statistics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
+    call_time_filter = get_call_time_filter(start_date, end_date)
+    call_time_filter = get_call_time_filter(start_date, end_date)
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     # Get total call logs
-    total_call_logs = frappe.db.count("CRM Call Log", filters=date_filter)
+    total_call_logs = frappe.db.count("CRM Call Log", filters=call_time_filter)
     
     # Get missed calls count
     missed_calls = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "status": ["in", ["No Answer", "Missed"]]
     })
     
@@ -544,60 +553,60 @@ def get_task_analytics(view='daily', custom_start_date=None, custom_end_date=Non
 def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date=None):
     """Get call log analytics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
-    date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     # Basic distributions
     call_type_distribution = frappe.db.get_list("CRM Call Log",
         fields=["type", "count(name) as count"],
-        filters=date_filter,
+        filters=call_time_filter,
         group_by="type",
         order_by="count desc"
     )
 
     call_status_distribution = frappe.db.get_list("CRM Call Log",
         fields=["status", "count(name) as count"],
-        filters=date_filter,
+        filters=call_time_filter,
         group_by="status",
         order_by="count desc"
     )
 
     recent_calls = frappe.db.get_list("CRM Call Log",
         fields=["name", "from", "to", "type", "status", "duration", "start_time", "is_cold_call"],
-        filters=date_filter,
+        filters=call_time_filter,
         order_by="start_time desc",
         limit=5
     )
 
     # Additional metrics requested by front-end
-    incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Incoming"})
-    outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "type": "Outgoing"})
+    incoming_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "type": "Incoming"})
+    outgoing_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "type": "Outgoing"})
 
     # Get call counts by status directly from database (refactored to use status field consistently)
     # Missed Calls: Incoming calls with status 'Missed Call'
     missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "type": "Incoming",
         "status": "Missed Call"
     })
 
     # Did Not Pick: Outgoing calls with status 'Did Not Picked'
     did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "type": "Outgoing",
         "status": "Did Not Picked"
     })
 
     # Completed calls: All calls with status 'Completed'
     completed_calls = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "status": "Completed"
     })
 
     # Cold calls and their total duration
-    cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "is_cold_call": 1})
+    cold_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "is_cold_call": 1})
     try:
         cold_call_duration_res = frappe.db.sql(
-            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND is_cold_call = 1",
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND is_cold_call = 1",
             (start_date, end_date),
         )
         cold_call_total_duration = float(cold_call_duration_res[0][0]) if cold_call_duration_res and cold_call_duration_res[0] else 0
@@ -609,7 +618,7 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
     unique_callers_sql = """
         SELECT COUNT(*)
         FROM (
-            SELECT customer, MIN(creation) AS first_call_date
+            SELECT customer, MIN(COALESCE(start_time, creation)) AS first_call_date
             FROM `tabCRM Call Log`
             WHERE customer IS NOT NULL AND customer != ''
             GROUP BY customer
@@ -624,21 +633,21 @@ def get_call_log_analytics(view='daily', custom_start_date=None, custom_end_date
 
     # Total duration for the range (sum of duration field)
     try:
-        total_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s", (start_date, end_date))
+        total_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s", (start_date, end_date))
         total_duration = float(total_duration_res[0][0]) if total_duration_res and total_duration_res[0] else 0
     except Exception as e:
         print(f"⚠️ WARNING: Failed to compute total_duration: {e}")
         total_duration = 0
     # Total duration split by call type
     try:
-        incoming_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Incoming'", (start_date, end_date))
+        incoming_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND `type` = 'Incoming'", (start_date, end_date))
         incoming_total_duration = float(incoming_duration_res[0][0]) if incoming_duration_res and incoming_duration_res[0] else 0
     except Exception as e:
         print(f"⚠️ WARNING: Failed to compute incoming_total_duration: {e}")
         incoming_total_duration = 0
 
     try:
-        outgoing_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Outgoing'", (start_date, end_date))
+        outgoing_duration_res = frappe.db.sql("SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND `type` = 'Outgoing'", (start_date, end_date))
         outgoing_total_duration = float(outgoing_duration_res[0][0]) if outgoing_duration_res and outgoing_duration_res[0] else 0
     except Exception as e:
         print(f"⚠️ WARNING: Failed to compute outgoing_total_duration: {e}")
@@ -984,6 +993,7 @@ def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_e
     """Get user-specific overview statistics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     # We want the "main" metric to represent documents where the user is either the
     # creator (owner) OR is present in the parent `_assign` JSON array. The support
     # metrics will show the bifurcation: created (owner) and assigned (present in _assign).
@@ -1029,7 +1039,7 @@ def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_e
         tasks_assigned_total = count_owner_or_assign("CRM Task")
         tasks_assigned_only = count_assign_only("CRM Task")
 
-        calls_made = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user})
+        calls_made = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user})
 
         return {
             # Leads
@@ -1065,7 +1075,7 @@ def get_user_overview_stats(user, view='daily', custom_start_date=None, custom_e
             "tasks_total": frappe.db.count("CRM Task", filters={**date_filter, "owner": user}),
             "tasks_created": frappe.db.count("CRM Task", filters={**date_filter, "owner": user}),
             "tasks_assigned": 0,
-            "calls_made": frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user}),
+            "calls_made": frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user}),
             "total_duration": get_user_total_call_duration(user, view, custom_start_date, custom_end_date),
             "avg_response_time": get_user_avg_response_time(user, view, custom_start_date, custom_end_date)
         }
@@ -1210,36 +1220,36 @@ def get_user_task_analytics(user, view='daily', custom_start_date=None, custom_e
 def get_user_call_log_analytics(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Get user-specific call log analytics"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
-    date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     call_type_distribution = frappe.db.get_list("CRM Call Log",
         fields=["type", "count(name) as count"],
-        filters={**date_filter, "employee": user},
+        filters={**call_time_filter, "employee": user},
         group_by="type",
         order_by="count desc"
     )
 
     call_status_distribution = frappe.db.get_list("CRM Call Log",
         fields=["status", "count(name) as count"],
-        filters={**date_filter, "employee": user},
+        filters={**call_time_filter, "employee": user},
         group_by="status",
         order_by="count desc"
     )
 
     recent_calls = frappe.db.get_list("CRM Call Log",
         fields=["name", "from", "to", "type", "status", "duration", "start_time", "is_cold_call"],
-        filters={**date_filter, "employee": user},
+        filters={**call_time_filter, "employee": user},
         order_by="start_time desc",
         limit=5
     )
 
-    incoming_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Incoming"})
-    outgoing_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "type": "Outgoing"})
+    incoming_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user, "type": "Incoming"})
+    outgoing_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user, "type": "Outgoing"})
 
     # User-specific missed/did-not-pick: Refactored to use status field consistently
     # Missed Calls: Incoming calls with status 'Missed Call'
     missed_incoming_duration0 = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "employee": user,
         "type": "Incoming",
         "status": "Missed Call"
@@ -1247,7 +1257,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
 
     # Did Not Pick: Outgoing calls with status 'Did Not Picked'
     did_not_picked_outgoing_duration0 = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "employee": user,
         "type": "Outgoing",
         "status": "Did Not Picked"
@@ -1257,7 +1267,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     unique_callers_sql = """
         SELECT COUNT(*)
         FROM (
-            SELECT customer, MIN(creation) AS first_call_date
+            SELECT customer, MIN(COALESCE(start_time, creation)) AS first_call_date
             FROM `tabCRM Call Log`
             WHERE customer IS NOT NULL AND customer != ''
             AND employee = %s
@@ -1273,16 +1283,16 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
 
     # Completed calls: Use status field directly instead of calculation
     completed_calls = frappe.db.count("CRM Call Log", filters={
-        **date_filter,
+        **call_time_filter,
         "employee": user,
         "status": "Completed"
     })
 
     # Cold calls for specific user
-    cold_calls = frappe.db.count("CRM Call Log", filters={**date_filter, "employee": user, "is_cold_call": 1})
+    cold_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user, "is_cold_call": 1})
     try:
         cold_call_duration_res = frappe.db.sql(
-            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND employee = %s AND is_cold_call = 1",
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND employee = %s AND is_cold_call = 1",
             (start_date, end_date, user),
         )
         cold_call_total_duration = float(cold_call_duration_res[0][0]) if cold_call_duration_res and cold_call_duration_res[0] else 0
@@ -1293,7 +1303,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
     # Total duration split by call type for this user
     try:
         incoming_duration_res = frappe.db.sql(
-            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Incoming' AND employee = %s",
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND `type` = 'Incoming' AND employee = %s",
             (start_date, end_date, user)
         )
         incoming_total_duration = float(incoming_duration_res[0][0]) if incoming_duration_res and incoming_duration_res[0] else 0
@@ -1303,7 +1313,7 @@ def get_user_call_log_analytics(user, view='daily', custom_start_date=None, cust
 
     try:
         outgoing_duration_res = frappe.db.sql(
-            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE creation BETWEEN %s AND %s AND `type` = 'Outgoing' AND employee = %s",
+            "SELECT COALESCE(SUM(duration), 0) FROM `tabCRM Call Log` WHERE COALESCE(start_time, creation) BETWEEN %s AND %s AND `type` = 'Outgoing' AND employee = %s",
             (start_date, end_date, user)
         )
         outgoing_total_duration = float(outgoing_duration_res[0][0]) if outgoing_duration_res and outgoing_duration_res[0] else 0
@@ -1584,6 +1594,7 @@ def get_user_achievements(user, view='daily', custom_start_date=None, custom_end
     """Get user achievements and milestones"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     achievements = []
     
@@ -1627,9 +1638,7 @@ def get_user_achievements(user, view='daily', custom_start_date=None, custom_end
         })
     
     # Call volume achievements
-    total_calls = frappe.db.count("CRM Call Log", filters={
-        **date_filter, "employee": user
-    })
+    total_calls = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user})
     if total_calls >= 10:
         achievements.append({
             "type": "info",
@@ -1646,6 +1655,7 @@ def get_user_goals(user, view='daily', custom_start_date=None, custom_end_date=N
     """Get user goals and targets with actual progress data"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     # Calculate actual progress from database
     leads_assigned = frappe.db.count("CRM Lead", filters={
@@ -1669,9 +1679,7 @@ def get_user_goals(user, view='daily', custom_start_date=None, custom_end_date=N
         **date_filter, "assigned_to": user, "status": "Done"
     })
     
-    calls_made = frappe.db.count("CRM Call Log", filters={
-        **date_filter, "employee": user
-    })
+    calls_made = frappe.db.count("CRM Call Log", filters={**call_time_filter, "employee": user})
     
     # Dynamic goal calculation based on actual assigned/created items
     # For leads: Goal is to convert ALL assigned leads to accounts
@@ -1737,11 +1745,12 @@ def get_user_peak_hours(user, view='daily', custom_start_date=None, custom_end_d
     """Get user's peak activity hours based on call logs and activities"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
     date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     # Get call log data for peak hours analysis
     call_logs = frappe.db.get_list("CRM Call Log",
         fields=["start_time", "duration", "type", "status"],
-        filters={**date_filter, "employee": user, "status": "Completed"}
+        filters={**call_time_filter, "employee": user, "status": "Completed"}
     )
     
     # Initialize hourly data
@@ -1881,11 +1890,11 @@ def get_user_task_completion_rate(user, view='daily', custom_start_date=None, cu
 def get_user_total_call_duration(user, view='daily', custom_start_date=None, custom_end_date=None):
     """Calculate total call duration for user"""
     start_date, end_date = get_date_range(view, custom_start_date, custom_end_date)
-    date_filter = {"creation": ["between", [start_date, end_date]]}
+    call_time_filter = get_call_time_filter(start_date, end_date)
     
     call_logs = frappe.db.get_list("CRM Call Log",
         fields=["duration"],
-        filters={**date_filter, "employee": user, "duration": ["is", "set"]}
+        filters={**call_time_filter, "employee": user, "duration": ["is", "set"]}
     )
     
     total_duration = sum(call.duration or 0 for call in call_logs)

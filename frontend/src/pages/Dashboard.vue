@@ -1027,7 +1027,7 @@ const handleUserDashboardNavigate = (target, extraFilters = {}) => {
   const { dateField: overrideDateField, ...filterOverrides } = normalizedExtra
   const effectiveUser = selectedUserId.value || session.user || ''
   const safeUserToken = effectiveUser || '__current__'
-  const defaultDateField = target === 'calls' ? 'creation' : 'creation'
+  const defaultDateField = target === 'calls' ? 'start_time' : 'creation'
   const dateFilterField = overrideDateField || defaultDateField
 
   if (target === 'calls') {
@@ -1104,7 +1104,7 @@ const handleCallLogTileNavigate = (key) => {
 
   filters.owner = ownerToken
   const scope = selectedCallLogsUserId.value === 'all' ? 'global' : 'user'
-  Object.assign(filters, buildDateFilter('creation', scope))
+  Object.assign(filters, buildDateFilter('start_time', scope))
 
   try {
     router.push({ name: 'Call Logs', query: { calllogFilters: JSON.stringify(filters) } })
