@@ -300,6 +300,16 @@
           v-model="export_all"
         />
       </div>
+      <div class="mt-3" v-if="doctype === 'CRM Call Log'">
+        <FormControl
+          type="checkbox"
+          :label="__('Export monthly summary only')"
+          v-model="export_monthly_summary"
+        />
+        <p class="mt-1 text-xs text-ink-gray-6">
+          {{ __('Exports aggregated monthly totals by employee. Admins get all employees; others only their own data.') }}
+        </p>
+      </div>
     </template>
   </Dialog>
 </template>
@@ -644,6 +654,7 @@ function reload() {
 const showExportDialog = ref(false)
 const export_type = ref('Excel')
 const export_all = ref(false)
+const export_monthly_summary = ref(false)
 const selectedRows = ref([])
 
 function updateSelections(selections) {
@@ -653,10 +664,47 @@ function updateSelections(selections) {
 async function exportRows() {
   let fields = JSON.stringify(list.value.data.columns.map((f) => f.key))
 
-  let filters = JSON.stringify({
-    ...props.filters,
-    ...list.value.params.filters,
-  })
+  function normalizeDateFilters(rawFilters) {
+    const normalized = { ...(rawFilters || {}) }
+    const datetimeColumns =
+      (list.value?.data?.columns || []).filter((col) => col.type === 'Datetime') || []
+
+    datetimeColumns.forEach((col) => {
+      const value = normalized[col.key]
+      if (typeof value !== 'string') return
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
+      if (!isDateOnly) return
+
+      // Align export filters with backend list view normalization for datetime fields
+      const day = value.slice(0, 10)
+      normalized[col.key] = ['between', [`${day} 00:00:00`, `${day} 23:59:59`]]
+    })
+
+    return normalized
+  }
+
+  let filters = JSON.stringify(
+    normalizeDateFilters({
+      ...props.filters,
+      ...(list.value?.params?.filters || {}),
+    }),
+  )
+
+  // Monthly summary export for Call Logs (bypasses paginated export)
+  if (export_monthly_summary.value && props.doctype === 'CRM Call Log') {
+    const params = new URLSearchParams({
+      file_format_type: export_type.value,
+      filters,
+    })
+
+    window.location.href = `/api/method/crm.api.call_log.export_call_log_monthly_summary?${params.toString()}`
+
+    showExportDialog.value = false
+    export_all.value = false
+    export_type.value = 'Excel'
+    export_monthly_summary.value = false
+    return
+  }
 
   let order_by = list.value.params.order_by
   let page_length = list.value.params.page_length
