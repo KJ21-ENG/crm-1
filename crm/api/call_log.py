@@ -83,6 +83,10 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
     roles = set(frappe.get_roles(user))
     is_admin = user == "Administrator" or "System Manager" in roles
 
+    # Admins should see all data by default; drop the auto-applied owner filter if it matches themselves
+    if is_admin and filters.get("owner") == user:
+        filters.pop("owner", None)
+
     # Non-admins must only export their own data
     if not is_admin:
         filters = {**filters, "owner": user}
