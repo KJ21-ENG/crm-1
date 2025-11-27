@@ -47,14 +47,10 @@ class CRMLead(Document):
 		# Create or update customer record
 		self.create_or_update_customer()
 		# If a customer is linked and their created_from_lead is empty, set it to this lead
-		try:
-			if getattr(self, "customer_id", None):
-				current_val = frappe.db.get_value("CRM Customer", self.customer_id, "created_from_lead")
-				if not current_val:
-					frappe.db.set_value("CRM Customer", self.customer_id, "created_from_lead", self.name)
-		except Exception:
-			# non-fatal
-			pass
+		if getattr(self, "customer_id", None):
+			current_val = frappe.db.get_value("CRM Customer", self.customer_id, "created_from_lead")
+			if not current_val:
+				frappe.db.set_value("CRM Customer", self.customer_id, "created_from_lead", self.name)
 		
 		emit_activity_update("CRM Lead", self.name)
 		
@@ -247,55 +243,49 @@ class CRMLead(Document):
 		if not self.mobile_no:
 			return
 		
-		try:
-			# Import the customer API function
-			from crm.api.customers import create_or_update_customer
+		# Import the customer API function
+		from crm.api.customers import create_or_update_customer
+		
+		# Only pass customer-specific data to customer creation
+		customer_result = create_or_update_customer(
+			mobile_no=self.mobile_no,
+			first_name=self.first_name,
+			last_name=self.last_name,
+			email=self.email,
+			organization=self.organization,
+			job_title=self.job_title,
+			alternative_mobile_no=self.alternative_mobile_no,
+			pan_card_number=self.pan_card_number,
+			aadhaar_card_number=self.aadhaar_card_number,
+			referral_through=self.referral_through,
+			marital_status=self.marital_status,
+			date_of_birth=self.date_of_birth,
+			anniversary=self.anniversary,
+			customer_source="Lead",
+			reference_doctype="CRM Lead",
+			reference_docname=self.name
+		)
+		
+		# Update the customer_id field with the customer name using db.set_value to avoid activity log
+		if customer_result and customer_result.get("name"):
+			frappe.db.set_value("CRM Lead", self.name, "customer_id", customer_result["name"])
+			# Update the instance variable to keep it in sync
+			self.customer_id = customer_result["name"]
 			
-			# Only pass customer-specific data to customer creation
-			customer_result = create_or_update_customer(
-				mobile_no=self.mobile_no,
-				first_name=self.first_name,
-				last_name=self.last_name,
-				email=self.email,
-				organization=self.organization,
-				job_title=self.job_title,
-				alternative_mobile_no=self.alternative_mobile_no,
-				pan_card_number=self.pan_card_number,
-				aadhaar_card_number=self.aadhaar_card_number,
-				referral_through=self.referral_through,
-				marital_status=self.marital_status,
-				date_of_birth=self.date_of_birth,
-				anniversary=self.anniversary,
-				customer_source="Lead",
-				reference_doctype="CRM Lead",
-				reference_docname=self.name
-			)
+			# Clear customer-specific fields from lead table to avoid duplication
+			customer_fields_to_clear = [
+				'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
+				'phone', 'salutation', 'gender', 'organization', 'job_title',
+				'pan_card_number', 'aadhaar_card_number', 'image', 'lead_name',
+				'marital_status', 'date_of_birth', 'anniversary'
+			]
 			
-			# Update the customer_id field with the customer name using db.set_value to avoid activity log
-			if customer_result and customer_result.get("name"):
-				frappe.db.set_value("CRM Lead", self.name, "customer_id", customer_result["name"])
-				# Update the instance variable to keep it in sync
-				self.customer_id = customer_result["name"]
-				
-				# Clear customer-specific fields from lead table to avoid duplication
-				customer_fields_to_clear = [
-					'first_name', 'last_name', 'middle_name', 'email', 'mobile_no', 
-					'phone', 'salutation', 'gender', 'organization', 'job_title',
-					'pan_card_number', 'aadhaar_card_number', 'image', 'lead_name',
-					'marital_status', 'date_of_birth', 'anniversary'
-				]
-				
-				for field in customer_fields_to_clear:
-					if hasattr(self, field):
-						frappe.db.set_value("CRM Lead", self.name, field, None)
-						setattr(self, field, None)
-			
-			frappe.logger().info(f"Customer record processed for lead {self.name}: {customer_result}")
-			
-		except Exception as e:
-			# Log error but don't fail the lead creation
-			frappe.log_error(f"Error creating/updating customer for lead {self.name}: {str(e)}", "Customer Creation Error")
-			frappe.logger().error(f"Customer creation failed for lead {self.name}: {str(e)}")
+			for field in customer_fields_to_clear:
+				if hasattr(self, field):
+					frappe.db.set_value("CRM Lead", self.name, field, None)
+					setattr(self, field, None)
+		
+		frappe.logger().info(f"Customer record processed for lead {self.name}: {customer_result}")
 
 	def get_customer_data(self):
 		"""Get customer data from customer table using customer_id"""

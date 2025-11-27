@@ -49,41 +49,60 @@ def _notify_user(assigned_to: str, message: str, ref_dt: str = None, ref_dn: str
 
 @frappe.whitelist()
 def get_assignable_users_public():
-    """Return list of enabled CRM users for request flow (no admin permission required)."""
+    """Return all enabled users whose roles are enabled (request flow, no admin perm required)."""
     try:
-        allowed_roles = ["Sales User", "Support User", "Sales Manager", "Support Manager"]
+        # Pull every enabled Role from Role master
+        enabled_roles = set(
+            frappe.get_all("Role", filters={"disabled": 0}, pluck="name")
+        )
+
+        # Never surface these roles or system users in the public picker
+        disallowed_roles = {"Guest"}
+        enabled_roles = enabled_roles - disallowed_roles
+
+        # Fetch users who have at least one enabled role (skip system accounts)
         role_rows = frappe.get_all(
             "Has Role",
             filters={
-                "role": ["in", allowed_roles],
+                "role": ["in", list(enabled_roles)],
                 "parent": ["not in", ["Administrator", "admin@example.com", "Guest"]],
             },
-            fields=["parent"],
+            fields=["parent", "role"],
         )
-        user_ids = sorted({r.parent for r in role_rows})
-        if not user_ids:
+
+        if not role_rows:
             return []
+
+        # Group enabled roles per user for display
+        roles_by_user = {}
+        for row in role_rows:
+            roles_by_user.setdefault(row.parent, []).append(row.role)
+
+        user_ids = sorted(roles_by_user.keys())
+
         users = frappe.get_all(
             "User",
             filters={"name": ["in", user_ids], "enabled": 1},
             fields=["name", "full_name", "email", "user_image"],
         )
-        # Add first matching CRM role for display
+
         result = []
         for u in users:
-            roles = frappe.get_roles(u.name)
-            first_role = next((r for r in roles if r in allowed_roles), None)
+            # Use first enabled role for label; keep entire list available if needed later
+            user_roles = roles_by_user.get(u.name, [])
+            display_role = user_roles[0] if user_roles else ""
             result.append(
                 {
                     "name": u.name,
                     "full_name": u.full_name or u.name,
                     "email": u.email,
                     "user_image": u.user_image,
-                    "role": first_role or "",
+                    "role": display_role,
                     "enabled": True,
                 }
             )
-        # Sort by full name
+
+        # Sort by full name for stable UI
         result.sort(key=lambda x: x.get("full_name") or "")
         return result
     except Exception as e:
@@ -472,4 +491,3 @@ def get_reference_summary(reference_doctype: str, reference_name: str) -> dict:
             "extra_label": "",
             "extra_value": "",
         }
-
