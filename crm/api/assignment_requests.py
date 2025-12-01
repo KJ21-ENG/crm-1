@@ -148,9 +148,6 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
         "User", requested_user, "enabled"
     ):
         frappe.throw(_(f"Requested user {requested_user} is not valid/enabled"))
-    
-    if not reason:
-        return {"success": False, "error": "Please enter the reason"}
 
     # Check if the requested user has the "CRM User" role for direct assignment
     if "CRM User" in frappe.get_roles(requested_user):
@@ -213,6 +210,9 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
             # If direct assignment fails, we could either throw or fall back to request. 
             # Throwing is safer so the user knows something went wrong.
             frappe.throw(_(f"Direct assignment failed: {str(e)}"))
+    
+    if not reason:
+        return {"success": False, "error": "Please enter the reason"}
 
 
     doc = frappe.get_doc(
