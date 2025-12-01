@@ -107,7 +107,31 @@ def get_assignable_users_public():
         return result
     except Exception as e:
         frappe.log_error(f"Error in get_assignable_users_public: {str(e)}", "Assignment Requests")
-        return []
+
+def _perform_assignment(reference_doctype: str, reference_name: str, user: str, assigned_by: str):
+    try:
+        # Use ignore_permissions to bypass admin checks in assign_to_user/assign_ticket_to_user
+        # This avoids session logout issues caused by frappe.set_user("Administrator")
+        frappe.flags.ignore_permissions = True
+        
+        if reference_doctype == "CRM Lead":
+            from crm.api.role_assignment import assign_to_user
+
+            res = assign_to_user(lead_name=reference_name, user_name=user, assigned_by=assigned_by)
+            if not res or not res.get("success"):
+                frappe.throw(_(res.get("error") if res else "Lead assignment failed"))
+        elif reference_doctype == "CRM Ticket":
+            from crm.api.ticket import assign_ticket_to_user
+
+            res = assign_ticket_to_user(
+                ticket_name=reference_name, user_name=user, assigned_by=assigned_by
+            )
+            if not res or not res.get("success"):
+                frappe.throw(_(res.get("error") if res else "Ticket assignment failed"))
+        else:
+            frappe.throw(_(f"Unsupported doctype: {reference_doctype}"))
+    finally:
+        frappe.flags.ignore_permissions = False
 
 
 @frappe.whitelist()
@@ -126,6 +150,42 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
     
     if not reason:
         return {"success": False, "error": "Please enter the reason"}
+
+    # Check if the requested user has the "CRM User" role for direct assignment
+    if "CRM User" in frappe.get_roles(requested_user):
+        try:
+            _perform_assignment(
+                reference_doctype=reference_doctype,
+                reference_name=reference_name,
+                user=requested_user,
+                assigned_by=frappe.session.user
+            )
+            
+            # Notify requester
+            _notify_user(
+                frappe.session.user,
+                _(f"You have successfully assigned {reference_doctype} {reference_name} to {requested_user}."),
+                reference_doctype,
+                reference_name,
+                owner=frappe.session.user
+            )
+            
+            # Notify assigned user
+            _notify_user(
+                requested_user,
+                _(f"You have been directly assigned to {reference_doctype} {reference_name}."),
+                reference_doctype,
+                reference_name,
+                owner=frappe.session.user
+            )
+            
+            return {"success": True, "message": f"Directly assigned to {requested_user}"}
+            
+        except Exception as e:
+            frappe.log_error(f"Direct assignment failed: {str(e)}", "Assignment Request Error")
+            # If direct assignment fails, we could either throw or fall back to request. 
+            # Throwing is safer so the user knows something went wrong.
+            frappe.throw(_(f"Direct assignment failed: {str(e)}"))
 
 
     doc = frappe.get_doc(
@@ -251,23 +311,7 @@ def get_assignment_requests(status=None, mine=False):
     return reqs
 
 
-def _perform_assignment(reference_doctype: str, reference_name: str, user: str, assigned_by: str):
-    if reference_doctype == "CRM Lead":
-        from crm.api.role_assignment import assign_to_user
 
-        res = assign_to_user(lead_name=reference_name, user_name=user, assigned_by=assigned_by)
-        if not res or not res.get("success"):
-            frappe.throw(_(res.get("error") if res else "Lead assignment failed"))
-    elif reference_doctype == "CRM Ticket":
-        from crm.api.ticket import assign_ticket_to_user
-
-        res = assign_ticket_to_user(
-            ticket_name=reference_name, user_name=user, assigned_by=assigned_by
-        )
-        if not res or not res.get("success"):
-            frappe.throw(_(res.get("error") if res else "Ticket assignment failed"))
-    else:
-        frappe.throw(_(f"Unsupported doctype: {reference_doctype}"))
 
 
 @frappe.whitelist()

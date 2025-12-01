@@ -241,8 +241,8 @@ def assign_to_role(lead_name, role_name, assigned_by=None, skip_task_creation=Fa
 def assign_to_user(lead_name, user_name, assigned_by=None):
     """Assign a lead directly to a specific user (Admin Only)"""
     try:
-        # Check if user has admin permissions
-        if not frappe.has_permission("Role Assignment Tracker", "write"):
+        # Check if user has admin permissions (respect ignore_permissions flag)
+        if not frappe.flags.ignore_permissions and not frappe.has_permission("Role Assignment Tracker", "write"):
             frappe.throw("Insufficient permissions for direct user assignment")
         
         if not assigned_by:

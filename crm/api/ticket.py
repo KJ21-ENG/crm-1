@@ -1272,8 +1272,8 @@ def determine_ticket_for_call(call_creation_time, customer_tickets):
 def assign_ticket_to_user(ticket_name, user_name, assigned_by=None, skip_task_creation=False):
     """Assign a ticket directly to a specific user (Admin Only)"""
     try:
-        # Check if user has admin permissions
-        if not frappe.has_permission("Role Assignment Tracker", "write"):
+        # Check if user has admin permissions (respect ignore_permissions flag)
+        if not frappe.flags.ignore_permissions and not frappe.has_permission("Role Assignment Tracker", "write"):
             frappe.throw("Insufficient permissions for direct user assignment")
         
         if not assigned_by:
