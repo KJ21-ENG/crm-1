@@ -99,6 +99,7 @@ def get_assignable_users_public():
                     "user_image": u.user_image,
                     "role": display_role,
                     "enabled": True,
+                    "is_crm_user": "CRM User" in user_roles,
                 }
             )
 
@@ -178,6 +179,32 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
                 reference_name,
                 owner=frappe.session.user
             )
+
+            # Create Task Notification for the assigned user
+            try:
+                from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+
+                dynamic_notification_type = ""
+                if reference_doctype == "CRM Lead":
+                    dynamic_notification_type = "New Lead Assigned"
+                elif reference_doctype == "CRM Ticket":
+                    dynamic_notification_type = "New Ticket Assigned"
+                else:
+                    # Fallback for unexpected doctypes
+                    dynamic_notification_type = "New Document Assigned"
+
+                tn = create_task_notification(
+                    task_name=None,
+                    notification_type=dynamic_notification_type,
+                    assigned_to=requested_user,
+                    message=f'You have been directly assigned to {reference_name}',
+                    reference_doctype=reference_doctype,
+                    reference_docname=reference_name,
+                )
+                if tn:
+                    tn.mark_as_sent()
+            except Exception as e:
+                frappe.logger().error(f"Error creating task notification for direct assignment: {str(e)}")
             
             return {"success": True, "message": f"Directly assigned to {requested_user}"}
             

@@ -173,7 +173,7 @@
             </option>
           </select>
           <div v-if="assignmentType === 'request'" class="mt-2">
-            <label class="block text-sm font-medium text-ink-gray-9 mb-1">{{ __('Reason') }} <span class="text-red-600">*</span></label>
+            <label class="block text-sm font-medium text-ink-gray-9 mb-1">{{ __('Reason') }} <span v-if="!isSelectedUserDirectAssign" class="text-red-600">*</span></label>
             <textarea v-model="requestReason" class="form-control w-full" rows="3" :placeholder="__('Add a note for admin...')" />
             <div class="text-xs text-amber-600 mt-1">
               {{ __('This will send a request to admins. It will be assigned only after approval.') }}
@@ -236,7 +236,14 @@ const isAssigning = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const requestReason = ref('')
-const dialogOptions = computed(() => ({
+
+const isSelectedUserDirectAssign = computed(() => {
+  const user = (availableUsersRequestList.value || []).find(u => u.name === selectedUser.value)
+  return user?.is_crm_user || false
+})
+
+const dialogOptions = computed(() => {
+  return {
   title: __('Assign to Role') + (props.doctype === 'CRM Ticket' ? ' (Ticket)' : ' (Lead)'),
   size: 'xl',
   actions: [
@@ -252,7 +259,7 @@ const dialogOptions = computed(() => ({
     },
     assignmentType.value === 'request'
       ? {
-          label: __('Request'),
+          label: isSelectedUserDirectAssign.value ? __('Assign') : __('Request'),
           variant: 'solid',
           loading: isAssigning.value,
           onClick: () => assignToRole(),
@@ -265,7 +272,7 @@ const dialogOptions = computed(() => ({
           onClick: () => assignToRole(),
         },
   ],
-}))
+}})
 
 // Get available roles for assignment (now includes user_names for debugging)
 const availableRoles = createResource({
@@ -411,7 +418,7 @@ async function assignToRole() {
     return
   }
   
-  if (assignmentType.value === 'request' && !requestReason.value) {
+  if (assignmentType.value === 'request' && !requestReason.value && !isSelectedUserDirectAssign.value) {
     error.value = __('Please enter the reason')
     return
   }
