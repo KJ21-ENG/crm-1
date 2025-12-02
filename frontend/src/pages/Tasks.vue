@@ -10,8 +10,8 @@
       />
       <Button 
         variant="secondary" 
-        :label="showTodayTasks ? 'Show All Tasks' : 'Show Today\'s Tasks'"
-        @click="toggleTodayTasks"
+        :label="showWeeklyTasks ? 'Show All Tasks' : 'Show Weekly Tasks'"
+        @click="toggleWeeklyTasks"
       >
         <template #prefix><FeatherIcon name="calendar" class="h-4" /></template>
       </Button>
@@ -225,6 +225,7 @@ import { computed, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { permissionsStore } from '@/stores/permissions'
 import { sessionStore } from '@/stores/session'
+import { dayjs } from 'frappe-ui'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
@@ -314,26 +315,53 @@ const { canWrite } = permissionsStore()
 const canWriteTasks = computed(() => canWrite('Tasks'))
 
 // Track if showing today's tasks
-const showTodayTasks = ref(true)
+const showWeeklyTasks = ref(true)
 
 // Default filters including today's tasks filter
 const defaultFilters = computed(() => {
-  if (!showTodayTasks.value) return {}
+  if (!showWeeklyTasks.value) return {}
+  
+  const today = dayjs()
+  // Start of the week (Monday)
+  let startOfWeek = today.startOf('week') // dayjs default start of week is Sunday
+  if (startOfWeek.day() === 0) { // If it's Sunday, move to Monday
+    startOfWeek = startOfWeek.add(1, 1, 'day')
+  }
+  // End of the week (Sunday)
+  const endOfWeek = today.endOf('week').add(1, 'day')
+
+  // Only show tasks from today onwards
+  const startDate = today.format('YYYY-MM-DD HH:mm:ss')
+  const endDate = endOfWeek.format('YYYY-MM-DD HH:mm:ss')
   
   return {
-    due_date: ['timespan', 'Today']
+    due_date: ['between', [startDate, endDate]]
   }
 })
 
 // Toggle today's tasks filter
-async function toggleTodayTasks() {
-  showTodayTasks.value = !showTodayTasks.value
+async function toggleWeeklyTasks() {
+  showWeeklyTasks.value = !showWeeklyTasks.value
   // Wait for props (:filters) to propagate to ViewControls before applying
   await nextTick()
   // Preserve existing filters and only toggle the due_date constraint
   const currentFilters = (tasks.value?.params?.filters && { ...tasks.value.params.filters }) || {}
-  if (showTodayTasks.value) {
-    currentFilters.due_date = ['timespan', 'Today']
+  
+  if (showWeeklyTasks.value) {
+    const today = dayjs()
+    // Start of the week (Monday)
+    let startOfWeek = today.startOf('week') // dayjs default start of week is Sunday
+    if (startOfWeek.day() === 0) { // If it's Sunday, move to Monday
+      startOfWeek = startOfWeek.add(1, 'day')
+    }
+    // End of the week (Sunday)
+    const endOfWeek = today.endOf('week').add(1, 'day')
+
+    // Only show tasks from today onwards
+    const startDate = today.format('YYYY-MM-DD HH:mm:ss')
+    const endDate = endOfWeek.format('YYYY-MM-DD HH:mm:ss')
+
+    currentFilters.due_date = ['between', [startDate, endDate]]
   } else {
     if (currentFilters.due_date) delete currentFilters.due_date
   }
@@ -345,9 +373,9 @@ async function toggleTodayTasks() {
 // Add quick filter button in the header
 const quickActions = [
   {
-    label: computed(() => showTodayTasks.value ? 'Show All Tasks' : "Show Today's Tasks"),
+    label: computed(() => showWeeklyTasks.value ? 'Show All Tasks' : "Show Weekly Tasks"),
     icon: 'calendar',
-    onClick: toggleTodayTasks,
+    onClick: toggleWeeklyTasks,
   }
 ]
 
