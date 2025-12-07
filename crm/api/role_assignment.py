@@ -178,43 +178,78 @@ def get_assignable_roles():
 
 @frappe.whitelist()
 def get_assignable_users():
-    """Get list of users that can be assigned to leads (Admin Only)"""
+    """Get list of users that can be assigned to leads (Admin Only).
+    
+    Logic mirrors assignment_requests.get_assignable_users_public:
+    - Only users with ENABLED roles.
+    - Excludes system accounts (Administrator, Guest).
+    - Admin permission check required.
+    """
     try:
         # Check if user has admin permissions
         if not frappe.has_permission("Role Assignment Tracker", "write"):
             frappe.throw("Insufficient permissions to access assignable users")
         
-        # Get all enabled users with CRM roles
-        users = frappe.get_all("User",
+        # 1. Get all enabled Roles
+        enabled_roles = set(
+            frappe.get_all("Role", filters={"disabled": 0}, pluck="name")
+        )
+        # Filter out system/guest roles from the valid set
+        disallowed_roles = {"Guest", "Administrator", "All"}
+        valid_roles = enabled_roles - disallowed_roles
+
+        if not valid_roles:
+            return []
+
+        # 2. Find users who have at least one of these valid roles
+        # Exclude system users explicitly in the parent filter
+        role_rows = frappe.get_all(
+            "Has Role",
             filters={
-                "enabled": 1,
-                "name": ["!=", "Administrator"]
+                "role": ["in", list(valid_roles)],
+                "parent": ["not in", ["Administrator", "admin@example.com", "Guest"]],
             },
-            fields=["name", "full_name", "email", "user_image"]
+            fields=["parent", "role"],
+            ignore_permissions=True
+        )
+
+        if not role_rows:
+            return []
+
+        # Group roles by user to pick the "best" one for display
+        roles_by_user = {}
+        for row in role_rows:
+            roles_by_user.setdefault(row.parent, []).append(row.role)
+
+        user_ids = sorted(roles_by_user.keys())
+
+        # 3. Fetch user details
+        users = frappe.get_all(
+            "User",
+            filters={"name": ["in", user_ids], "enabled": 1},
+            fields=["name", "full_name", "email", "user_image"],
+            ignore_permissions=True
         )
         
         user_data = []
+        
         for user in users:
-            # Get user roles
-            roles = frappe.get_roles(user.name)
+            user_roles = roles_by_user.get(user.name, [])
             
-            # Filter only CRM-related roles
-            crm_roles = [role for role in roles if role in [
-                'Sales User', 'Sales Manager', 'Support User', 'CRM User', 'CRM Manager'
-            ]]
-            
-            if crm_roles:
-                user_data.append({
-                    "name": user.name,
-                    "full_name": user.full_name or user.name,
-                    "email": user.email,
-                    "user_image": user.user_image,
-                    "role": crm_roles[0] if crm_roles else "No Role",
-                    "enabled": True
-                })
+            # Use first enabled role for label
+            display_role = user_roles[0] if user_roles else "No Role"
+
+            user_data.append({
+                "name": user.name,
+                "full_name": user.full_name or user.name,
+                "email": user.email,
+                "user_image": user.user_image,
+                "role": display_role,
+                "enabled": True
+            })
         
         # Sort by full name
-        user_data.sort(key=lambda x: x["full_name"])
+        user_data.sort(key=lambda x: x["full_name"] or "")
         
         return user_data
         
