@@ -1,4 +1,5 @@
 import frappe
+import frappe.permissions
 from frappe import _
 from frappe.utils import now_datetime
 
@@ -70,13 +71,34 @@ def get_assignable_users_public():
             fields=["parent", "role"],
         )
 
-        if not role_rows:
+        # Check for implicit SYSTEM_USER_ROLE
+        system_user_role = getattr(frappe.permissions, "SYSTEM_USER_ROLE", None)
+        system_users = []
+        
+        # If the system user role is enabled (it should be), fetch matching users
+        if system_user_role and system_user_role in enabled_roles:
+            system_users = frappe.get_all(
+                "User",
+                filters={
+                    "user_type": "System User",
+                    "enabled": 1,
+                    "name": ["not in", ["Administrator", "admin@example.com", "Guest"]]
+                },
+                fields=["name"],
+            )
+
+        if not role_rows and not system_users:
             return []
 
         # Group enabled roles per user for display
         roles_by_user = {}
         for row in role_rows:
             roles_by_user.setdefault(row.parent, []).append(row.role)
+            
+        # Add automatic role for system users if not already present
+        for su in system_users:
+            if system_user_role not in roles_by_user.get(su.name, []):
+                roles_by_user.setdefault(su.name, []).append(system_user_role)
 
         user_ids = sorted(roles_by_user.keys())
 
