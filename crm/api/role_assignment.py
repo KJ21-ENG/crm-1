@@ -1,5 +1,6 @@
 import frappe
 import json
+import frappe.permissions
 from datetime import datetime, timedelta
 from frappe.utils import get_fullname
 from crm.fcrm.doctype.role_assignment_tracker.role_assignment_tracker import RoleAssignmentTracker
@@ -194,6 +195,7 @@ def get_assignable_users():
         enabled_roles = set(
             frappe.get_all("Role", filters={"disabled": 0}, pluck="name")
         )
+
         # Filter out system/guest roles from the valid set
         disallowed_roles = {"Guest", "Administrator", "All"}
         valid_roles = enabled_roles - disallowed_roles
@@ -213,13 +215,34 @@ def get_assignable_users():
             ignore_permissions=True
         )
 
-        if not role_rows:
+        # Check if SYSTEM_USER_ROLE is in valid_roles
+        system_user_role = getattr(frappe.permissions, "SYSTEM_USER_ROLE", None)
+        system_users = []
+        if system_user_role and system_user_role in valid_roles:
+            # Fetch enabled System Users
+            system_users = frappe.get_all(
+                "User",
+                filters={
+                    "user_type": "System User",
+                    "enabled": 1,
+                    "name": ["not in", ["Administrator", "admin@example.com", "Guest"]]
+                },
+                fields=["name"],
+                ignore_permissions=True
+            )
+
+        if not role_rows and not system_users:
             return []
 
         # Group roles by user to pick the "best" one for display
         roles_by_user = {}
         for row in role_rows:
             roles_by_user.setdefault(row.parent, []).append(row.role)
+        
+        # Add automatic role for system users if not already present
+        for su in system_users:
+            if system_user_role not in roles_by_user.get(su.name, []):
+                roles_by_user.setdefault(su.name, []).append(system_user_role)
 
         user_ids = sorted(roles_by_user.keys())
 
@@ -230,7 +253,7 @@ def get_assignable_users():
             fields=["name", "full_name", "email", "user_image"],
             ignore_permissions=True
         )
-        
+
         user_data = []
         
         for user in users:
@@ -247,6 +270,7 @@ def get_assignable_users():
                 "role": display_role,
                 "enabled": True
             })
+
         
         # Sort by full name
         user_data.sort(key=lambda x: x["full_name"] or "")
