@@ -5,7 +5,7 @@ from frappe import _
 from frappe.utils import cint
 from frappe.utils.csvutils import build_csv_response
 from frappe.utils.xlsxutils import make_xlsx
-from frappe.utils.data import getdate, formatdate
+from frappe.utils.data import getdate, formatdate, get_timespan_date_range
 from crm.utils import seconds_to_duration
 from crm.api.doc import convert_filter_to_tuple
 import json
@@ -100,6 +100,8 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
     # Translate filters to SQL conditions (allow functions in SELECT safely)
     conditions = []
     values = []
+    meta = frappe.get_meta("CRM Call Log")
+
     for _filter in tuple_filters:
         # Expected tuple: (doctype, field, operator, value) or (field, operator, value)
         if len(_filter) == 4:
@@ -109,13 +111,35 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
         else:
             continue
 
+        # Basic validation: only include fields that actually exist in the table
+        if fieldname != "name" and not meta.has_field(fieldname):
+            continue
+
         column = f"`tabCRM Call Log`.`{fieldname}`"
         op = (operator or "=").lower()
+
+        # Handle 'timespan' operator (e.g. "this month", "last week")
+        if op == "timespan":
+            try:
+                value = get_timespan_date_range(value)
+                op = "between"
+            except Exception:
+                continue
+
+        # Handle 'is set' / 'is not set' which comes as (fieldname, 'is', 'set'/'not set')
+        if op == "is":
+            if value == "set":
+                conditions.append(f"{column} IS NOT NULL AND {column} != ''")
+            elif value == "not set":
+                conditions.append(f"{column} IS NULL OR {column} = ''")
+            continue
 
         if op == "between" and isinstance(value, (list, tuple)) and len(value) == 2:
             conditions.append(f"{column} BETWEEN %s AND %s")
             values.extend(value)
         elif op in ("in", "not in") and isinstance(value, (list, tuple)):
+            if not value:
+                continue
             placeholders = ", ".join(["%s"] * len(value))
             conditions.append(f"{column} {operator} ({placeholders})")
             values.extend(value)
@@ -123,6 +147,7 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
             conditions.append(f"{column} LIKE %s")
             values.append(value)
         else:
+            # Standard operators (=, !=, >, <, etc.)
             conditions.append(f"{column} {operator} %s")
             values.append(value)
 
