@@ -26,7 +26,7 @@
             'ticket',
             document,
             ticket.data._customStatuses,
-            triggerOnChange,
+            handleStatusChange,
           )
         "
       >
@@ -414,6 +414,30 @@
       title: `Follow-up for ${ticket.data?.subject}`,
     }"
   />
+  
+  <!-- Follow-up Task Modal (triggered on Follow-up Scheduled status) -->
+  <TaskModal
+    v-if="showFollowupTaskModal"
+    v-model="showFollowupTaskModal"
+    :doctype="'CRM Ticket'"
+    :doc="ticket.data?.name"
+    :task="{
+      title: `Follow-up: ${ticket.data?.subject || ticket.data?.name}`,
+      status: 'Todo',
+      priority: 'Medium',
+    }"
+    @after="handleFollowupTaskCreated"
+  />
+  
+  <!-- Follow-up Complete Tasks Modal -->
+  <FollowupTasksModal
+    v-if="showFollowupCompleteModal"
+    v-model="showFollowupCompleteModal"
+    :doctype="'CRM Ticket'"
+    :docname="ticket.data?.name"
+    :documentName="ticket.data?.subject || ticket.data?.name"
+    @proceed="handleFollowupCompleteProceeded"
+  />
 
   <!-- Escalation Modal -->
   <Dialog
@@ -598,6 +622,7 @@ import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import SLASection from '@/components/SLASection.vue'
 import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
 import TaskModal from '@/components/Modals/TaskModal.vue'
+import FollowupTasksModal from '@/components/Modals/FollowupTasksModal.vue'
 import { statusesStore } from '@/stores/statuses'
 import { useActiveTabManager } from '@/composables/useActiveTabManager'
 import { useDocument } from '@/data/document'
@@ -664,6 +689,13 @@ const activities = ref(null)
 const escalationReason = ref('')
 const escalateTo = ref(null)
 
+// Follow-up Task Modal state
+const showFollowupTaskModal = ref(false)
+const pendingStatusChange = ref(null)
+
+// Follow-up Complete Modal state
+const showFollowupCompleteModal = ref(false)
+
 // Main ticket resource
 const ticket = createResource({
   url: 'crm.fcrm.doctype.crm_ticket.api.get_ticket',
@@ -708,6 +740,94 @@ onMounted(() => {
 })
 
 const { triggerOnChange, document } = useDocument('CRM Ticket', props.ticketId)
+
+// Check if status requires follow-up task creation
+function shouldRequireFollowupTask(status) {
+  return status === 'Follow-up Scheduled'
+}
+
+// Check if status is follow-up complete (should show task completion modal)
+function shouldShowFollowupCompleteModal(status) {
+  return status === 'Follow-up Complete'
+}
+
+// Custom function to handle status changes with follow-up task check
+async function handleStatusChange(fieldname, value) {
+  if (fieldname === 'status') {
+    const newStatus = value
+    
+    // Check if the new status requires a follow-up task
+    if (shouldRequireFollowupTask(newStatus)) {
+      // Store the pending status change and show task modal
+      pendingStatusChange.value = { fieldname, value }
+      showFollowupTaskModal.value = true
+      return
+    }
+    
+    // Check if the new status is Follow-up Complete
+    if (shouldShowFollowupCompleteModal(newStatus)) {
+      // Store the pending status change and show follow-up complete modal
+      pendingStatusChange.value = { fieldname, value }
+      showFollowupCompleteModal.value = true
+      return
+    }
+  }
+  
+  // Call the original triggerOnChange for non-special status changes
+  await triggerOnChange(fieldname, value)
+}
+
+// Handle follow-up task creation completion
+async function handleFollowupTaskCreated(taskData) {
+  showFollowupTaskModal.value = false
+  
+  if (!pendingStatusChange.value) {
+    return
+  }
+  
+  try {
+    // Proceed with the status change
+    await triggerOnChange('status', pendingStatusChange.value.value)
+    document.save.submit()
+    
+    await ticket.reload()
+    toast.success(__('Status updated to Follow-up Scheduled and task created'))
+  } catch (error) {
+    console.error('Error updating status after task creation:', error)
+    toast.error(error.message || __('Failed to update ticket status'))
+  } finally {
+    pendingStatusChange.value = null
+  }
+}
+
+// Handle follow-up complete modal proceeded (after user selects tasks or skips)
+async function handleFollowupCompleteProceeded(result) {
+  showFollowupCompleteModal.value = false
+  
+  if (!pendingStatusChange.value) {
+    return
+  }
+  
+  try {
+    // Proceed with the status change
+    await triggerOnChange('status', pendingStatusChange.value.value)
+    document.save.submit()
+    
+    await ticket.reload()
+    
+    // Show appropriate success message
+    if (result?.markedAsDone > 0) {
+      toast.success(__('Status updated to Follow-up Complete and {0} task(s) marked as done', [result.markedAsDone]))
+    } else {
+      toast.success(__('Status updated to Follow-up Complete'))
+    }
+  } catch (error) {
+    console.error('Error updating status after follow-up complete:', error)
+    toast.error(error.message || __('Failed to update ticket status'))
+  } finally {
+    pendingStatusChange.value = null
+  }
+}
 
 const assignees = createResource({
   url: 'crm.api.doc.get_assigned_users',

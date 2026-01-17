@@ -388,6 +388,29 @@
     :onSuccess="handlePodIdSubmit"
   />
   
+  <!-- Follow-up Task Modal -->
+  <TaskModal
+    v-if="showFollowupTaskModal"
+    v-model="showFollowupTaskModal"
+    :doctype="'CRM Lead'"
+    :doc="lead.data?.name"
+    :task="{
+      title: `Follow-up: ${lead.data?.lead_name || lead.data?.name}`,
+      status: 'Todo',
+      priority: 'Medium',
+    }"
+    @after="handleFollowupTaskCreated"
+  />
+  
+  <!-- Follow-up Complete Tasks Modal -->
+  <FollowupTasksModal
+    v-if="showFollowupCompleteModal"
+    v-model="showFollowupCompleteModal"
+    :doctype="'CRM Lead'"
+    :docname="lead.data?.name"
+    :documentName="lead.data?.lead_name || lead.data?.name"
+    @proceed="handleFollowupCompleteProceeded"
+  />
 
 </template>
 <script setup>
@@ -420,6 +443,8 @@ import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import SLASection from '@/components/SLASection.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import TaskModal from '@/components/Modals/TaskModal.vue'
+import FollowupTasksModal from '@/components/Modals/FollowupTasksModal.vue'
 import {
   openWebsite,
   setupCustomizations,
@@ -857,6 +882,12 @@ const showRejectionReasonModal = ref(false)
 // POD ID Modal state
 const showPodIdModal = ref(false)
 
+// Follow-up Task Modal state
+const showFollowupTaskModal = ref(false)
+
+// Follow-up Complete Modal state
+const showFollowupCompleteModal = ref(false)
+
 // Check if status change requires Client ID
 function shouldRequireClientId(status) {
   return ['Account Opened', 'Account Active', 'Account Activated'].includes(status)
@@ -870,6 +901,16 @@ function shouldRequireRejectionReason(status) {
 // Check if status change requires POD ID
 function shouldRequirePodId(status) {
   return status === 'Sent to HO'
+}
+
+// Check if status requires follow-up task creation
+function shouldRequireFollowupTask(status) {
+  return status === 'Follow-up Scheduled'
+}
+
+// Check if status is follow-up complete (should show task completion modal)
+function shouldShowFollowupCompleteModal(status) {
+  return status === 'Follow-up Complete'
 }
 
 // Handle Client ID submission
@@ -987,6 +1028,58 @@ function handlePodIdCancel() {
   pendingStatusChange.value = null
 }
 
+// Handle follow-up task creation completion
+async function handleFollowupTaskCreated(taskData) {
+  showFollowupTaskModal.value = false
+  
+  if (!pendingStatusChange.value) {
+    return
+  }
+  
+  try {
+    // Proceed with the status change
+    await triggerOnChange('status', pendingStatusChange.value.value)
+    document.save.submit()
+    
+    await lead.reload()
+    toast.success(__('Status updated to Follow-up Scheduled and task created'))
+  } catch (error) {
+    console.error('Error updating status after task creation:', error)
+    toast.error(error.message || __('Failed to update lead status'))
+  } finally {
+    pendingStatusChange.value = null
+  }
+}
+
+// Handle follow-up complete modal proceeded (after user selects tasks or skips)
+async function handleFollowupCompleteProceeded(result) {
+  showFollowupCompleteModal.value = false
+  
+  if (!pendingStatusChange.value) {
+    return
+  }
+  
+  try {
+    // Proceed with the status change
+    await triggerOnChange('status', pendingStatusChange.value.value)
+    document.save.submit()
+    
+    await lead.reload()
+    
+    // Show appropriate success message
+    if (result?.markedAsDone > 0) {
+      toast.success(__('Status updated to Follow-up Complete and {0} task(s) marked as done', [result.markedAsDone]))
+    } else {
+      toast.success(__('Status updated to Follow-up Complete'))
+    }
+  } catch (error) {
+    console.error('Error updating status after follow-up complete:', error)
+    toast.error(error.message || __('Failed to update lead status'))
+  } finally {
+    pendingStatusChange.value = null
+  }
+}
+
 // Custom function to handle status changes with Client ID and Rejection Reason checks
 async function handleStatusChange(fieldname, value) {
   if (fieldname === 'status' && !isUpdating.value) {
@@ -1014,6 +1107,22 @@ async function handleStatusChange(fieldname, value) {
       // Store the pending status change
       pendingStatusChange.value = { fieldname, value }
       showPodIdModal.value = true
+      return
+    }
+    
+    // Check if the new status requires a follow-up task
+    if (shouldRequireFollowupTask(newStatus)) {
+      // Store the pending status change and show task modal
+      pendingStatusChange.value = { fieldname, value }
+      showFollowupTaskModal.value = true
+      return
+    }
+    
+    // Check if the new status is Follow-up Complete (should show task completion modal)
+    if (shouldShowFollowupCompleteModal(newStatus)) {
+      // Store the pending status change and show follow-up complete modal
+      pendingStatusChange.value = { fieldname, value }
+      showFollowupCompleteModal.value = true
       return
     }
     

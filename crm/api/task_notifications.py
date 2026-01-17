@@ -261,3 +261,35 @@ def get_notification_stats():
     except Exception as e:
         frappe.logger().error(f"Error getting notification stats: {str(e)}")
         return [] 
+
+
+@frappe.whitelist()
+def get_eligible_followup_tasks(reference_doctype, reference_docname):
+    """
+    Get follow-up tasks that are eligible to be marked as done
+    when status changes to 'Follow-up Complete'.
+    
+    Args:
+        reference_doctype: The parent document type (e.g., 'CRM Lead', 'CRM Ticket')
+        reference_docname: The parent document name
+    
+    Returns:
+        List of tasks with title matching 'Follow-up%' and status not Done/Canceled
+    """
+    try:
+        tasks = frappe.get_all(
+            "CRM Task",
+            filters={
+                "reference_doctype": reference_doctype,
+                "reference_docname": reference_docname,
+                "status": ["not in", ["Done", "Canceled"]],
+                "title": ["like", "Follow-up%"]
+            },
+            fields=["name", "title", "status", "priority", "due_date", "assigned_to", "creation"],
+            order_by="creation desc"
+        )
+        
+        return tasks
+    except Exception as e:
+        frappe.logger().error(f"Error getting eligible follow-up tasks: {str(e)}")
+        frappe.throw(str(e))

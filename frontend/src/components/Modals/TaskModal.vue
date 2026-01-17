@@ -208,7 +208,8 @@ const assignedUsers = createResource({
 })
 
 const showManualAssignee = computed(() => {
-  return Boolean(props.doc) && Array.isArray(assignedUsers.data) && assignedUsers.data.length > 0
+  // Show assign field if: we have a doc OR there are assignees loaded
+  return Boolean(props.doc) || (Array.isArray(assignedUsers.data) && assignedUsers.data.length > 0)
 })
 
 const assignedUserFilter = computed(() => {
@@ -323,7 +324,8 @@ function render() {
     if (!_task.value.assigned_to) {
       _task.value.assigned_to = getUser().name
     }
-    if (_task.value.title) {
+    // Only set editMode if this is an EXISTING task (has a name/ID)
+    if (_task.value.name) {
       editMode.value = true
     }
   })
