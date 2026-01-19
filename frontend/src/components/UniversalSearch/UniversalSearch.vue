@@ -81,23 +81,27 @@
               <div
                 v-for="(section, sectionIndex) in sections"
                 :key="section.doctype"
-                class="px-4"
+                class="mx-4 rounded-xl border p-1"
+                :class="[getSectionTheme(section.doctype).bg, getSectionTheme(section.doctype).border]"
               >
-                <div class="flex items-center gap-2 px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-ink-gray-4">
+                <div
+                  class="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider"
+                  :class="getSectionTheme(section.doctype).text"
+                >
                   <FeatherIcon :name="section.icon" class="h-3.5 w-3.5" />
                   <span>{{ section.label }}</span>
-                  <span class="text-ink-gray-3">•</span>
+                  <span class="opacity-50">•</span>
                   <span>{{ section.results.length }}</span>
                 </div>
-                <div class="space-y-2">
+                <div class="space-y-1">
                   <button
                     v-for="(result, resultIndex) in section.results"
                     :key="`${result.doctype}-${result.name}`"
                     type="button"
                     class="w-full rounded-lg border border-transparent px-3 py-3 text-left transition-colors"
                     :class="{
-                      'bg-surface-gray-2 border-ink-gray-3 shadow-inner': getGlobalIndex(sectionIndex, resultIndex) === activeIndex,
-                      'hover:bg-surface-gray-1': getGlobalIndex(sectionIndex, resultIndex) !== activeIndex,
+                      'bg-white shadow-sm ring-1 ring-ink-gray-2': getGlobalIndex(sectionIndex, resultIndex) === activeIndex,
+                      'hover:bg-white hover:ring-1 hover:ring-transparent': getGlobalIndex(sectionIndex, resultIndex) !== activeIndex,
                     }"
                     @mouseenter="setActive(getGlobalIndex(sectionIndex, resultIndex))"
                     @click="activateResult(flatResults[getGlobalIndex(sectionIndex, resultIndex)])"
@@ -404,6 +408,53 @@ function formatLabel(key) {
 function stripPrefix(value) {
   if (!value) return ''
   return value.replace(/^CRM\s+/i, '')
+}
+
+function getSectionTheme(doctype) {
+  const themes = {
+    'CRM Lead': {
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-100',
+    },
+    'CRM Ticket': {
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      border: 'border-rose-100',
+    },
+    'CRM Customer': {
+      bg: 'bg-purple-50',
+      text: 'text-purple-700',
+      border: 'border-purple-100',
+    },
+    'CRM Task': {
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-100',
+    },
+    'FCRM Note': {
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-100',
+    },
+    'CRM Call Log': {
+      bg: 'bg-cyan-50',
+      text: 'text-cyan-700',
+      border: 'border-cyan-100',
+    },
+    'CRM Support Pages': {
+      bg: 'bg-slate-50',
+      text: 'text-slate-700',
+      border: 'border-slate-100',
+    },
+  }
+  return (
+    themes[doctype] || {
+      bg: 'bg-gray-50',
+      text: 'text-gray-700',
+      border: 'border-gray-100',
+    }
+  )
 }
 
 const triggerSearch = useDebounceFn(() => {
