@@ -1,0 +1,107 @@
+site_name: Eshin Broking CRM Documentation
+site_description: Professional documentation for Eshin Broking CRM System
+site_author: Eshin Broking Development Team
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search
+  - tags
+  # Uncomment below if mkdocs-pdf-export-plugin is installed
+  # - pdf-export:
+  #     combined: true
+  #     combined_output_path: full-docs.pdf
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - User Guide:
+    - Overview: user-guide/overview.md
+    - Leads: user-guide/leads.md
+    - Tickets: user-guide/tickets.md
+    - Customers: user-guide/customers.md
+    - Call Logs: user-guide/call-logs.md
+    - Tasks: user-guide/tasks.md
+    - Dashboard: user-guide/dashboard.md
+    - Settings: user-guide/settings.md
+    - Power User Tips: user-guide/power-user-tips.md
+  - Admin Guide:
+    - Installation: admin-guide/installation.md
+    - Single-Server Deploy: admin-guide/deploy-single-server.md
+    - Production Deploy: admin-guide/deploy-production.md
+    - Backup & Restore: admin-guide/backup-restore.md
+    - SSL & Email Setup: admin-guide/ssl-email-setup.md
+    - Upgrading & Patching: admin-guide/upgrading-patching.md
+    - Security Checklist: admin-guide/security-checklist.md
+  - Developer Guide:
+    - Repository Structure: developer-guide/repo-structure.md
+    - DocType Development: developer-guide/doctype-development.md
+    - API Reference: developer-guide/api-reference.md
+    - Hooks, Tasks & Patches: developer-guide/hooks-tasks-patches.md
+    - Frontend Development: developer-guide/frontend-development.md
+    - Testing: developer-guide/testing.md
+  - SOPs:
+    - Onboard New Customer: sops/onboard-new-customer.md
+    - Backup Database & Files: sops/backup-database-files.md
+    - Restore from Backup: sops/restore-from-backup.md
+    - Apply Patches & Upgrades: sops/apply-patches-upgrades.md
+    - Add Sales User: sops/add-sales-user.md
+    - Create Custom Report: sops/create-custom-report.md
+    - Data Migration (CSV): sops/data-migration-csv-import.md
+    - Rebuild Search Indexes: sops/rebuild-search-indexes.md
+    - Troubleshoot Email: sops/troubleshoot-email.md
+    - Resolve Permission Issues: sops/resolve-permission-issues.md
+  - Reference:
+    - Architecture: architecture.md
+    - Troubleshooting & FAQ: troubleshooting.md
+    - Changelog: changelog.md
+    - Simplicity Roadmap: simplicity-roadmap.md
+    - Analysis Summary: analysis_summary.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/KJ21-ENG/crm-1
+  generator: false
+
+copyright: Copyright &copy; 2024-2026 Eshin Broking. All rights reserved.

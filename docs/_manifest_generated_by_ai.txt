@@ -1,0 +1,72 @@
+# AI-Generated Documentation Manifest
+# Generated: 2026-02-02
+# Branch: development-kush-exp
+
+## Files Generated
+
+### Root Configuration
+mkdocs.yml
+docs/index.md
+docs/assumptions.md
+docs/SUMMARY.md
+
+### User Guide (9 files)
+docs/user-guide/overview.md
+docs/user-guide/leads.md
+docs/user-guide/tickets.md
+docs/user-guide/customers.md
+docs/user-guide/call-logs.md
+docs/user-guide/tasks.md
+docs/user-guide/dashboard.md
+docs/user-guide/settings.md
+docs/user-guide/power-user-tips.md
+
+### Admin Guide (7 files)
+docs/admin-guide/installation.md
+docs/admin-guide/deploy-single-server.md
+docs/admin-guide/deploy-production.md
+docs/admin-guide/backup-restore.md
+docs/admin-guide/ssl-email-setup.md
+docs/admin-guide/upgrading-patching.md
+docs/admin-guide/security-checklist.md
+
+### Developer Guide (6 files)
+docs/developer-guide/repo-structure.md
+docs/developer-guide/doctype-development.md
+docs/developer-guide/api-reference.md
+docs/developer-guide/hooks-tasks-patches.md
+docs/developer-guide/frontend-development.md
+docs/developer-guide/testing.md
+
+### SOPs (11 files)
+docs/sops/_template.md
+docs/sops/onboard-new-customer.md
+docs/sops/backup-database-files.md
+docs/sops/restore-from-backup.md
+docs/sops/apply-patches-upgrades.md
+docs/sops/add-sales-user.md
+docs/sops/create-custom-report.md
+docs/sops/data-migration-csv-import.md
+docs/sops/rebuild-search-indexes.md
+docs/sops/troubleshoot-email.md
+docs/sops/resolve-permission-issues.md
+
+### Technical Documentation (3 files)
+docs/architecture.md
+docs/troubleshooting.md
+docs/changelog.md
+
+### Analysis Documents (2 files)
+docs/analysis_summary.md
+docs/simplicity-roadmap.md
+
+### Scripts (1 file)
+docs/scripts/build_docs.sh
+
+## Total: 41 documentation files
+
+## Notes
+- Screenshots referenced as placeholders (docs/assets/screenshots/*.png)
+- Based on analysis of crm/ codebase
+- Compared against upstream frappe/crm repository
+- All SOPs include verification and rollback procedures
