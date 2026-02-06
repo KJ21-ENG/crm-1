@@ -1100,6 +1100,8 @@ def get_linked_tasks(name):
 			"priority",
 			"status",
 			"modified",
+			"owner",
+			"creation",
 		],
 	)
 	

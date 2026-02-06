@@ -238,10 +238,6 @@
                 <span class="text-ink-gray-5">{{ activity.data.status === 'Done' ? 'completed' : 'created' }}</span>
                 <span class="font-medium text-ink-gray-8">task:</span>
                 <span class="font-medium text-ink-gray-9">{{ activity.data.title }}</span>
-                <div v-if="activity.data.priority" class="flex items-center gap-1">
-                  <TaskPriorityIcon class="!h-3 !w-3" :priority="activity.data.priority" />
-                  <span class="text-sm text-ink-gray-6">{{ activity.data.priority }}</span>
-                </div>
               </div>
               <div class="ml-auto whitespace-nowrap">
                 <Tooltip :text="formatDate(activity.creation)">
@@ -251,9 +247,21 @@
                 </Tooltip>
               </div>
             </div>
+            <!-- Show assignment info -->
+            <div v-if="activity.data.assigned_to" class="flex items-center gap-2 text-sm text-ink-gray-6">
+              <span>{{ __('Assigned to') }}:</span>
+              <UserAvatar :user="activity.data.assigned_to" size="xs" />
+              <span class="font-medium text-ink-gray-7">{{ getUser(activity.data.assigned_to).full_name }}</span>
+            </div>
+            <!-- Priority -->
+            <div v-if="activity.data.priority" class="flex items-center gap-2 text-sm text-ink-gray-6">
+              <TaskPriorityIcon class="!h-3 !w-3" :priority="activity.data.priority" />
+              <span>{{ __('Priority') }}: {{ activity.data.priority }}</span>
+            </div>
+            <!-- Due date -->
             <div v-if="activity.data.due_date" class="flex items-center gap-2 text-sm text-ink-gray-6">
               <CalendarIcon class="h-3 w-3" />
-              <span>Due: {{ formatDate(activity.data.due_date, 'MMM D, YYYY | hh:mm a') }}</span>
+              <span>{{ __('Due') }}: {{ formatDate(activity.data.due_date, 'MMM D, YYYY | hh:mm a') }}</span>
             </div>
             <div v-if="activity.data.description" class="text-sm text-ink-gray-7 leading-relaxed">
               <div class="prose-sm" v-html="activity.data.description"></div>
@@ -854,14 +862,15 @@ function get_activities() {
     const taskActivities = all_activities.data.tasks.map(task => ({
       activity_type: 'task',
       name: task.name,
-      creation: task.modified, // Use modified as creation time for sorting
-      owner: task.assigned_to,
+      creation: task.creation || task.modified, // Use creation time (when task was created)
+      owner: task.owner, // Use owner (who created the task), not assigned_to
       data: {
         title: task.title,
         description: task.description,
         due_date: task.due_date,
         priority: task.priority,
         status: task.status,
+        assigned_to: task.assigned_to, // Include assigned_to in data for display
         reference_doctype: task.reference_doctype,
         reference_docname: task.reference_docname
       },

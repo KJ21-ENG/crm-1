@@ -1,4 +1,5 @@
 import frappe
+import frappe.permissions
 from frappe import _
 from frappe.utils import now_datetime
 
@@ -49,46 +50,111 @@ def _notify_user(assigned_to: str, message: str, ref_dt: str = None, ref_dn: str
 
 @frappe.whitelist()
 def get_assignable_users_public():
-    """Return list of enabled CRM users for request flow (no admin permission required)."""
+    """Return all enabled users whose roles are enabled (request flow, no admin perm required)."""
     try:
-        allowed_roles = ["Sales User", "Support User", "Sales Manager", "Support Manager"]
+        # Pull every enabled Role from Role master
+        enabled_roles = set(
+            frappe.get_all("Role", filters={"disabled": 0}, pluck="name")
+        )
+
+        # Never surface these roles or system users in the public picker
+        disallowed_roles = {"Guest"}
+        enabled_roles = enabled_roles - disallowed_roles
+
+        # Fetch users who have at least one enabled role (skip system accounts)
         role_rows = frappe.get_all(
             "Has Role",
             filters={
-                "role": ["in", allowed_roles],
+                "role": ["in", list(enabled_roles)],
                 "parent": ["not in", ["Administrator", "admin@example.com", "Guest"]],
             },
-            fields=["parent"],
+            fields=["parent", "role"],
         )
-        user_ids = sorted({r.parent for r in role_rows})
-        if not user_ids:
+
+        # Check for implicit SYSTEM_USER_ROLE
+        system_user_role = getattr(frappe.permissions, "SYSTEM_USER_ROLE", None)
+        system_users = []
+        
+        # If the system user role is enabled (it should be), fetch matching users
+        if system_user_role and system_user_role in enabled_roles:
+            system_users = frappe.get_all(
+                "User",
+                filters={
+                    "user_type": "System User",
+                    "enabled": 1,
+                    "name": ["not in", ["Administrator", "admin@example.com", "Guest"]]
+                },
+                fields=["name"],
+            )
+
+        if not role_rows and not system_users:
             return []
+
+        # Group enabled roles per user for display
+        roles_by_user = {}
+        for row in role_rows:
+            roles_by_user.setdefault(row.parent, []).append(row.role)
+            
+        # Add automatic role for system users if not already present
+        for su in system_users:
+            if system_user_role not in roles_by_user.get(su.name, []):
+                roles_by_user.setdefault(su.name, []).append(system_user_role)
+
+        user_ids = sorted(roles_by_user.keys())
+
         users = frappe.get_all(
             "User",
             filters={"name": ["in", user_ids], "enabled": 1},
             fields=["name", "full_name", "email", "user_image"],
         )
-        # Add first matching CRM role for display
+
         result = []
         for u in users:
-            roles = frappe.get_roles(u.name)
-            first_role = next((r for r in roles if r in allowed_roles), None)
+            # Use first enabled role for label; keep entire list available if needed later
+            user_roles = roles_by_user.get(u.name, [])
+            display_role = user_roles[0] if user_roles else ""
             result.append(
                 {
                     "name": u.name,
                     "full_name": u.full_name or u.name,
                     "email": u.email,
                     "user_image": u.user_image,
-                    "role": first_role or "",
+                    "role": display_role,
                     "enabled": True,
+                    "is_crm_user": "CRM User" in user_roles,
                 }
             )
-        # Sort by full name
+
+        # Sort by full name for stable UI
         result.sort(key=lambda x: x.get("full_name") or "")
         return result
     except Exception as e:
         frappe.log_error(f"Error in get_assignable_users_public: {str(e)}", "Assignment Requests")
-        return []
+
+def _perform_assignment(reference_doctype: str, reference_name: str, user: str, assigned_by: str):
+    try:
+        # Use ignore_permissions to bypass admin checks in assign_to_user/assign_ticket_to_user
+        # This avoids session logout issues caused by frappe.set_user("Administrator")
+        frappe.flags.ignore_permissions = True
+        
+        if reference_doctype == "CRM Lead":
+            from crm.api.role_assignment import assign_to_user
+
+            res = assign_to_user(lead_name=reference_name, user_name=user, assigned_by=assigned_by)
+            if not res or not res.get("success"):
+                frappe.throw(_(res.get("error") if res else "Lead assignment failed"))
+        elif reference_doctype == "CRM Ticket":
+            from crm.api.ticket import assign_ticket_to_user
+
+            res = assign_ticket_to_user(
+                ticket_name=reference_name, user_name=user, assigned_by=assigned_by
+            )
+            if not res or not res.get("success"):
+                frappe.throw(_(res.get("error") if res else "Ticket assignment failed"))
+        else:
+            frappe.throw(_(f"Unsupported doctype: {reference_doctype}"))
+    finally:
+        frappe.flags.ignore_permissions = False
 
 
 @frappe.whitelist()
@@ -104,6 +170,68 @@ def create_assignment_request(reference_doctype, reference_name, requested_user,
         "User", requested_user, "enabled"
     ):
         frappe.throw(_(f"Requested user {requested_user} is not valid/enabled"))
+
+    # Check if the requested user has the "CRM User" role for direct assignment
+    if "CRM User" in frappe.get_roles(requested_user):
+        try:
+            _perform_assignment(
+                reference_doctype=reference_doctype,
+                reference_name=reference_name,
+                user=requested_user,
+                assigned_by=frappe.session.user
+            )
+            
+            # Notify requester
+            _notify_user(
+                frappe.session.user,
+                _(f"You have successfully assigned {reference_doctype} {reference_name} to {requested_user}."),
+                reference_doctype,
+                reference_name,
+                owner=frappe.session.user
+            )
+            
+            # Notify assigned user
+            _notify_user(
+                requested_user,
+                _(f"You have been directly assigned to {reference_doctype} {reference_name}."),
+                reference_doctype,
+                reference_name,
+                owner=frappe.session.user
+            )
+
+            # Create Task Notification for the assigned user
+            try:
+                from crm.fcrm.doctype.crm_task_notification.crm_task_notification import create_task_notification
+
+                dynamic_notification_type = ""
+                if reference_doctype == "CRM Lead":
+                    dynamic_notification_type = "New Lead Assigned"
+                elif reference_doctype == "CRM Ticket":
+                    dynamic_notification_type = "New Ticket Assigned"
+                else:
+                    # Fallback for unexpected doctypes
+                    dynamic_notification_type = "New Document Assigned"
+
+                tn = create_task_notification(
+                    task_name=None,
+                    notification_type=dynamic_notification_type,
+                    assigned_to=requested_user,
+                    message=f'You have been directly assigned to {reference_name}',
+                    reference_doctype=reference_doctype,
+                    reference_docname=reference_name,
+                )
+                if tn:
+                    tn.mark_as_sent()
+            except Exception as e:
+                frappe.logger().error(f"Error creating task notification for direct assignment: {str(e)}")
+            
+            return {"success": True, "message": f"Directly assigned to {requested_user}"}
+            
+        except Exception as e:
+            frappe.log_error(f"Direct assignment failed: {str(e)}", "Assignment Request Error")
+            # If direct assignment fails, we could either throw or fall back to request. 
+            # Throwing is safer so the user knows something went wrong.
+            frappe.throw(_(f"Direct assignment failed: {str(e)}"))
     
     if not reason:
         return {"success": False, "error": "Please enter the reason"}
@@ -232,23 +360,7 @@ def get_assignment_requests(status=None, mine=False):
     return reqs
 
 
-def _perform_assignment(reference_doctype: str, reference_name: str, user: str, assigned_by: str):
-    if reference_doctype == "CRM Lead":
-        from crm.api.role_assignment import assign_to_user
 
-        res = assign_to_user(lead_name=reference_name, user_name=user, assigned_by=assigned_by)
-        if not res or not res.get("success"):
-            frappe.throw(_(res.get("error") if res else "Lead assignment failed"))
-    elif reference_doctype == "CRM Ticket":
-        from crm.api.ticket import assign_ticket_to_user
-
-        res = assign_ticket_to_user(
-            ticket_name=reference_name, user_name=user, assigned_by=assigned_by
-        )
-        if not res or not res.get("success"):
-            frappe.throw(_(res.get("error") if res else "Ticket assignment failed"))
-    else:
-        frappe.throw(_(f"Unsupported doctype: {reference_doctype}"))
 
 
 @frappe.whitelist()
@@ -472,4 +584,3 @@ def get_reference_summary(reference_doctype: str, reference_name: str) -> dict:
             "extra_label": "",
             "extra_value": "",
         }
-

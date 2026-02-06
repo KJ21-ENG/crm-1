@@ -362,6 +362,7 @@ class CRMCustomer(Document):
             {"label": "Customer", "type": "Data", "key": "customer_name", "width": "16rem"},
             {"label": "Email", "type": "Data", "key": "email", "width": "14rem"},
             {"label": "Mobile", "type": "Data", "key": "mobile_no", "width": "10rem"},
+            {"label": "Client ID", "type": "Data", "key": "referral_code", "width": "10rem"},
             {"label": "Customer Source", "type": "Data", "key": "customer_source", "width": "10rem"},
             {"label": "Created On", "type": "Datetime", "key": "creation", "width": "12rem"},
         ]
@@ -370,6 +371,7 @@ class CRMCustomer(Document):
             "customer_name",
             "email",
             "mobile_no",
+            "referral_code",
             "customer_source",
             "status",
             "creation",
@@ -393,7 +395,7 @@ def get_customer_list(limit=20, start=0, search_term=""):
         "CRM Customer",
         filters=filters,
         fields=["name", "customer_name", "first_name", "last_name", "email", 
-               "mobile_no", "organization", "customer_source", "creation"],
+               "mobile_no", "organization", "customer_source", "creation", "referral_code"],
         order_by="creation desc",
         limit=limit,
         start=start

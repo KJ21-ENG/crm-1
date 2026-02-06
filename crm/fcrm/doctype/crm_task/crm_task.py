@@ -15,6 +15,42 @@ class CRMTask(Document):
 		# 🔔 Send enhanced notification if this task is for a lead
 		self.send_lead_aware_notification()
 
+	def before_save(self):
+		# Sanitize _assign to ensure it's a string
+		if hasattr(self, "_assign") and self._assign:
+			if not isinstance(self._assign, str):
+				try:
+					self._assign = frappe.as_json(self._assign)
+				except Exception:
+					self._assign = "[]"
+		
+		# Sanitize assigned_to if it's a dict
+		if self.assigned_to and isinstance(self.assigned_to, dict):
+			self.assigned_to = self.assigned_to.get("name") or self.assigned_to.get("email") or ""
+
+		# EMERGENCY FIX: Iterate all fields to find any other dicts causing TypeError
+		for key in list(self.__dict__.keys()):
+			# Skip internal attributes (starting with _) to avoid corrupting cache like _table_fieldnames
+			if key.startswith("_") and key != "_assign":
+				continue
+				
+			val = getattr(self, key)
+			if isinstance(val, dict) and key not in ["flags", "docstatus"]:
+				# Log the culprit
+				frappe.logger().info(f"CRM Task Emergency Fix: Found dict in field '{key}': {str(val)}")
+				# Try to fix it
+				if "original" in val:
+					setattr(self, key, val["original"])
+				elif "value" in val:
+					setattr(self, key, val["value"])
+				elif "name" in val:
+					setattr(self, key, val["name"])
+				else:
+					try:
+						setattr(self, key, frappe.as_json(val))
+					except:
+						setattr(self, key, str(val))
+
 	def validate(self):
 		# Set notification time when due_date is set
 		self.set_notification_time()
