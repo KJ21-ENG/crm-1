@@ -136,6 +136,11 @@ const routes = [
     component: () => import('@/pages/Welcome.vue'),
   },
   {
+    path: '/docs',
+    name: 'Documentation',
+    component: () => import('@/pages/Documentation.vue'),
+  },
+  {
     path: '/not-permitted',
     name: 'Not Permitted',
     component: () => import('@/pages/NotPermitted.vue'),

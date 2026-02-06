@@ -60,6 +60,7 @@ import TelephonySettings from '@/components/Settings/TelephonySettings.vue'
 import EmailConfig from '@/components/Settings/EmailConfig.vue'
 import BackupSettings from '@/components/Settings/BackupSettings.vue'
 import OfficeHoursSettings from '@/components/Settings/OfficeHoursSettings.vue'
+import DocumentationLink from '@/components/Settings/DocumentationLink.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { usersStore } from '@/stores/users'
 import {
@@ -136,6 +137,11 @@ const tabs = computed(() => {
           icon: 'database',
           component: markRaw(BackupSettings),
           condition: () => isManager(),
+        },
+        {
+          label: __('Documentation'),
+          icon: 'book',
+          component: markRaw(DocumentationLink),
         },
       ],
     },
