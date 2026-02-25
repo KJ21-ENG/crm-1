@@ -382,36 +382,34 @@ def get_data(
 			
 		frappe.logger().info(f"🔍 Call Log Debug - FINAL filters after manual checks: {filters}")
 
-	# Normalize date filters for Assignment Requests: when user picks a date-only value
-	# for Datetime fields like creation/approved_on, convert to a full-day range so time is ignored
-	if doctype == "CRM Assignment Request":
-		for _field in ["creation", "approved_on"]:
-			if _field in filters:
-				val = filters.get(_field)
-				# If frontend passed a simple date string like '2025-09-01', convert to full-day range
-				if isinstance(val, str):
-					try:
-						# Support ISO 'YYYY-MM-DD' only
-						if len(val) >= 10 and val[4] == '-' and val[7] == '-':
-							_date = val[:10]
-							start_of_day = f"{_date} 00:00:00"
-							end_of_day = f"{_date} 23:59:59"
-							filters[_field] = ['between', [start_of_day, end_of_day]]
-					except Exception:
-						pass
-				# If equal comparison came as a datetime tuple, leave as-is
+	# Generic normalization for ALL Datetime fields filtered with a date-only value.
+	# When the quick-filter date picker sends 'YYYY-MM-DD' but the DB column is Datetime
+	# (e.g. CRM Task.due_date, CRM Call Log.start_time, CRM Assignment Request.creation),
+	# an exact equality match would fail because the stored value includes a time component.
+	# Convert the date-only string to a full-day 'between' range so the filter works correctly.
+	_datetime_fields = set()
+	try:
+		_meta = frappe.get_meta(doctype)
+		for _f in _meta.fields:
+			if _f.fieldtype == "Datetime":
+				_datetime_fields.add(_f.fieldname)
+		# Standard Datetime fields that aren't in DocType meta
+		_datetime_fields.update(["creation", "modified"])
+	except Exception:
+		pass
 
-	# Normalize date filters for Call Log: if user provided a date (no time),
-	# convert to a between range for the full day so datetime equality works.
-	if doctype == "CRM Call Log":
-		if 'start_time' in filters:
-			val = filters.get('start_time')
-			# If frontend passed a simple date string like '2025-08-15', convert to full-day range
-			if isinstance(val, str) and len(val) >= 10 and val[4] == '-' and val[7] == '-':
-				_date = val[:10]
-				start_of_day = f"{_date} 00:00:00"
-				end_of_day = f"{_date} 23:59:59"
-				filters['start_time'] = ['between', [start_of_day, end_of_day]]
+	for _field in list(filters.keys()):
+		if _field not in _datetime_fields:
+			continue
+		val = filters.get(_field)
+		if isinstance(val, str):
+			try:
+				# Match ISO date format YYYY-MM-DD (exactly 10 chars or date prefix of longer string)
+				if len(val) >= 10 and val[4] == '-' and val[7] == '-' and len(val.strip()) == 10:
+					_date = val[:10]
+					filters[_field] = ['between', [f"{_date} 00:00:00", f"{_date} 23:59:59"]]
+			except Exception:
+				pass
 
 	is_default = True
 	data = []

@@ -202,7 +202,7 @@ class CRMTask(Document):
 			},
 			{
 				'label': 'Due Date',
-				'type': 'Date',
+				'type': 'Datetime',
 				'key': 'due_date',
 				'width': '8rem',
 			},
