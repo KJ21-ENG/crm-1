@@ -1,42 +1,42 @@
-- 2026-02-27 05:36:43 | result: PASS
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/01-open-customers-list.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/01-open-customers-search.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows Customers list view with sidebar, search bar, filters, and +New Customer button highlighted
-- 2026-02-27 05:36:56 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/02-create-new-customer-form.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/02-create-customer-contact.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows Create New Customer form with First Name, Last Name, Email, Mobile Number, Alt Mobile highlighted
-- 2026-02-27 05:37:05 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/03-fill-identity-fields.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/03-identity-fields.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows PAN Card Number and Aadhaar Card Number fields highlighted with identity label
-- 2026-02-27 05:37:13 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/04-enter-address-pincode.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/04-address-fields.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows Address Line 1/2, City, State, Pincode, Country fields highlighted with address label
-- 2026-02-27 05:37:23 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/05-save-review-linked-history.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/05-saved-customer-history.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows customer profile with Additional Details and Customer Interactions sections highlighted
-- 2026-02-27 05:37:31 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/06-use-edit-options.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/06-edit-customer-options.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows Edit Customer button at top-right and Customer Information section highlighted
-- 2026-02-27 05:37:40 | result: PASS
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
   - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/07-check-profile-before-followup.png`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/07-customer-profile-context.png`
   - linked_in_doc: yes
-  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
-  - notes: Shows full customer profile and interactions highlighted for pre-call/follow-up context review
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
