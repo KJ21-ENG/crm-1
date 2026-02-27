@@ -1,0 +1,6 @@
+- 2026-02-27 15:06:09 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/14-global-search.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/14-global-search/01-global-search-results.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Global Search modal overlay. Shows search input with 'Nitin' entered, and results categorized by LEADS and CUSTOMERS with matching records like Nitin shah and Nitin Patel. Raw screenshot, no markup.

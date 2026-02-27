@@ -1,0 +1,24 @@
+- 2026-02-27 18:49:56 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/24-email-templates.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/24-email-templates/01-open-email-templates.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:49:56 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/24-email-templates.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/24-email-templates/02-new-email-template.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:49:56 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/24-email-templates.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/24-email-templates/03-write-email-template.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:49:56 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/24-email-templates.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/24-email-templates/04-save-email-template.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

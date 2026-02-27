@@ -1,0 +1,30 @@
+- 2026-02-27 12:21:10 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/07-call-logs.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/01-call-logs-list-view.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Call Logs list view visible. Sidebar shows Call Logs highlighted. All columns visible (Employee, Customer Name, Phone, Method, Type, Status, Duration, Attended On). 16 results shown. Raw screenshot, no markup.
+- 2026-02-27 12:21:12 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/07-call-logs.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/02-call-logs-filters.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Call Logs with filter panel open. Shows filter options for Type, Created By, Start Time, Status. Add Filter and Clear all Filter buttons visible. Raw screenshot, no markup.
+- 2026-02-27 12:21:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/07-call-logs.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/03-call-detail-view.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Call Details modal over list view. Shows Incoming Call type, caller/employee, date/time, duration (44s), status (Completed). Create Ticket and Create Lead buttons clearly visible. Raw screenshot, no markup.
+- 2026-02-27 12:21:18 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/07-call-logs.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/04-create-ticket-from-call.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Create Ticket form modal. Mobile No pre-filled (8355818194) from call. Ticket Source set to On Call. Ticket Owner set to Alpesh M. Status New, Priority Medium. Customer History panel visible. Raw screenshot, no markup.
+- 2026-02-27 12:21:18 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/07-call-logs.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/05-create-lead-from-call.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Create Lead form modal. Mobile No pre-filled (9824109174) from call. Lead Source set to On Call. Lead Owner set to Alpesh M. Account Type Individual. Customer History panel visible. Raw screenshot, no markup.

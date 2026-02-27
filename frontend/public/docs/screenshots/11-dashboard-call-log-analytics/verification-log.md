@@ -1,0 +1,6 @@
+- 2026-02-27 13:07:08 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/11-dashboard-call-log-analytics.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/11-dashboard-call-log-analytics/01-call-log-analytics-overview.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard - Call Log Analytics view. Shows overview cards (Total Calls, Unique Calls, Completed, Incoming, Outgoing, etc.), Call Type/Status distribution placeholders, and Calling Pattern / Recent Calls sections. Raw screenshot, no markup.

@@ -1,0 +1,42 @@
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/01-open-customers-search.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/02-create-customer-contact.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/03-identity-fields.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/04-address-fields.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/05-saved-customer-history.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/06-edit-customer-options.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:55:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/03-customers.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/03-customers/07-customer-profile-context.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

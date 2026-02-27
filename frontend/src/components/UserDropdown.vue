@@ -153,6 +153,12 @@ function getStandardItem(item) {
         onClick: () => confirmLoginToFrappeCloud(),
         condition: () => !isMobileView.value && window.is_fc_site,
       }
+    case 'documentation':
+      return {
+        icon: item.icon,
+        label: __(item.label),
+        onClick: () => window.open('/crm/documentation/01-tickets', '_blank')
+      }
     case 'about':
       return {
         icon: item.icon,

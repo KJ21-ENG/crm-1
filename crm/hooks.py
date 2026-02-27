@@ -310,6 +310,14 @@ standard_dropdown_items = [
 		"is_standard": 1,
 	},
 	{
+		"name1": "documentation",
+		"label": "Documentation",
+		"type": "Route",
+		"icon": "book-open",
+		"route": "#",
+		"is_standard": 1,
+	},
+	{
 		"name1": "about",
 		"label": "About",
 		"type": "Route",

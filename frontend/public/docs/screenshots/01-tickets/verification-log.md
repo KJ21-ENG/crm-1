@@ -1,0 +1,24 @@
+- 2026-02-28 00:44:18 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/01-call-details-create-ticket.png`
+  - linked_in_doc: no
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:44:18 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/02-ticket-form-prefilled.png`
+  - linked_in_doc: no
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:45:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/01-call-details-create-ticket.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:45:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/02-ticket-form-prefilled.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

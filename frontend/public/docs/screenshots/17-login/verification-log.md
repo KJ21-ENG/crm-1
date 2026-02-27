@@ -1,0 +1,6 @@
+- 2026-02-27 15:39:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/17-login.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/17-login/01-login-screen.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Login screen. Shows the standard Frappe login form with email and password fields. Raw screenshot, no markup.

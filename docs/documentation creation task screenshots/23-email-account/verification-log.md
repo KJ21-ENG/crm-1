@@ -1,0 +1,24 @@
+- 2026-02-27 18:20:28 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/23-email-account.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/23-email-account/01-open-email-account.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:20:29 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/23-email-account.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/23-email-account/02-new-email-account.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:20:29 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/23-email-account.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/23-email-account/03-email-account-purpose.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:20:29 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/23-email-account.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/23-email-account/04-save-email-account.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

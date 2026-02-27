@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/assets/crm/frontend/ && yarn copy-html-entry",
+    "sync-docs": "node scripts/sync-docs.js",
+    "build": "yarn sync-docs && vite build --base=/assets/crm/frontend/ && yarn copy-html-entry",
     "copy-html-entry": "cp ../crm/public/frontend/index.html ../crm/www/crm.html",
     "serve": "vite preview"
   },
@@ -18,6 +19,7 @@
     "frappe-ui": "^0.1.162",
     "gemoji": "^8.1.0",
     "lodash": "^4.17.21",
+    "marked": "^17.0.3",
     "mime": "^4.0.1",
     "pinia": "^2.0.33",
     "socket.io-client": "^4.7.2",

@@ -1,0 +1,24 @@
+- 2026-02-27 19:43:17 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/25-office-hours.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/25-office-hours/01-open-office-hours.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 19:43:18 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/25-office-hours.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/25-office-hours/02-new-office-hours.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 19:43:19 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/25-office-hours.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/25-office-hours/03-set-timings.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 19:43:21 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/25-office-hours.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/25-office-hours/04-save-schedule.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

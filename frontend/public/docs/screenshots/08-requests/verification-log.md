@@ -1,0 +1,30 @@
+- 2026-02-27 12:48:13 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/08-requests.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/08-requests/01-lead-detail-assign-button.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Lead detail page for Karan FB AD. Assign button clearly visible in top-right header. Sidebar, tabs (Activity, Emails, etc.), Lead Details panel visible. Raw screenshot, no markup.
+- 2026-02-27 12:48:15 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/08-requests.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/08-requests/02-assignment-modal.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Assignment modal Assign to Role (Lead). Shows Current Assignments (3 users), Assignment Type with Round-Robin and Direct Employee options. Role selection dropdown. Cancel and Assign buttons. Raw screenshot, no markup.
+- 2026-02-27 12:48:17 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/08-requests.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/08-requests/03-request-employee-option.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Assignment modal showing all 3 options - Round-Robin Role Assignment, Direct Employee Assignment, and Request specific employee (admin approval). Current Assignments visible. Raw screenshot, no markup.
+- 2026-02-27 12:48:20 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/08-requests.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/08-requests/04-request-form-fields.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Assignment modal with Request specific employee selected. Shows Select Employee dropdown and Reason for Request textarea with placeholder. Cancel and Assign buttons visible. Raw screenshot, no markup.
+- 2026-02-27 12:48:20 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/08-requests.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/08-requests/05-requests-list-admin.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Requests list view. Columns visible: Created, Name, Requested User, Requested By, Status, Reason, Approved On. One approved request visible (CRM-LEAD-2025-00109). Sidebar shows Requests highlighted. Filter bar at top. Raw screenshot, no markup.

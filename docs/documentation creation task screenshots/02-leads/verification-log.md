@@ -1,0 +1,12 @@
+- 2026-02-28 00:49:13 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/02-leads.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/02-leads/01-call-details-create-lead.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-28 00:49:13 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/02-leads.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/02-leads/02-lead-form-prefilled.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

@@ -1,0 +1,12 @@
+- 2026-02-27 13:02:43 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/10-dashboard-referral-analytics.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/10-dashboard-referral-analytics/01-referral-analytics-overview.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard - Referral Analytics tab. Shows Total Leads, Converted Leads, Referral Conversion Rate cards, Date Range/Account Type/Lead Category filters, and the Referral Source Table with CRM referrer. Raw screenshot, no markup.
+- 2026-02-27 13:02:43 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/10-dashboard-referral-analytics.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/10-dashboard-referral-analytics/02-referral-analytics-details.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard - Referral Analytics tab. Details expanded for CRM referrer showing 'Referral Details for AUOAMC'. Inner table shows detailed lead list with statuses like Documents Collected, Follow-up Complete, Account Opened. Raw screenshot, no markup.

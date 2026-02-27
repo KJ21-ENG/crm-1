@@ -1,0 +1,48 @@
+- 2026-02-27 06:36:28 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/01-open-tasks-list.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Tasks list view showing 72 tasks with Title, Status, Priority, Due Date, Assigned To columns, Filter/Sort/Columns. Raw screenshot.
+- 2026-02-27 06:36:30 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/02-new-task-form.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Task modal with Title, Description, Status Todo, Assignee Administrator, Due Date, Priority Low, Create button. Raw screenshot.
+- 2026-02-27 06:36:32 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/03-write-task-title.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Task form with title Call back customer about revised quote and description filled. Raw screenshot.
+- 2026-02-27 06:36:33 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/04-set-assignee-due-priority.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Task form showing Status Todo, Assignee Administrator, Due Date, Priority Low fields. Raw screenshot.
+- 2026-02-27 06:36:36 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/05-link-task-to-record.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Task form showing task linked to Lead record implicitly created from Lead detail view. Raw screenshot.
+- 2026-02-27 06:36:38 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/06-save-task-in-list.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Lead detail view Tasks tab showing newly created task Call back customer about revised quote saved and linked to CRM-LEAD-2026-00042. Raw screenshot.
+- 2026-02-27 06:36:39 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/07-update-task-status.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Edit Task modal showing task with Status Todo, Assignee, Due Date, Priority, Update button for status changes. Raw screenshot.
+- 2026-02-27 06:36:39 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/06-tasks.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/06-tasks/08-complete-task-view.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Edit Task view showing task completion options and Update button. Raw screenshot.

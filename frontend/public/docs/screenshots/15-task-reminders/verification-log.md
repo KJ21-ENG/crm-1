@@ -1,0 +1,6 @@
+- 2026-02-27 15:25:38 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/15-task-reminders.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/15-task-reminders/01-task-reminders-panel.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Task Reminders side panel. Shows notifications like 'Task Overdue', 'Task Reminder', and 'Task Reassignment Limit Reached'. Raw screenshot, no markup.
