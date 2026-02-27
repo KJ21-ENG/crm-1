@@ -1,0 +1,6 @@
+- 2026-02-27 15:43:58 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/18-profile.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/18-profile/01-profile-settings.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Profile Settings modal. Shows user details like name and email with editable first name and last name fields, and a Change Password button. Raw screenshot, no markup.

@@ -1,0 +1,12 @@
+- 2026-02-27 12:55:55 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/09-dashboard-analytics.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/09-dashboard-analytics/01-dashboard-analytics-overview.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard Analytics tab. Shows overview summary cards (Total Leads, Tickets, Tasks, Call Logs), view selectors (Daily, Weekly, Monthly, Custom) and basic layout. Raw screenshot, no markup.
+- 2026-02-27 12:55:55 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/09-dashboard-analytics.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/09-dashboard-analytics/02-dashboard-analytics-trends.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard Analytics tab (scrolled). Shows Lead Status area, Ticket Status area, 24-Hour trends, Recent Activities, and Top Performers areas. Raw screenshot, no markup.

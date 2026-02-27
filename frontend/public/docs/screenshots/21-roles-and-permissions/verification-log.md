@@ -1,0 +1,24 @@
+- 2026-02-27 17:46:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/21-roles-and-permissions.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/01-open-roles-and-permissions.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 17:46:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/21-roles-and-permissions.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/02-choose-role.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 17:46:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/21-roles-and-permissions.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/03-update-role-assignment.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 17:46:16 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/21-roles-and-permissions.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/04-save-role.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

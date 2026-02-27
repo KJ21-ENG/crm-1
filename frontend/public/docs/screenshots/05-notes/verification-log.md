@@ -1,0 +1,42 @@
+- 2026-02-27 06:22:33 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/01-open-notes-list.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Notes list view showing 29 notes in card layout with Title/Content fields, Filter/Sort/Columns options. Raw screenshot, no markup.
+- 2026-02-27 06:22:35 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/02-new-note-form.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Note modal with Title, Content, Document Type, Document fields and Create button. Raw screenshot, no markup.
+- 2026-02-27 06:22:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/03-write-note-content.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Note form filled with Follow up with client title and detailed content about pricing. Raw screenshot, no markup.
+- 2026-02-27 06:22:39 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/04-link-note-to-record.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Note linked to CRM Lead CRM-LEAD-2025-00022 with Open Lead button visible. Raw screenshot, no markup.
+- 2026-02-27 06:22:41 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/05-save-note-in-list.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Notes list showing newly created Follow up with client note at top with just now timestamp. Raw screenshot, no markup.
+- 2026-02-27 06:22:42 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/06-edit-note.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Edit Note modal showing existing note with Title, Content, Document Type, Document fields and Update button. Raw screenshot, no markup.
+- 2026-02-27 06:22:43 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/05-notes.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/05-notes/07-delete-note.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Edit Note modal with Delete option visible in dropdown menu. Raw screenshot, no markup.

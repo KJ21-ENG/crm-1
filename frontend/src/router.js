@@ -136,6 +136,12 @@ const routes = [
     component: () => import('@/pages/Welcome.vue'),
   },
   {
+    path: '/documentation/:module?',
+    name: 'Documentation',
+    component: () => import('@/pages/Documentation.vue'),
+    props: true,
+  },
+  {
     path: '/not-permitted',
     name: 'Not Permitted',
     component: () => import('@/pages/NotPermitted.vue'),
@@ -266,6 +272,7 @@ router.afterEach((to) => {
     'Call Logs': 'Call Logs',
     'Round Robin': 'Round Robin',
     'Welcome': 'Welcome',
+    'Documentation': 'Documentation',
     'Not Permitted': 'Access Denied',
     'Invalid Page': 'Page Not Found'
   }

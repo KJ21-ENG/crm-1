@@ -1,0 +1,36 @@
+- 2026-02-27 06:16:56 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/01-open-support-pages.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Support Pages list view visible with 2 entries, search bar, Edit/Delete buttons, sidebar navigation, and Create button. Raw screenshot, no markup.
+- 2026-02-27 06:16:58 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/02-new-support-page-form.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Support Page modal visible with Page Name, Support Link, Description fields, Active checkbox, Cancel and Create buttons. Raw screenshot, no markup.
+- 2026-02-27 06:17:00 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/03-fill-support-page-details.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Create Support Page form filled with Customer Portal Guide title and support URL. Raw screenshot, no markup.
+- 2026-02-27 06:17:02 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/04-search-filter-support-pages.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Search bar focused on Support Pages list view, ready for filtering. Raw screenshot, no markup.
+- 2026-02-27 06:17:03 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/05-edit-support-page.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Edit Support Page modal showing existing data (what is MTF), with Page Name, Support Link, Description, Active status, Cancel and Update buttons. Raw screenshot, no markup.
+- 2026-02-27 06:17:04 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/04-support-pages.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/06-delete-support-page.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Support Pages list view with Delete buttons clearly visible on each card. Raw screenshot, no markup.

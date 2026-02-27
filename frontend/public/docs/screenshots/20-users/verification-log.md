@@ -1,0 +1,6 @@
+- 2026-02-27 15:53:05 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/20-users.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/20-users/01-users-list.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Users list from Settings. Shows details like name, email, and role dropdowns. Raw screenshot, no markup.

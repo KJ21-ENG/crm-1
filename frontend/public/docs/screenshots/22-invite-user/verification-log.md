@@ -1,0 +1,24 @@
+- 2026-02-27 18:01:44 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/22-invite-user.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/22-invite-user/01-open-invite-user.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:01:44 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/22-invite-user.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/22-invite-user/02-enter-email.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:01:44 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/22-invite-user.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/22-invite-user/03-assign-role.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 18:01:44 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/22-invite-user.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/22-invite-user/04-send-invite.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

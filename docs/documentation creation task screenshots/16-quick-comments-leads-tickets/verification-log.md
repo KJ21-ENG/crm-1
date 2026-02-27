@@ -1,0 +1,6 @@
+- 2026-02-27 15:30:14 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/16-quick-comments-leads-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/16-quick-comments-leads-tickets/01-quick-comment-form.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Lead details view with Comments tab open. Shows the comment input box at the bottom with sample text 'Follow-up completed, waiting for documents.' typed in. Raw screenshot, no markup.

@@ -1,0 +1,12 @@
+- 2026-02-27 05:12:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/01-call-details-create-ticket.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
+  - notes: Pass checks; label matches action; no step-count text.
+- 2026-02-27 05:12:37 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/01-tickets.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/01-tickets/02-ticket-form-prefilled.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, red-markup-correct, label-text-correct, no-step-count-text, path-linked
+  - notes: Pass checks; prefilled form visible; no step-count text.

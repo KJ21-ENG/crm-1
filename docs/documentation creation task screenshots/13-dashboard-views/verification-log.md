@@ -1,0 +1,6 @@
+- 2026-02-27 15:01:59 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/13-dashboard-views.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/13-dashboard-views/01-dashboard-views-overview.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: Dashboard overview. Shows top controls (Dashboard, View: Daily/Weekly/Monthly/Custom, Refresh button) and top summary cards. Raw screenshot, no markup.

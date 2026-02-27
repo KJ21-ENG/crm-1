@@ -1,0 +1,12 @@
+- 2026-02-27 14:57:34 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/12-dashboard-user-dashboard.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/12-dashboard-user-dashboard/01-user-dashboard-overview.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: User Dashboard. Shows the user selector, overview cards for Leads/Tickets/Tasks/Calls, and conversion rate metrics. Raw screenshot, no markup.
+- 2026-02-27 14:57:34 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/12-dashboard-user-dashboard.md`
+  - image_path: `apps/crm/docs/documentation creation task screenshots/12-dashboard-user-dashboard/02-user-dashboard-trends.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: Correct page: User Dashboard, scrolled down. Shows activity trends, daily activity pattern, lead/ticket status, recent activities, and goals & progress. Raw screenshot, no markup.
