@@ -12,19 +12,15 @@ This module helps your office keep a safe copy of important data. Backups protec
 
 ## 3) How to use (step-by-step)
 1. Open **Backup** from the main menu.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/26-backup/01-open-backup.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Backup** from the main menu." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/26-backup/01-open-backup.png)
 2. Check the **Last Backup Time** first.
 3. Click **Create Backup** (or **Backup Now**) when needed.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/26-backup/02-create-backup.png`
-Placement: Insert this screenshot directly below the step: "3. Click **Create Backup** (or **Backup Now**) when needed." (anchor line at insertion time: 19).
+![Screenshot](/docs/screenshots/26-backup/02-create-backup.png)
 4. Wait until the status shows completed.
 5. Download the backup file if your office policy requires local storage.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/26-backup/03-download-backup.png`
-Placement: Insert this screenshot directly below the step: "5. Download the backup file if your office policy requires local storage." (anchor line at insertion time: 23).
+![Screenshot](/docs/screenshots/26-backup/03-download-backup.png)
 6. To restore, choose a backup file and click **Restore** (only if authorized).
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/26-backup/04-restore-backup.png`
-Placement: Insert this screenshot directly below the step: "6. To restore, choose a backup file and click **Restore** (only if authorized)." (anchor line at insertion time: 26).
+![Screenshot](/docs/screenshots/26-backup/04-restore-backup.png)
 7. Confirm the action and wait for completion.
 
 ## 4) Important buttons/options

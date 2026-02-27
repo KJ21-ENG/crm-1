@@ -29,26 +29,21 @@ This keeps assignment changes controlled while still letting any team member sug
 
 ### A) User side – Sending an assignment request
 1. Open the **Lead** or **Ticket** you want to reassign.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/08-requests/01-lead-detail-assign-button.png`
-Placement: Insert this screenshot directly below the step: "1. Open the **Lead** or **Ticket** you want to reassign." (anchor line at insertion time: 32).
+![Screenshot](/docs/screenshots/08-requests/01-lead-detail-assign-button.png)
 2. Click the **Assign** button on the Lead/Ticket detail page.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/08-requests/02-assignment-modal.png`
-Placement: Insert this screenshot directly below the step: "2. Click the **Assign** button on the Lead/Ticket detail page." (anchor line at insertion time: 35).
+![Screenshot](/docs/screenshots/08-requests/02-assignment-modal.png)
 3. In the Assignment modal, select **"Request specific employee (admin approval)"**.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/08-requests/03-request-employee-option.png`
-Placement: Insert this screenshot directly below the step: "3. In the Assignment modal, select" (anchor line at insertion time: 38).
+![Screenshot](/docs/screenshots/08-requests/03-request-employee-option.png)
 4. Choose the employee you want from the dropdown list.
 5. Enter a **reason** explaining why this person should handle this Lead/Ticket.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/08-requests/04-request-form-fields.png`
-Placement: Insert this screenshot directly below the step: "5. Enter a **reason**" (anchor line at insertion time: 42).
+![Screenshot](/docs/screenshots/08-requests/04-request-form-fields.png)
 6. Click **Request** to submit.
 7. You will see a confirmation: "Request submitted to admins for approval."
 8. Wait for admin response – you will receive a **notification** when the request is approved or declined.
 
 ### B) Admin side – Reviewing and acting on requests
 1. Open **Requests** from the CRM sidebar menu.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/08-requests/05-requests-list-admin.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Requests** from the CRM sidebar menu." (anchor line at insertion time: 50).
+![Screenshot](/docs/screenshots/08-requests/05-requests-list-admin.png)
 2. Use filters to see **Pending** requests that need action.
 3. Review the request: check who requested it, which employee is being suggested, which Lead/Ticket it concerns, and the reason given.
 4. Click **Approve** to confirm the assignment – the employee will be assigned automatically and both parties will be notified.

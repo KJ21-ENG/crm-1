@@ -4,7 +4,7 @@ Status: completed
 Call Logs is where each employee sees their own call history in CRM.  
 Calls are synced from the mobile app installed on that employee’s phone (`call-log-mobile-app`).
 
-Example: Employee A sees Employee A’s calls only.
+Example: Employee A sees Employee A’s calls only. (admin can see everyone's call logs)
 
 ## 2) What staff can do here
 - Open their personal list of synced calls
@@ -15,21 +15,16 @@ Example: Employee A sees Employee A’s calls only.
 
 ## 3) How to use (step-by-step)
 1. Open **Call Logs** from the CRM menu.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/01-call-logs-list-view.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Call Logs** from the CRM menu." (anchor line at insertion time: 18).
+![Screenshot](/docs/screenshots/07-call-logs/01-call-logs-list-view.png)
 2. Find the call you want (date, number, or status filters can help).
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/02-call-logs-filters.png`
-Placement: Insert this screenshot directly below the step: "2. Find the call you want" (anchor line at insertion time: 21).
+![Screenshot](/docs/screenshots/07-call-logs/02-call-logs-filters.png)
 3. Click the call to open its details.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/03-call-detail-view.png`
-Placement: Insert this screenshot directly below the step: "3. Click the call to open its details." (anchor line at insertion time: 24).
+![Screenshot](/docs/screenshots/07-call-logs/03-call-detail-view.png)
 4. Choose one action:
    - **Create Ticket** for service/support follow-up
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/04-create-ticket-from-call.png`
-Placement: Insert this screenshot directly below the step: "**Create Ticket** for service/support follow-up" (anchor line at insertion time: 28).
+![Screenshot](/docs/screenshots/07-call-logs/04-create-ticket-from-call.png)
    - **Create Lead** for new business follow-up
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/07-call-logs/05-create-lead-from-call.png`
-Placement: Insert this screenshot directly below the step: "**Create Lead** for new business follow-up" (anchor line at insertion time: 31).
+![Screenshot](/docs/screenshots/07-call-logs/05-create-lead-from-call.png)
 5. CRM takes you to the selected module and opens the creation form.
 6. The form already includes call context, so staff can finish and save quickly.
 

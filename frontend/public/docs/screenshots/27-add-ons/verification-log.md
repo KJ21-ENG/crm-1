@@ -1,0 +1,18 @@
+- 2026-02-27 20:49:14 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/27-add-ons.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/01-open-add-ons.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 20:49:14 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/27-add-ons.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/02-find-call-log-app.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 20:49:14 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/27-add-ons.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/04-confirm-call-logs.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

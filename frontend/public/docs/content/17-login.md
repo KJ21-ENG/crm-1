@@ -12,8 +12,7 @@ Login is the entry point to your work system. It confirms your identity and give
 ## 3) How to use (step-by-step)
 1. Open the login page.
 2. Enter your work email or username.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/17-login/01-login-screen.png`
-Placement: Insert this screenshot directly below the step: "2. Enter your work email or username." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/17-login/01-login-screen.png)
 3. Enter your password carefully.
 4. Select Sign In.
 5. If asked for an extra verification step, complete it.

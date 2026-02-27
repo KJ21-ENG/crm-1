@@ -12,8 +12,7 @@ Dashboard Views is your main work screen. It gives you a quick picture of what i
 
 ## 3) How to use (step-by-step)
 1. Open the Dashboard from the main menu.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/13-dashboard-views/01-dashboard-views-overview.png`
-Placement: Insert this screenshot directly below the step: "1. Open the Dashboard from the main menu." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/13-dashboard-views/01-dashboard-views-overview.png)
 2. Review the top summary cards first to see urgent counts.
 3. Scroll through the sections for tasks, leads, and tickets.
 4. Click any number or item to open the full list behind it.

@@ -12,24 +12,18 @@ The Support Pages module stores approved support links/pages that staff can quic
 
 ## 3) How to use (step-by-step)
 1. Open `Support Pages`.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/01-open-support-pages.png`
-Placement: Insert this screenshot directly below the step: "1. Open `Support Pages`." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/04-support-pages/01-open-support-pages.png)
 2. Click `New` to add a support page name and link.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/02-new-support-page-form.png`
-Placement: Insert this screenshot directly below the step: "2. Click `New` to add a support page name and link." (anchor line at insertion time: 18).
+![Screenshot](/docs/screenshots/04-support-pages/02-new-support-page-form.png)
 3. Check that the link opens correctly before saving.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/03-fill-support-page-details.png`
-Placement: Insert this screenshot directly below the step: "3. Check that the link opens correctly before saving." (anchor line at insertion time: 21).
+![Screenshot](/docs/screenshots/04-support-pages/03-fill-support-page-details.png)
 4. Use search/filter to locate links while helping customers.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/04-search-filter-support-pages.png`
-Placement: Insert this screenshot directly below the step: "4. Use search/filter to locate links while helping customers." (anchor line at insertion time: 24).
+![Screenshot](/docs/screenshots/04-support-pages/04-search-filter-support-pages.png)
 5. Copy/send the selected support link in chat, email, or support conversation.
 6. Edit links when content changes.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/05-edit-support-page.png`
-Placement: Insert this screenshot directly below the step: "6. Edit links when content changes." (anchor line at insertion time: 28).
+![Screenshot](/docs/screenshots/04-support-pages/05-edit-support-page.png)
 7. Remove duplicate or expired links if your role allows deletion.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/04-support-pages/06-delete-support-page.png`
-Placement: Insert this screenshot directly below the step: "7. Remove duplicate or expired links if your role allows deletion." (anchor line at insertion time: 31).
+![Screenshot](/docs/screenshots/04-support-pages/06-delete-support-page.png)
 
 ## 4) Important buttons/options
 - `New Support Page`: add a reusable support link.

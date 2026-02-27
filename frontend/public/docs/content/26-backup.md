@@ -1,6 +1,5 @@
 # Backup
-Status: pending
-
+Status: completed
 ## 1) What this module is
 This module helps your office keep a safe copy of important data. Backups protect your records if something is deleted by mistake or if there is a system problem.
 
@@ -13,11 +12,15 @@ This module helps your office keep a safe copy of important data. Backups protec
 
 ## 3) How to use (step-by-step)
 1. Open **Backup** from the main menu.
+![Screenshot](/docs/screenshots/26-backup/01-open-backup.png)
 2. Check the **Last Backup Time** first.
 3. Click **Create Backup** (or **Backup Now**) when needed.
+![Screenshot](/docs/screenshots/26-backup/02-create-backup.png)
 4. Wait until the status shows completed.
 5. Download the backup file if your office policy requires local storage.
+![Screenshot](/docs/screenshots/26-backup/03-download-backup.png)
 6. To restore, choose a backup file and click **Restore** (only if authorized).
+![Screenshot](/docs/screenshots/26-backup/04-restore-backup.png)
 7. Confirm the action and wait for completion.
 
 ## 4) Important buttons/options

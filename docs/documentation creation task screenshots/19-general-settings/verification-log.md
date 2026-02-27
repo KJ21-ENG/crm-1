@@ -1,6 +1,0 @@
-- 2026-02-27 15:48:20 | result: PASS
-  - module_file: `apps/crm/docs/documentation creation task/19-general-settings.md`
-  - image_path: `apps/crm/docs/documentation creation task screenshots/19-general-settings/01-general-settings.png`
-  - linked_in_doc: yes
-  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
-  - notes: Correct page: General Settings modal. Shows Brand name, Default Referral Code, Logo, Favicon, and Home actions table. Raw screenshot, no markup.

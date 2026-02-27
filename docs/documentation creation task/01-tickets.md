@@ -18,13 +18,12 @@ The Tickets module is where you track customer problems from first report to fin
 1. Open `Call Logs`.
 2. Open the customer call detail popup.
 3. Click `Create Ticket`.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/01-tickets/01-call-details-create-ticket.png`
-Placement: Insert this screenshot directly below the step: "3. Click `Create Ticket`." (anchor line at insertion time: 20).
+![Screenshot](/docs/screenshots/01-tickets/01-call-details-create-ticket.png) <!-- apps/crm/docs/documentation creation task screenshots/01-tickets/01-call-details-create-ticket.png -->
 4. The ticket form opens with call details prefilled.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/01-tickets/02-ticket-form-prefilled.png`
-Placement: Insert this screenshot directly below the step: "4. The ticket form opens with call details prefilled." (anchor line at insertion time: 23).
+![Screenshot](/docs/screenshots/01-tickets/02-ticket-form-prefilled.png) <!-- apps/crm/docs/documentation creation task screenshots/01-tickets/02-ticket-form-prefilled.png -->
 5. Check and complete the issue summary.
-6. Check for an existing ticket for the same issue to avoid duplicates.
+6. **Review Customer History**: Look at the "Customer History" section on the ticket creation form. It automatically checks the provided phone number and displays any active or past tickets associated with this customer.
+7. Use the Customer History to check for an existing ticket for the same issue to avoid creating duplicates.
 7. Set `Status` and `Priority`.
 8. Assign the ticket using your team process.
 9. Add next actions (call, email, task, note, or support link).
@@ -35,6 +34,7 @@ Placement: Insert this screenshot directly below the step: "4. The ticket form o
 - `Create Ticket` (in `Call Logs` call popup): start a new ticket from that call.
 - Prefilled fields in ticket form: save time and reduce typing mistakes.
 - `New Ticket`: manual ticket creation when needed (if not starting from Call Logs).
+- **Customer History section**: Automatically shows active and past tickets linked to the entered phone number.
 - `Filters` / saved views: find open, urgent, or team-specific tickets quickly.
 - `Status`: track current stage (for example New, Open, In Progress, Follow-up, Resolved, Closed).
 - `Priority`: set urgency for response order.

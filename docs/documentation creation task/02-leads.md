@@ -18,13 +18,12 @@ The Leads module is where you track potential customers from first contact to qu
 1. Open `Call Logs`.
 2. Open the call detail popup.
 3. Click `Create Lead`.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/02-leads/01-call-details-create-lead.png`
-Placement: Insert this screenshot directly below the step: "3. Click `Create Lead`." (anchor line at insertion time: 20).
+![Screenshot](/docs/screenshots/02-leads/01-call-details-create-lead.png) <!-- apps/crm/docs/documentation creation task screenshots/02-leads/01-call-details-create-lead.png -->
 4. The lead form opens with call details prefilled.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/02-leads/02-lead-form-prefilled.png`
-Placement: Insert this screenshot directly below the step: "4. The lead form opens with call details prefilled." (anchor line at insertion time: 23).
+![Screenshot](/docs/screenshots/02-leads/02-lead-form-prefilled.png) <!-- apps/crm/docs/documentation creation task screenshots/02-leads/02-lead-form-prefilled.png -->
 5. Check and complete contact and source details.
-6. Search for the same person/company to avoid duplicates.
+6. **Review Customer History**: Look at the "Customer History" section on the lead creation form. It automatically checks the provided phone number and displays any active or past leads associated with this customer.
+7. Use the Customer History to identify if the person is already in the system, avoiding duplicate files.
 7. Set the starting status (for example `New` or `Contacted`).
 8. Assign the lead using your team process.
 9. Log all interactions in the lead timeline.
@@ -36,8 +35,14 @@ Placement: Insert this screenshot directly below the step: "4. The lead form ope
 - `Create Lead` (in `Call Logs` call popup): start a new lead from that call.
 - Prefilled fields in lead form: save time and reduce typing mistakes.
 - `New Lead`: manual lead creation when needed (if not starting from Call Logs).
+- **Customer History section**: Automatically shows active and past leads linked to the entered phone number.
 - `Filters` / saved views: focus on due follow-ups, stale leads, or qualified leads.
-- `Status`: shows current pipeline stage.
+- **Status Dropdown**: shows the current pipeline stage and allows you to move the lead forward.
+![Screenshot](/docs/screenshots/02-leads/03-lead-statuses.png) <!-- apps/crm/docs/documentation creation task screenshots/02-leads/03-lead-statuses.png -->
+   Specific statuses contain smart triggers:
+   - **Follow-up Scheduled**: Clicking this automatically opens a "Create Task" popup form. You *must* fill it out and save it. Only after the task is scheduled will the lead's status successfully switch to "Follow-up Scheduled".
+   - **Account Opened**: Clicking this opens a popup asking for the **Client ID**. You must provide this ID before the system accepts the status change.
+   - **Account Activated**: Similar to the above, this status will also ask for the **Client ID** to confirm the account is fully activated.
 - `Assign` / `Reassign`: set the person responsible.
 - `Request Assignment`: request a specific owner when approval is needed.
 - `Call`, `Email`, `WhatsApp`: contact lead from one place.

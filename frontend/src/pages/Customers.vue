@@ -9,16 +9,6 @@
           v-if="customersListView?.customListActions"
           :actions="customersListView.customListActions"
         />
-        <Button
-          v-if="canWriteCustomers"
-          variant="solid"
-          :label="__('New Customer')"
-          @click="showCreateDialog = true"
-        >
-          <template #prefix>
-            <FeatherIcon name="plus" class="h-4" />
-          </template>
-        </Button>
       </template>
     </LayoutHeader>
 
@@ -55,152 +45,9 @@
     <div v-else-if="customersList.data" class="flex h-full items-center justify-center">
       <div class="flex flex-col items-center gap-3 text-xl font-medium text-ink-gray-4">
         <span>No Customers Found</span>
-        <Button v-if="canWriteCustomers" :label="'New Customer'" @click="showCreateDialog = true">
-          <template #prefix><FeatherIcon name="plus" class="h-4" /></template>
-        </Button>
       </div>
     </div>
 
-    <!-- Create Customer Dialog -->
-    <Dialog
-      v-if="canWriteCustomers"
-      v-model="showCreateDialog"
-      :options="{
-        title: 'Create New Customer',
-        size: 'xl'
-      }"
-    >
-      <template #body-content>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl
-              v-model="newCustomer.first_name"
-              label="First Name"
-              placeholder="Enter first name"
-            />
-            <FormControl
-              v-model="newCustomer.last_name"
-              label="Last Name"
-              placeholder="Enter last name"
-            />
-          </div>
-          
-          <FormControl
-            v-model="newCustomer.email"
-            label="Email"
-            type="email"
-            placeholder="Enter email address"
-          />
-          
-          <FormControl
-            v-model="newCustomer.mobile_no"
-            label="Mobile Number"
-            placeholder="Enter mobile number"
-          />
-
-          <FormControl
-            v-model="newCustomer.alternative_mobile_no"
-            label="Alternative Mobile Number"
-            placeholder="Enter Alternate mobile number"
-          />
-
-          <FormControl
-            v-model="newCustomer.marital_status"
-            label="Marital Status"
-            type="select"
-            :options="['', 'Married', 'Unmarried']"
-            placeholder="Select marital status"
-          />
-
-          <div class="grid grid-cols-2 gap-4">
-                      <div class="field">
-            <div class="mb-2 text-sm text-ink-gray-5">Date of Birth</div>
-            <div class="relative">
-              <CustomDateTimePicker
-                v-model="newCustomer.date_of_birth"
-                placeholder="Enter Date of Birth"
-                :input-class="'border-none'"
-                :mode="'date'"
-                :show-time="false"
-                :auto-default="false"
-                :year-quick-select="true"
-              />
-            </div>
-          </div>
-          <div class="field">
-            <div class="mb-2 text-sm text-ink-gray-5">Anniversary</div>
-            <div class="relative">
-              <CustomDateTimePicker
-                v-model="newCustomer.anniversary"
-                placeholder="Enter Anniversary"
-                :input-class="'border-none'"
-                :mode="'date'"
-                :show-time="false"
-                :auto-default="false"
-                :year-quick-select="true"
-              />
-            </div>
-          </div>
-          </div>
-
-          <!-- Address Fields -->
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl
-              v-model="newCustomer.address_line_1"
-              label="Address Line 1"
-              placeholder="House No, Street"
-            />
-            <FormControl
-              v-model="newCustomer.address_line_2"
-              label="Address Line 2"
-              placeholder="Area, Landmark (optional)"
-            />
-          </div>
-          <div class="grid grid-cols-3 gap-4">
-            <FormControl v-model="newCustomer.city" label="City" />
-            <FormControl v-model="newCustomer.state" label="State" />
-            <FormControl v-model="newCustomer.pincode" label="Pincode" />
-          </div>
-          <FormControl v-model="newCustomer.country" label="Country" />
-
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl
-              v-model="newCustomer.pan_card_number"
-              label="PAN Card Number"
-              placeholder="Enter PAN card number (optional)"
-            />
-            <FormControl
-              v-model="newCustomer.aadhaar_card_number"
-              label="Aadhaar Card Number"
-              placeholder="Enter Aadhaar number (optional)"
-            />
-          </div>
-
-          <!-- Referral Fields -->
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl
-              v-model="newCustomer.referral_code"
-              label="Client ID"
-              placeholder="Enter client ID (optional)"
-            />
-            <FormControl
-              v-model="newCustomer.referral_through"
-              label="Referral Through"
-              placeholder="Who referred? (optional)"
-            />
-          </div>
-        </div>
-      </template>
-      
-      <template #actions>
-        <Button
-          variant="solid"
-          label="Create Customer"
-          @click="createCustomer"
-          :loading="creating"
-        />
-      </template>
-    </Dialog>
   </div>
 </template>
 

@@ -1,43 +1,45 @@
-# Roles and Permissions
+# 21. Roles and Permissions
 Status: completed
 ## 1) What this module is
-Roles and Permissions controls who can see, edit, approve, or manage information in the CRM. It helps protect sensitive data and keeps work aligned with office policy.
+Roles and Permissions controls who can see, edit, and manage information in the CRM. It helps protect sensitive data and keeps work aligned with office policy by ensuring team members only access what they need.
+
+**Important: The Two-Layer Permission System**
+In this CRM, access is determined by a strict two-layer check:
+1. **Layer 1 (Role Level)**: Does the user’s assigned role allow them to read or write a particular type of document (like Leads or Tickets) in general?
+2. **Layer 2 (Assignment Level)**: Even if their role allows read/write access to Tickets generally, is the user *actually assigned* to that specific Ticket? 
+   - *Example:* If a user's role grants them read/write permissions for Tickets, but they have not been assigned to a ticket or they are not the owner of a particular ticket, they will **only be able to read** the details of that ticket. They will not be able to make any changes.
 
 ## 2) What staff can do here
-- Assign the right role to each user.
-- Review what each role is allowed to do.
+- Create and manage system roles for different team positions.
+- Adjust "Desk Access" and "Two Factor" authentication requirements per role.
+- Configure granular action permissions (create, read, write, delete) for every document type.
 - Support compliance by following least-access rules.
 
 ## 3) How to use (step-by-step)
-1. Open **Roles and Permissions**.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/01-open-roles-and-permissions.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Roles and Permissions**." (anchor line at insertion time: 13).
-2. Choose the role you want to review.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/02-choose-role.png`
-Placement: Insert this screenshot directly below the step: "2. Choose the role you want to review." (anchor line at insertion time: 16).
-3. Check the allowed actions for that role.
-4. Compare with current office policy.
-5. Update role assignment for users only when approved.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/03-update-role-assignment.png`
-Placement: Insert this screenshot directly below the step: "5. Update role assignment for users only when approved." (anchor line at insertion time: 21).
-6. Select **Save**.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/21-roles-and-permissions/04-save-role.png`
-Placement: Insert this screenshot directly below the step: "6. Select **Save**." (anchor line at insertion time: 24).
-7. Test with a sample user if needed.
+1. Open the user dropdown menu in the top-left sidebar (under 'CRM').
+2. Select **Settings** to open the Settings modal.
+3. Click on the **Roles** tab on the left sidebar.
+![Screenshot](/docs/screenshots/21-roles-and-permissions/01-roles-and-permissions.png)
+4. To create a new role, type a name in the "New role name" field and click **+ Add**.
+5. To edit an existing role's permissions, click the **Pencil (Edit)** icon next to that role.
+6. Check or uncheck the specific allowed actions for each document type, keeping the Two-Layer Permission System in mind.
+7. Click **Save** to confirm the access updates.
 
 ## 4) Important buttons/options
-- **Role list**: Shows available roles.
-- **Permission matrix**: Displays allowed actions by role.
-- **Assign role**: Links a role to a user.
-- **Save**: Confirms access updates.
+- **Search roles**: Quickly find a specific role by typing its name.
+- **Desk Access toggle**: Determines if the role is permitted to log into the main CRM interface.
+- **Edit (Pencil icon)**: Opens the detailed permission matrix for that specific role.
+- **Bulk Actions**: Allows you to apply settings across multiple selected roles simultaneously.
+- **Disabled toggle**: Temporarily suspends a role without deleting its configured permissions.
 
 ## 5) Daily best practices
-- Give the minimum access needed for the job.
+- Give the minimum role access needed for each job function.
+- Remember the Two-Layer rule: broadly granting "Write" access doesn't break assignment ownership.
+- Apply the Two-Factor authentication requirement to roles with high-level access like Administrators.
 - Review high-access roles on a regular schedule.
-- Use a manager approval step for permission changes.
 
 ## 6) Common mistakes to avoid
-- Giving broad access “temporarily” and forgetting to remove it.
-- Changing permissions without documenting the reason.
-- Assigning roles based on convenience instead of policy.
-- Overlooking access after team transfers.
+- Assuming that a user can edit any ticket just because their role has "Write" access (forgetting they must also be assigned to it).
+- Disabling "Desk Access" for users who genuinely need to log into the dashboard.
+- Giving broad access “temporarily” and forgetting to remove it later.
+- Deleting a role instead of using the "Disabled" toggle when you might need its configuration again.

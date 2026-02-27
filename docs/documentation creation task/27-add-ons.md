@@ -11,18 +11,15 @@ Installing this add-on ensures calls are captured under the right employee accou
 
 ## 3) How employees install it (step-by-step)
 1. Open **Add-Ons** in CRM.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/01-open-add-ons.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Add-Ons** in CRM." (anchor line at insertion time: 14).
+![Screenshot](/docs/screenshots/27-add-ons/01-open-add-ons.png)
 2. Find **call-log-mobile-app** in the list.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/02-find-call-log-app.png`
-Placement: Insert this screenshot directly below the step: "2. Find **call-log-mobile-app** in the list." (anchor line at insertion time: 17).
+![Screenshot](/docs/screenshots/27-add-ons/02-find-call-log-app.png)
 3. Select **Enable/Activate** for your organization.
 4. Ask employees to install the mobile app from the approved company link or app source.
 5. Each employee signs in using their own work CRM account in the mobile app.
 6. Allow the app permissions it asks for (needed for call log sync).
 7. Make one test call and confirm it appears in **CRM Call Logs**.
-Screenshot Path: `apps/crm/frontend/public/docs/screenshots/27-add-ons/04-confirm-call-logs.png`
-Placement: Insert this screenshot directly below the step: "7. Make one test call and confirm it appears in **CRM Call Logs**." (anchor line at insertion time: 24).
+![Screenshot](/docs/screenshots/27-add-ons/04-confirm-call-logs.png)
 
 ## 4) How call sync works in daily use
 - Each employee uses their own signed-in account in the mobile app.

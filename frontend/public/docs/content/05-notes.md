@@ -12,26 +12,19 @@ The Notes module is for internal written updates that help teams remember contex
 
 ## 3) How to use (step-by-step)
 1. Open `Notes` or add a note from inside a lead/ticket.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/01-open-notes-list.png`
-Placement: Insert this screenshot directly below the step: "1. Open `Notes` or add a note from inside a lead/ticket." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/05-notes/01-open-notes-list.png)
 2. Click `New Note`.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/02-new-note-form.png`
-Placement: Insert this screenshot directly below the step: "2. Click `New Note`." (anchor line at insertion time: 18).
+![Screenshot](/docs/screenshots/05-notes/02-new-note-form.png)
 3. Write a clear summary: what happened, what is pending, who owns next action.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/03-write-note-content.png`
-Placement: Insert this screenshot directly below the step: "3. Write a clear summary: what happened, what is pending, who owns next action." (anchor line at insertion time: 21).
+![Screenshot](/docs/screenshots/05-notes/03-write-note-content.png)
 4. Link the note to the correct lead or ticket when relevant.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/04-link-note-to-record.png`
-Placement: Insert this screenshot directly below the step: "4. Link the note to the correct lead or ticket when relevant." (anchor line at insertion time: 24).
+![Screenshot](/docs/screenshots/05-notes/04-link-note-to-record.png)
 5. Save and verify it appears in the related timeline.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/05-save-note-in-list.png`
-Placement: Insert this screenshot directly below the step: "5. Save and verify it appears in the related timeline." (anchor line at insertion time: 27).
+![Screenshot](/docs/screenshots/05-notes/05-save-note-in-list.png)
 6. Edit the note if details change.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/06-edit-note.png`
-Placement: Insert this screenshot directly below the step: "6. Edit the note if details change." (anchor line at insertion time: 30).
+![Screenshot](/docs/screenshots/05-notes/06-edit-note.png)
 7. Delete only duplicate or incorrect notes when allowed.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/05-notes/07-delete-note.png`
-Placement: Insert this screenshot directly below the step: "7. Delete only duplicate or incorrect notes when allowed." (anchor line at insertion time: 33).
+![Screenshot](/docs/screenshots/05-notes/07-delete-note.png)
 
 ## 4) Important buttons/options
 - `New Note`: add fresh internal context.

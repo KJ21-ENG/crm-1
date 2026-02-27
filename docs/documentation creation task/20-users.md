@@ -10,8 +10,7 @@ Users is where you manage employee access to the CRM. It stores active staff acc
 
 ## 3) How to use (step-by-step)
 1. Open **Users**.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/20-users/01-users-list.png`
-Placement: Insert this screenshot directly below the step: "1. Open **Users**." (anchor line at insertion time: 13).
+![Screenshot](/docs/screenshots/20-users/01-users-list.png)
 2. Search for the staff member by name or email.
 3. Open the user record.
 4. Check status, team details, and assigned access level.

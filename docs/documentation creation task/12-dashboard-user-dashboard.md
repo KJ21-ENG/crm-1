@@ -2,6 +2,7 @@
 Status: completed
 ## 1) What this module is
 User Dashboard shows individual staff performance in one place, including work across leads, tickets, tasks, calls, recent activity, and trends.
+*(Note: Individual users can see only their own performance data, while Admin users can select and view any team member's dashboard.)*
 
 ## 2) What staff can do here
 - View personal performance and productivity
@@ -15,19 +16,26 @@ User Dashboard shows individual staff performance in one place, including work a
 2. Select the date range you want to review.
 3. If you are a manager, choose the user to view.
 4. Check overview metrics first (Leads, Tickets, Tasks, Calls).
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/12-dashboard-user-dashboard/01-user-dashboard-overview.png`
-Placement: Insert this screenshot directly below the step: "4. Check overview metrics first (Leads, Tickets, Tasks, Calls)." (anchor line at insertion time: 18).
+![Screenshot](/docs/screenshots/12-dashboard-user-dashboard/01-user-dashboard-overview.png)
 5. Review trend and activity sections for performance patterns.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/12-dashboard-user-dashboard/02-user-dashboard-trends.png`
-Placement: Insert this screenshot directly below the step: "5. Review trend and activity sections for performance patterns." (anchor line at insertion time: 21).
+![Screenshot](/docs/screenshots/12-dashboard-user-dashboard/02-user-dashboard-trends.png)
 6. Open related records from dashboard cards when follow-up is needed.
 
-## 4) Important buttons/options
-- **Date range selector**: Daily/weekly/monthly/custom tracking
-- **User selector** (for authorized staff): View specific team member performance
-- **Overview cards**: Fast KPI snapshot
-- **Trend and activity sections**: Performance behavior over time
-- **Achievements/Goals/Peak hours**: Productivity indicators
+## 4) Important buttons/options / User Metrics
+- **Date range selector**: Period filter (Daily, Weekly, Monthly, or Custom).
+- **User selector** (Admin only): Choose a specific team member to review.
+
+**Performance Cards Explained:**
+- **Leads**: Shows the total leads handled, with a count of leads *Created* by the user vs those *Assigned* to them.
+- **Tickets**: Shows the total support tickets handled, breaking down those *Created* vs *Assigned*.
+- **Tasks**: Shows the total tasks handled, breaking down those *Created* vs *Assigned*.
+- **Calls Made**: Total number of calls initiated and the *Total Duration* spent on them.
+- **Account Opened**: Number of leads that successfully reached the "Account Opened" stage.
+- **Account Activated**: Number of customer accounts that have been fully activated.
+- **Lead Conversion**: The percentage of leads successfully converted into accounts.
+- **Ticket Resolution**: The percentage of assigned tickets that have been solved or closed.
+- **Task Completion**: The percentage of assigned tasks that have been finished.
+- **Achievements/Goals/Peak hours**: Visual indicators of productivity milestones and activity timing.
 
 ## 5) Daily best practices
 - Review your dashboard at start and end of day

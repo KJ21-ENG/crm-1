@@ -1,6 +1,5 @@
 # Email Templates
-Status: pending
-
+Status: completed
 ## 1) What this module is
 Email Templates stores pre-written email messages for common office communication. Templates keep language consistent, professional, and policy-friendly.
 
@@ -11,11 +10,15 @@ Email Templates stores pre-written email messages for common office communicatio
 
 ## 3) How to use (step-by-step)
 1. Open **Email Templates**.
+![Screenshot](/docs/screenshots/24-email-templates/01-open-email-templates.png)
 2. Select an existing template or choose **New**.
+![Screenshot](/docs/screenshots/24-email-templates/02-new-email-template.png)
 3. Enter a clear template name.
 4. Write or update the subject and message body.
+![Screenshot](/docs/screenshots/24-email-templates/03-write-email-template.png)
 5. Check wording for clarity and policy compliance.
 6. Select **Save**.
+![Screenshot](/docs/screenshots/24-email-templates/04-save-email-template.png)
 7. Test by previewing before sending to customers or staff.
 
 ## 4) Important buttons/options

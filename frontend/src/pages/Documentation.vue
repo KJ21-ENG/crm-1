@@ -93,18 +93,25 @@ const parsedMarkdown = computed(() => {
   // Process the markdown: fix image paths
   let md = rawMarkdown.value
   
-  // Convert "Screenshot Path: `...`" into a markdown image
+  // 1. Support old "Screenshot Path: `...`" format
   md = md.replace(/^Screenshot Path:\s*`?([^`\n]+)`?/gm, (match, path) => {
     let imagePath = path.trim()
-    imagePath = imagePath.replace(/apps\/crm\/docs\/documentation creation task screenshots/g, '/assets/crm/frontend/docs/screenshots')
-    imagePath = imagePath.replace(/apps\\crm\\docs\\documentation creation task screenshots/g, '/assets/crm/frontend/docs/screenshots')
-    return `\n![Screenshot](${imagePath})\n`
+    const matchRel = imagePath.match(/(?:task screenshots|docs\/screenshots)\/(.+)$/)
+    if (matchRel) {
+      return `\n![Screenshot](/assets/crm/frontend/docs/screenshots/${matchRel[1]}?v=${Date.now()})\n`
+    }
+    return `\n![Screenshot](${imagePath}?v=${Date.now()})\n`
   })
   
-  // Remove the Placement lines entirely
+  // 2. Remove the Placement lines entirely
   md = md.replace(/^Placement:[^\n]*/gm, '')
   
-  // Render with marked
+  // 3. Support standard markdown images with "/docs/screenshots/..."
+  md = md.replace(/!\[(.*?)\]\(\/docs\/screenshots\/(.*?)\)/g, (match, alt, path) => {
+    return `![${alt}](/assets/crm/frontend/docs/screenshots/${path}?v=${Date.now()})`
+  })
+  
+  // 4. Render with marked
   return marked.parse(md)
 })
 
@@ -121,7 +128,7 @@ async function loadMarkdownContent(moduleName) {
   }
   loadingContent.value = true
   try {
-    const url = `/assets/crm/frontend/docs/content/${moduleName}.md`
+    const url = `/assets/crm/frontend/docs/content/${moduleName}.md?v=${Date.now()}`
     const response = await fetch(url)
     if (!response.ok) {
       if (response.status === 404) {

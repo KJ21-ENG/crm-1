@@ -1,0 +1,24 @@
+- 2026-02-27 20:37:12 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/26-backup.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/26-backup/01-open-backup.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 20:37:12 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/26-backup.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/26-backup/02-create-backup.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 20:37:12 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/26-backup.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/26-backup/03-download-backup.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed
+- 2026-02-27 20:37:12 | result: PASS
+  - module_file: `apps/crm/docs/documentation creation task/26-backup.md`
+  - image_path: `apps/crm/frontend/public/docs/screenshots/26-backup/04-restore-backup.png`
+  - linked_in_doc: yes
+  - checks: page-step-match, relevant-section-visible, raw-screenshot-no-markup, path-linked
+  - notes: All checks passed

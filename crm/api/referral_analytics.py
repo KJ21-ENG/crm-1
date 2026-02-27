@@ -50,7 +50,7 @@ def get_top_referrers(limit=10, date_from=None, date_to=None, account_type=None,
                 COUNT(CASE WHEN l.status IN ('Account Opened', 'Account Activated') THEN 1 END) as successful_referrals,
                 MAX(l.modified) as last_referral_date
             FROM `tabCRM Lead` l
-            LEFT JOIN `tabCRM Customer` referrer ON (
+            JOIN `tabCRM Customer` referrer ON (
                 referrer.referral_code = l.referral_through 
                 OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
             )
@@ -123,7 +123,7 @@ def get_referral_source_table(date_from=None, date_to=None, account_type=None, l
                 MAX(l.modified) as last_referral_date,
                 MIN(l.modified) as first_referral_date
             FROM `tabCRM Lead` l
-            LEFT JOIN `tabCRM Customer` referrer ON (
+            JOIN `tabCRM Customer` referrer ON (
                 referrer.referral_code = l.referral_through
                 OR JSON_CONTAINS(referrer.accounts, JSON_OBJECT('client_id', l.referral_through))
             )

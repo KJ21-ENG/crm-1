@@ -1,6 +1,5 @@
 # Office Hours
-Status: pending
-
+Status: completed
 ## 1) What this module is
 This module is where your team sets working hours. It tells staff and customers when your office is open and when it is closed.
 
@@ -13,12 +12,16 @@ This module is where your team sets working hours. It tells staff and customers 
 
 ## 3) How to use (step-by-step)
 1. Open **Office Hours** from the main menu.
+![Screenshot](/docs/screenshots/25-office-hours/01-open-office-hours.png)
 2. Click **New** (or **Add Office Hours**).
+![Screenshot](/docs/screenshots/25-office-hours/02-new-office-hours.png)
 3. Enter a clear schedule name, like `Main Office Hours`.
 4. Set start and end time for each day.
+![Screenshot](/docs/screenshots/25-office-hours/03-set-timings.png)
 5. Turn off days when your office is closed.
 6. Add special dates (holidays or half-days), if needed.
 7. Save the schedule.
+![Screenshot](/docs/screenshots/25-office-hours/04-save-schedule.png)
 8. Set it as **Default** if this should be your main office timing.
 
 ## 4) Important buttons/options

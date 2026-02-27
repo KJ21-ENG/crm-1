@@ -3,6 +3,8 @@ Status: completed
 ## 1) What this module is
 Referral Analytics shows which referral sources bring in the best results and how those referrals move through your conversion journey.
 
+*Note: The analytics engine enforces strict data integrity by exclusively mapping referrals to validated, registered customers within the CRM. This actively filters out orphan leads and invalid referral codes, preventing dashboard clutter and ensuring every displayed referrer is a traceable entity.*
+
 ## 2) What staff can do here
 - See top-performing referral sources
 - Review referral conversion stages (funnel)
@@ -12,13 +14,11 @@ Referral Analytics shows which referral sources bring in the best results and ho
 ## 3) How to use (step-by-step)
 1. Open **Dashboard** and go to **Referral Analytics**.
 2. Choose the time range (daily/weekly/monthly/custom).
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/10-dashboard-referral-analytics/01-referral-analytics-overview.png`
-Placement: Insert this screenshot directly below the step: "2. Choose the time range (daily/weekly/monthly/custom)." (anchor line at insertion time: 15).
+![Screenshot](/docs/screenshots/10-dashboard-referral-analytics/01-referral-analytics-overview.png)
 3. Review the referral source table to find strongest and weakest channels.
 4. Check funnel stages to identify where drop-offs happen.
 5. Open details for a specific source to understand performance.
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/10-dashboard-referral-analytics/02-referral-analytics-details.png`
-Placement: Insert this screenshot directly below the step: "5. Open details for a specific source to understand performance." (anchor line at insertion time: 20).
+![Screenshot](/docs/screenshots/10-dashboard-referral-analytics/02-referral-analytics-details.png)
 6. Export the report if you need to share or present findings.
 
 ## 4) Important buttons/options

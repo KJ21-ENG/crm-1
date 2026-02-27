@@ -14,8 +14,7 @@ Global Search helps you find information quickly across the system from one sear
 2. Type a clear keyword, name, number, or email.
 3. Wait for matching results to appear.
 4. Review the result type (lead, ticket, task, and so on).
-Screenshot Path: `apps/crm/docs/documentation creation task screenshots/14-global-search/01-global-search-results.png`
-Placement: Insert this screenshot directly below the step: "4. Review the result type (lead, ticket, task, and so on)." (anchor line at insertion time: 17).
+![Screenshot](/docs/screenshots/14-global-search/01-global-search-results.png)
 5. Click the correct result to open it.
 6. If results are too broad, add one more specific word.
 7. If needed, clear the search and try again with a different term.
