@@ -1,5 +1,7 @@
 """Call log specific API helpers."""
 
+import re
+
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -52,9 +54,12 @@ def set_cold_call(call_log: str, cold_call: int | str | bool = 1):
     return {"name": doc.name, "is_cold_call": flag}
 
 
+MONTH_FILTER_PATTERN = re.compile(r"^\d{4}-\d{2}$")
+
+
 @frappe.whitelist()
 @frappe.read_only()
-def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
+def export_call_log_monthly_summary(filters=None, file_format_type="Excel", month=None):
     """Export monthly summary of call logs grouped by employee and call direction.
 
     Admin/System Manager: all employees. Everyone else: only their own call logs.
@@ -90,6 +95,11 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
     # Non-admins must only export their own data
     if not is_admin:
         filters = {**filters, "owner": user}
+
+    if month:
+        month = month.strip()
+        if not MONTH_FILTER_PATTERN.match(month):
+            frappe.throw(_("Month must be in YYYY-MM format"))
 
     # Build tuple filters for frappe ORM
     try:
@@ -153,6 +163,11 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
+    if month:
+        month_condition = "DATE_FORMAT(COALESCE(start_time, creation), '%%Y-%%m') = %s"
+        where_clause = f"{where_clause} AND {month_condition}" if where_clause else f"WHERE {month_condition}"
+        values.append(month)
+
     sql = f"""
         SELECT
             DATE_FORMAT(COALESCE(start_time, creation), '%%Y-%%m-01') AS month_start,
@@ -172,7 +187,21 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
     rows = frappe.db.sql(sql, values, as_dict=True)
 
     if not rows:
-        frappe.throw(translate("No call logs found for the selected filters"))
+        export_data = [[translate("No call logs found for the selected filters")]]
+        filename_base = "Call_Log_Monthly_Summary"
+        if month:
+            filename_base = f"{filename_base}_{month.replace('-', '_')}"
+
+        if file_format_type == "CSV":
+            build_csv_response(export_data, filename_base)
+            return
+
+        content = make_xlsx(export_data, filename_base).getvalue()
+        frappe.response["filename"] = f"{filename_base}.xlsx"
+        frappe.response["filecontent"] = content
+        frappe.response["type"] = "binary"
+        frappe.response["doctype"] = "CRM Call Log"
+        return
 
     # Resolve employee display names
     employees = {r.employee for r in rows if r.employee}
@@ -203,8 +232,8 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
 
     export_data = []
 
-    for month in sorted(grouped.keys()):
-        export_data.append([formatdate(month, "MMM yyyy")])
+    for month_date in sorted(grouped.keys()):
+        export_data.append([formatdate(month_date, "MMM yyyy")])
         export_data.append(
             [
                 translate("Caller Name"),
@@ -226,7 +255,7 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
             "total_duration": 0,
         }
 
-        for entry in grouped[month]:
+        for entry in grouped[month_date]:
             export_data.append(
                 [
                     entry["employee"],
@@ -255,6 +284,8 @@ def export_call_log_monthly_summary(filters=None, file_format_type="Excel"):
         export_data.append([])
 
     filename_base = "Call_Log_Monthly_Summary"
+    if month:
+        filename_base = f"{filename_base}_{month.replace('-', '_')}"
 
     if file_format_type == "CSV":
         build_csv_response(export_data, filename_base)

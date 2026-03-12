@@ -3,6 +3,22 @@
     <!-- Stats Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <div
+        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('completed')]"
+        @click="handleTileClick('completed')"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Completed</p>
+            <p class="text-2xl font-bold text-gray-900">{{ completedCalls }}</p>
+            <p class="text-sm text-gray-500 mt-1">Completed calls</p>
+          </div>
+          <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+            <FeatherIcon name="check-circle" class="h-5 w-5 text-green-600" />
+          </div>
+        </div>
+      </div>
+
+      <div
         :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('all')]"
         @click="handleTileClick('all')"
       >
@@ -30,22 +46,6 @@
           </div>
           <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
             <FeatherIcon name="users" class="h-5 w-5 text-indigo-600" />
-          </div>
-        </div>
-      </div>
-
-      <div
-        :class="['bg-white rounded-lg shadow-sm border border-gray-200 p-4', tileClasses('completed')]"
-        @click="handleTileClick('completed')"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Completed</p>
-            <p class="text-2xl font-bold text-gray-900">{{ completedCalls }}</p>
-            <p class="text-sm text-gray-500 mt-1">Completed calls</p>
-          </div>
-          <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-            <FeatherIcon name="check-circle" class="h-5 w-5 text-green-600" />
           </div>
         </div>
       </div>

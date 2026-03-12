@@ -44,8 +44,18 @@
                     :icon="link.icon"
                     :label="__(link.label)"
                     :to="link.to"
+                    :label-class="link.labelClass"
+                    :show-burst="link.showBurst"
                     class="mx-2 my-0.5"
-                  />
+                  >
+                    <template v-if="link.pendingCount" #right>
+                      <Badge
+                        :label="link.pendingCount"
+                        variant="subtle"
+                        theme="orange"
+                      />
+                    </template>
+                  </SidebarLink>
                 </nav>
               </Section>
             </div>
@@ -91,18 +101,37 @@ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import SupportPagesIcon from '@/components/Icons/SupportPagesIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
 import { viewsStore } from '@/stores/views'
-import { createResource } from 'frappe-ui'
+import { createResource, Badge } from 'frappe-ui'
 import { TrialBanner } from 'frappe-ui/frappe'
 import { computed, h, provide } from 'vue'
 import { mobileSidebarOpened as sidebarOpened } from '@/composables/settings'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
 
-const links = [
+const celebrationsSummary = createResource({
+  url: 'crm.api.dashboard.get_today_celebrations',
+  auto: true,
+  transform(data) {
+    return data?.message || data || { pending_count: 0 }
+  },
+})
+
+const showCelebrationBurst = computed(() => (celebrationsSummary.data?.pending_count || 0) > 0)
+const celebrationPendingCount = computed(() => celebrationsSummary.data?.pending_count || 0)
+
+const links = computed(() => [
   {
     label: 'Dashboard',
     icon: 'bar-chart-2',
     to: 'Dashboard',
+  },
+  {
+    label: 'Celebrations',
+    icon: 'gift',
+    to: 'Celebrations',
+    labelClass: showCelebrationBurst.value ? 'sidebar-celebration-text' : '',
+    showBurst: showCelebrationBurst.value,
+    pendingCount: celebrationPendingCount.value,
   },
   {
     label: 'Leads',
@@ -157,7 +186,7 @@ const links = [
     icon: Email2Icon,
     to: 'Email Templates',
   },
-]
+])
 
 const allViews = computed(() => {
   let _views = [
@@ -165,7 +194,7 @@ const allViews = computed(() => {
       name: 'All Views',
       hideLabel: true,
       opened: true,
-      views: links,
+      views: links.value,
     },
   ]
   if (getPublicViews().length) {

@@ -207,23 +207,87 @@
           role="tabpanel"
           :aria-labelledby="`tab-analytics`"
         >
-          <!-- Stats Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <StatsCard
-              v-for="card in statsCards"
-              :key="card.title"
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2 mb-6">
+            <AnalyticsMetricTile
+              v-for="card in analyticsSharedTiles"
+              :key="`shared-${card.title}`"
               :title="card.title"
               :value="card.value"
               :subtitle="card.subtitle"
               :icon="card.icon"
               :color="card.color"
-              :change="card.change"
               :clickable="card.clickable"
               :target="card.target"
               :tooltip="card.tooltip"
               :filters="card.filters"
               @click="handleStatsCardClick"
             />
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 mb-6">
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900">Ticket</h3>
+                  <p class="text-sm text-gray-500">
+                    Ticket totals and current status distribution.
+                  </p>
+                </div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                  <FeatherIcon name="ticket" class="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <AnalyticsMetricTile
+                  v-for="tile in ticketSectionTiles"
+                  :key="tile.key"
+                  :title="tile.title"
+                  :value="tile.value"
+                  :subtitle="tile.subtitle"
+                  :icon="tile.icon"
+                  :color="tile.color"
+                  :indicator-class="tile.indicatorClass"
+                  :clickable="tile.clickable"
+                  :target="tile.target"
+                  :tooltip="tile.tooltip"
+                  :filters="tile.filters"
+                  @click="handleStatsCardClick"
+                />
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900">Lead</h3>
+                  <p class="text-sm text-gray-500">
+                    Lead totals, account milestones, and current status distribution.
+                  </p>
+                </div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                  <FeatherIcon name="user-plus" class="h-5 w-5 text-blue-600" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <AnalyticsMetricTile
+                  v-for="tile in leadSectionTiles"
+                  :key="tile.key"
+                  :title="tile.title"
+                  :value="tile.value"
+                  :subtitle="tile.subtitle"
+                  :icon="tile.icon"
+                  :color="tile.color"
+                  :indicator-class="tile.indicatorClass"
+                  :clickable="tile.clickable"
+                  :target="tile.target"
+                  :tooltip="tile.tooltip"
+                  :filters="tile.filters"
+                  @click="handleStatsCardClick"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- Charts and Analytics -->
@@ -460,7 +524,7 @@
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, FeatherIcon, Alert, Badge } from 'frappe-ui'
-import StatsCard from '@/components/Dashboard/StatsCard.vue'
+import AnalyticsMetricTile from '@/components/Dashboard/AnalyticsMetricTile.vue'
 import ReferralAnalyticsDashboard from '@/components/Dashboard/ReferralAnalyticsDashboard.vue'
 import UserDashboard from '@/components/Dashboard/UserDashboard.vue'
 import CallLogAnalytics from '@/components/Dashboard/CallLogAnalytics.vue'
@@ -470,6 +534,7 @@ import CustomDateTimePicker from '@/components/CustomDateTimePicker.vue'
 import { useDashboard } from '@/stores/dashboard'
 import { useUserRole } from '@/stores/userRole'
 import { sessionStore } from '@/stores/session'
+import { statusesStore } from '@/stores/statuses'
 
 const route = useRoute()
 const router = useRouter()
@@ -480,28 +545,28 @@ const {
   lastUpdated,
   currentView,
   customDateRangeFormatted,
-  statsCards,
+  overview,
+  leadAnalytics,
+  ticketAnalytics,
   leadStatusChart,
   ticketStatusChart,
-  callTypeChart,
   trendsChart,
   recentActivities,
-  quickActions,
   topPerformers,
   dateRange,
   callLogAnalytics,
   userDashboardData,
   fetchDashboardData,
   fetchUserDashboardData,
+  fetchTooltipData,
   refreshDashboard,
   changeView,
-  startAutoRefresh,
-  stopAutoRefresh
-  , lastFetchedUserId
+  lastFetchedUserId,
 } = useDashboard()
 
 // User role management
 const { isAdminUser, currentUserRole, initializeUserRole, userRoleLoading, userRoleError } = useUserRole()
+const { leadStatuses, ticketStatuses } = statusesStore()
 
 const session = sessionStore()
 
@@ -676,6 +741,157 @@ const trendsChartTitle = computed(() => {
     default:
       return 'Trends'
   }
+})
+
+const analyticsSharedTiles = computed(() => [
+  {
+    title: 'Total Tasks',
+    value: overview.value.total_tasks || 0,
+    subtitle: `Created in ${getViewContext().toLowerCase()}`,
+    icon: 'check-square',
+    color: 'green',
+    clickable: true,
+    target: 'tasks',
+    filters: {},
+  },
+  {
+    title: 'Call Logs',
+    value: overview.value.total_call_logs || 0,
+    subtitle:
+      overview.value.missed_calls > 0
+        ? `${overview.value.missed_calls} missed calls`
+        : `Captured in ${getViewContext().toLowerCase()}`,
+    icon: 'phone',
+    color: 'purple',
+    clickable: true,
+    target: 'calls',
+    filters: { dateField: 'start_time' },
+  },
+])
+
+function buildAnalyticsStatusTile(statusName, count, target, indicatorClass, extra = {}) {
+  return {
+    key: `${target}-${statusName}`,
+    title: statusName,
+    value: count || 0,
+    subtitle: 'Current status count',
+    clickable: true,
+    target,
+    indicatorClass: indicatorClass || '!text-gray-500',
+    filters: {
+      status: statusName,
+      ...(extra.filters || {}),
+    },
+    tooltip: extra.tooltip || null,
+  }
+}
+
+const ticketSectionTiles = computed(() => {
+  const distribution = new Map(
+    (ticketAnalytics.value?.status_distribution || []).map((item) => [item.status, item.count || 0]),
+  )
+
+  return [
+    {
+      key: 'ticket-total',
+      title: 'Total Tickets',
+      value: overview.value.total_tickets || 0,
+      subtitle: `Created in ${getViewContext().toLowerCase()}`,
+      icon: 'ticket',
+      color: 'orange',
+      clickable: true,
+      target: 'tickets',
+      filters: {},
+    },
+    ...(ticketStatuses.data || []).map((status) =>
+      buildAnalyticsStatusTile(
+        status.name,
+        distribution.get(status.name) || 0,
+        'tickets',
+        status.color,
+      ),
+    ),
+  ]
+})
+
+const leadSectionTiles = computed(() => {
+  const tooltipRangeStart = currentView.value === 'custom' ? dateRange.value.start_date : null
+  const tooltipRangeEnd = currentView.value === 'custom' ? dateRange.value.end_date : null
+  const distribution = new Map(
+    (leadAnalytics.value?.status_distribution || []).map((item) => [item.status, item.count || 0]),
+  )
+
+  const milestoneTiles = {
+    'Account Opened': {
+      subtitle: 'Leads converted to accounts',
+      tooltip: {
+        enabled: true,
+        fetchData: () =>
+          fetchTooltipData(
+            'account_opened',
+            currentView.value,
+            tooltipRangeStart,
+            tooltipRangeEnd,
+          ),
+      },
+      filters: { dateField: 'account_opened_on' },
+      value: leadAnalytics.value.account_opened || 0,
+    },
+    'Account Activated': {
+      subtitle: 'Active customer accounts',
+      tooltip: {
+        enabled: true,
+        fetchData: () =>
+          fetchTooltipData(
+            'account_activated',
+            currentView.value,
+            tooltipRangeStart,
+            tooltipRangeEnd,
+          ),
+      },
+      filters: { dateField: 'account_activated_on' },
+      value: leadAnalytics.value.account_activated || 0,
+    },
+  }
+
+  return [
+    {
+      key: 'lead-total',
+      title: 'Total Leads',
+      value: overview.value.total_leads || 0,
+      subtitle: `Created in ${getViewContext().toLowerCase()}`,
+      icon: 'user-plus',
+      color: 'blue',
+      clickable: true,
+      target: 'leads',
+      filters: {},
+    },
+    ...(leadStatuses.data || []).map((status) => {
+      const milestone = milestoneTiles[status.name]
+      if (milestone) {
+        return {
+          ...buildAnalyticsStatusTile(
+            status.name,
+            milestone.value,
+            'leads',
+            status.color,
+            {
+              filters: milestone.filters,
+              tooltip: milestone.tooltip,
+            },
+          ),
+          subtitle: milestone.subtitle,
+        }
+      }
+
+      return buildAnalyticsStatusTile(
+        status.name,
+        distribution.get(status.name) || 0,
+        'leads',
+        status.color,
+      )
+    }),
+  ]
 })
 
 const formatTime = (timestamp) => {

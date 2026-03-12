@@ -14,6 +14,11 @@ const routes = [
     name: 'Dashboard',
     component: () => import('@/pages/Dashboard.vue'),
   },
+  {
+    path: '/celebrations',
+    name: 'Celebrations',
+    component: () => import('@/pages/Celebrations.vue'),
+  },
   // Notifications route removed from sidebar; keep commented out to disable navigation
   // {
   //   path: '/notifications',
@@ -225,6 +230,7 @@ router.beforeEach(async (to, from, next) => {
     const routeName = to.name
     const routeToModule = {
       'Dashboard': 'Dashboard',
+      'Celebrations': 'Dashboard',
       'Tickets': 'Tickets',
       'Ticket': 'Tickets',
       'Leads': 'Leads',
@@ -260,6 +266,7 @@ router.afterEach((to) => {
   const routeTitles = {
     'Home': 'CRM',
     'Dashboard': 'Dashboard',
+    'Celebrations': 'Celebrations',
     'Tickets': 'Tickets',
     'Ticket': 'Ticket',
     'Leads': 'Leads',

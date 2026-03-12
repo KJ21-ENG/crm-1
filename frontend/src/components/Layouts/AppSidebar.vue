@@ -65,9 +65,24 @@
               :icon="link.icon"
               :label="__(link.label)"
               :to="link.to"
+              :label-class="link.labelClass"
+              :show-burst="link.showBurst"
               :isCollapsed="isSidebarCollapsed"
               class="mx-2 my-0.5"
-            />
+            >
+              <template v-if="link.pendingCount" #right>
+                <Badge
+                  v-if="!isSidebarCollapsed"
+                  :label="link.pendingCount"
+                  variant="subtle"
+                  theme="orange"
+                />
+                <div
+                  v-else
+                  class="absolute -left-1.5 top-1 z-20 h-[5px] w-[5px] translate-x-6 translate-y-1 rounded-full bg-orange-500 ring-1 ring-white"
+                />
+              </template>
+            </SidebarLink>
           </nav>
           <!-- Admin-only Requests link -->
           <div v-if="showRequestsLink" class="flex flex-col">
@@ -187,7 +202,7 @@ import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { showSettings, activeSettingsPage } from '@/composables/settings'
 import { showChangePasswordModal } from '@/composables/modals'
-import { FeatherIcon, call } from 'frappe-ui'
+import { FeatherIcon, call, createResource } from 'frappe-ui'
 import {
   SignupBanner,
   TrialBanner,
@@ -201,7 +216,7 @@ import {
 import { capture } from '@/telemetry'
 import router from '@/router'
 import { useStorage } from '@vueuse/core'
-import { ref, reactive, computed, h, markRaw, onMounted } from 'vue'
+import { ref, reactive, computed, h, markRaw, onMounted, onUnmounted } from 'vue'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
 const { toggle: toggleTaskNotificationPanel } = taskNotificationsStore()
@@ -211,11 +226,30 @@ const isSidebarCollapsed = useStorage('isSidebarCollapsed', false)
 const isFCSite = ref(window.is_fc_site)
 const isDemoSite = ref(window.is_demo_site)
 
-const links = [
+const celebrationsSummary = createResource({
+  url: 'crm.api.dashboard.get_today_celebrations',
+  auto: true,
+  transform(data) {
+    return data?.message || data || { pending_count: 0 }
+  },
+})
+
+const showCelebrationBurst = computed(() => (celebrationsSummary.data?.pending_count || 0) > 0)
+const celebrationPendingCount = computed(() => celebrationsSummary.data?.pending_count || 0)
+
+const links = computed(() => [
   {
     label: 'Dashboard',
     icon: 'bar-chart-2',
     to: 'Dashboard',
+  },
+  {
+    label: 'Celebrations',
+    icon: 'gift',
+    to: 'Celebrations',
+    labelClass: showCelebrationBurst.value ? 'sidebar-celebration-text' : '',
+    showBurst: showCelebrationBurst.value,
+    pendingCount: celebrationPendingCount.value,
   },
   {
     label: 'Tickets',
@@ -276,7 +310,7 @@ const links = [
     to: 'Round Robin',
   },
   // Admin-only Requests link will be inserted dynamically below
-]
+])
 
 // Insert Requests link only for admin users (computed so it reacts to user store)
 const showRequestsLink = computed(() => {
@@ -294,7 +328,7 @@ const allViews = computed(() => {
       name: 'All Views',
       hideLabel: true,
       opened: true,
-      views: links,
+      views: links.value,
     },
   ]
   if (getPublicViews().length) {
@@ -554,6 +588,7 @@ const steps = reactive([
 
 onMounted(async () => {
   await users.promise
+  window.addEventListener('crm:celebrations-updated', reloadCelebrationsSummary)
 
   const filteredSteps = steps.filter((step) => {
     if (step.condition) {
@@ -564,6 +599,14 @@ onMounted(async () => {
 
   setUp(filteredSteps)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('crm:celebrations-updated', reloadCelebrationsSummary)
+})
+
+function reloadCelebrationsSummary() {
+  celebrationsSummary.reload()
+}
 
 // help center
 const articles = ref([

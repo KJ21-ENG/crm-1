@@ -273,6 +273,7 @@ export function useDashboard() {
   const trends = computed(() => dashboardData.value?.trends || {})
   const quickActions = computed(() => dashboardData.value?.quick_actions || [])
   const dateRange = computed(() => dashboardData.value?.date_range || {})
+  const celebrationsToday = computed(() => dashboardData.value?.celebrations_today || { birthdays: [], anniversaries: [] })
 
   // User dashboard computed properties
   const userInfo = computed(() => userDashboardData.value?.user_info || {})
@@ -451,6 +452,7 @@ export function useDashboard() {
     recentActivities,
     trends,
     quickActions,
+    celebrationsToday,
     
     // User dashboard computed
     userInfo,

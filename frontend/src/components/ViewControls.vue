@@ -218,9 +218,18 @@
               items: [
                 {
                   label: __('Export'),
-                  icon: () => h(ExportIcon, { class: 'h-4 w-4' }),
+                  icon: () => h(FeatherIcon, { name: 'download', class: 'h-4 w-4' }),
                   onClick: () => (showExportDialog = true),
                   condition: () =>
+                    !options.hideColumnsButton &&
+                    route.params.viewType !== 'kanban',
+                },
+                {
+                  label: __('Import'),
+                  icon: () => h(FeatherIcon, { name: 'upload', class: 'h-4 w-4' }),
+                  onClick: () => (showImportDialog = true),
+                  condition: () =>
+                    isImportableDoctype &&
                     !options.hideColumnsButton &&
                     route.params.viewType !== 'kanban',
                 },
@@ -309,6 +318,139 @@
         <p class="mt-1 text-xs text-ink-gray-6">
           {{ __('Exports aggregated monthly totals by employee. Admins get all employees; others only their own data.') }}
         </p>
+        <div v-if="export_monthly_summary" class="mt-3">
+          <label class="mb-2 block text-sm font-medium text-ink-gray-7">
+            {{ __('Month (optional)') }}
+          </label>
+          <input
+            v-model="export_month"
+            type="month"
+            class="w-full rounded-md border border-outline-gray-2 px-3 py-2 text-sm text-ink-gray-8 focus:border-outline-gray-4 focus:outline-none"
+          />
+          <p class="mt-1 text-xs text-ink-gray-6">
+            {{ __('Leave blank to export all matching months.') }}
+          </p>
+        </div>
+      </div>
+    </template>
+  </Dialog>
+  <Dialog
+    v-model="showImportDialog"
+    :options="{
+      title: __('Import'),
+      actions: [
+        {
+          label: importInProgress ? __('Importing...') : __('Start Import'),
+          variant: 'solid',
+          disabled: importInProgress,
+          onClick: () => startImport(),
+        },
+      ],
+    }"
+  >
+    <template #body-content>
+      <div class="space-y-4">
+        <div>
+          <p class="text-sm font-medium text-ink-gray-7">
+            {{ __('Upload completed template (.xlsx)') }}
+          </p>
+          <p class="mt-1 text-xs text-ink-gray-6">
+            {{ __('This import creates new records only. Existing records are not updated.') }}
+          </p>
+        </div>
+
+        <FileUploader
+          @success="handleImportUpload"
+          :validateFile="validateImportTemplateFile"
+        >
+          <template #default="{ openFileSelector, uploading, progress, error }">
+            <div class="rounded-lg border border-dashed border-outline-gray-2 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-medium text-ink-gray-8">
+                    {{ importFile?.file_name || __('No file selected') }}
+                  </p>
+                  <p class="mt-1 text-xs text-ink-gray-6">
+                    {{
+                      uploading
+                        ? __('Uploading {0}%', [progress])
+                        : __('Upload the template after filling it with your data.')
+                    }}
+                  </p>
+                </div>
+                <Button @click="openFileSelector('.xlsx')">
+                  {{ importFile ? __('Change File') : __('Upload File') }}
+                </Button>
+              </div>
+              <p v-if="error" class="mt-2 text-sm text-red-600">
+                {{ __(error) }}
+              </p>
+            </div>
+          </template>
+        </FileUploader>
+
+        <div class="space-y-2">
+          <Button variant="ghost" @click="downloadImportTemplate">
+            <template #icon>
+              <FeatherIcon name="download" class="h-4 w-4" />
+            </template>
+            {{ __('Download Template') }}
+          </Button>
+          <p class="text-xs text-ink-gray-6">
+            {{ __('Download the template first, fill it in the required format, then upload that file here.') }}
+          </p>
+        </div>
+
+        <p v-if="importError" class="text-sm text-red-600">
+          {{ importError }}
+        </p>
+
+        <div
+          v-if="importStatus"
+          class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-ink-gray-8">
+                {{ __('Import Status: {0}', [importStatus.status || __('Pending')]) }}
+              </p>
+              <p class="mt-1 text-xs text-ink-gray-6">
+                {{
+                  __('Success: {0} • Failed: {1} • Total: {2}', [
+                    importStatus.success_count || 0,
+                    importStatus.failed_count || 0,
+                    importStatus.total_records || 0,
+                  ])
+                }}
+              </p>
+            </div>
+            <div v-if="importInProgress" class="text-xs text-ink-gray-6">
+              {{ __('Processing...') }}
+            </div>
+          </div>
+
+          <div v-if="importStatus.failed_logs?.length" class="mt-4 space-y-2">
+            <p class="text-sm font-medium text-ink-gray-8">
+              {{ __('Failed Rows') }}
+            </p>
+            <div
+              v-for="(failedLog, index) in importStatus.failed_logs"
+              :key="`${index}-${failedLog.row_indexes}`"
+              class="rounded-md border border-red-200 bg-red-50 p-3"
+            >
+              <p class="text-sm font-medium text-red-700">
+                {{ __('Rows: {0}', [formatImportRowIndexes(failedLog.row_indexes)]) }}
+              </p>
+              <p
+                v-for="(message, messageIndex) in formatImportFailureMessages(failedLog)"
+                :key="`${index}-${messageIndex}`"
+                class="mt-1 text-xs text-red-700"
+              >
+                {{ message }}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
   </Dialog>
@@ -324,7 +466,6 @@ import DuplicateIcon from '@/components/Icons/DuplicateIcon.vue'
 import CheckIcon from '@/components/Icons/CheckIcon.vue'
 import PinIcon from '@/components/Icons/PinIcon.vue'
 import UnpinIcon from '@/components/Icons/UnpinIcon.vue'
-import ExportIcon from '@/components/Icons/ExportIcon.vue'
 import QuickFilterIcon from '@/components/Icons/QuickFilterIcon.vue'
 import ViewModal from '@/components/Modals/ViewModal.vue'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
@@ -344,6 +485,7 @@ import {
   Tooltip,
   createResource,
   Dropdown,
+  FileUploader,
   toast,
   call,
   FeatherIcon,
@@ -601,6 +743,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearImportPoll()
   // Reset page length when component is unmounted to ensure clean state
   if (list.value?.data?.page_length > 20) {
     console.log('🔍 ViewControls Debug - Resetting page length to 20 on unmount')
@@ -655,7 +798,23 @@ const showExportDialog = ref(false)
 const export_type = ref('Excel')
 const export_all = ref(false)
 const export_monthly_summary = ref(false)
+const export_month = ref('')
 const selectedRows = ref([])
+const showImportDialog = ref(false)
+const importFile = ref(null)
+const importError = ref('')
+const importStatus = ref(null)
+const importInProgress = ref(false)
+const importPollTimeout = ref(null)
+const isImportableDoctype = computed(() =>
+  ['CRM Lead', 'CRM Ticket'].includes(props.doctype),
+)
+
+watch(showImportDialog, (value) => {
+  if (!value) {
+    resetImportDialogState()
+  }
+})
 
 function updateSelections(selections) {
   selectedRows.value = Array.from(selections)
@@ -696,6 +855,9 @@ async function exportRows() {
       file_format_type: export_type.value,
       filters,
     })
+    if (export_month.value) {
+      params.set('month', export_month.value)
+    }
 
     window.location.href = `/api/method/crm.api.call_log.export_call_log_monthly_summary?${params.toString()}`
 
@@ -703,6 +865,7 @@ async function exportRows() {
     export_all.value = false
     export_type.value = 'Excel'
     export_monthly_summary.value = false
+    export_month.value = ''
     return
   }
 
@@ -724,6 +887,114 @@ async function exportRows() {
   showExportDialog.value = false
   export_all.value = false
   export_type.value = 'Excel'
+  export_month.value = ''
+}
+
+function clearImportPoll() {
+  if (importPollTimeout.value) {
+    clearTimeout(importPollTimeout.value)
+    importPollTimeout.value = null
+  }
+}
+
+function resetImportDialogState() {
+  clearImportPoll()
+  importFile.value = null
+  importError.value = ''
+  importStatus.value = null
+  importInProgress.value = false
+}
+
+function validateImportTemplateFile(file) {
+  const extn = file?.name?.split('.').pop()?.toLowerCase()
+  if (extn !== 'xlsx') {
+    return __('Only .xlsx files are allowed')
+  }
+}
+
+function handleImportUpload(file) {
+  importFile.value = file
+  importError.value = ''
+  importStatus.value = null
+}
+
+function downloadImportTemplate() {
+  window.location.href = `/api/method/crm.api.imports.download_import_template?doctype=${encodeURIComponent(props.doctype)}`
+}
+
+function formatImportRowIndexes(rowIndexes) {
+  if (!Array.isArray(rowIndexes) || !rowIndexes.length) {
+    return __('Unknown')
+  }
+  return rowIndexes.join(', ')
+}
+
+function formatImportFailureMessages(failedLog) {
+  const messages = Array.isArray(failedLog?.messages) ? failedLog.messages.filter(Boolean) : []
+  if (messages.length) {
+    return messages
+  }
+  if (failedLog?.exception) {
+    return [failedLog.exception]
+  }
+  return [__('Import failed for this row')]
+}
+
+async function pollImportStatus(dataImportName) {
+  clearImportPoll()
+  importPollTimeout.value = setTimeout(async () => {
+    try {
+      const status = await call('crm.api.imports.get_bulk_import_status', {
+        data_import_name: dataImportName,
+      })
+      importStatus.value = status
+      if (status?.is_terminal) {
+        importInProgress.value = false
+        clearImportPoll()
+        if ((status.success_count || 0) > 0) {
+          reload()
+        }
+        return
+      }
+      pollImportStatus(dataImportName)
+    } catch (error) {
+      importInProgress.value = false
+      importError.value = error.message || __('Failed to fetch import status')
+      clearImportPoll()
+    }
+  }, 2000)
+}
+
+async function startImport() {
+  importError.value = ''
+
+  if (!importFile.value?.file_url) {
+    importError.value = __('Upload a completed .xlsx template before starting the import')
+    return
+  }
+
+  importInProgress.value = true
+
+  try {
+    const status = await call('crm.api.imports.start_bulk_import', {
+      doctype: props.doctype,
+      file_url: importFile.value.file_url,
+    })
+    importStatus.value = status
+
+    if (status?.is_terminal) {
+      importInProgress.value = false
+      if ((status.success_count || 0) > 0) {
+        reload()
+      }
+      return
+    }
+
+    pollImportStatus(status.data_import_name)
+  } catch (error) {
+    importInProgress.value = false
+    importError.value = error.message || __('Failed to start import')
+  }
 }
 
 let standardViews = []

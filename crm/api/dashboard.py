@@ -4,6 +4,16 @@ from frappe.utils import getdate, add_days, get_datetime
 from datetime import datetime, timedelta
 import json
 
+CELEBRATION_NOTE_PREFIX = "Celebration Contacted"
+
+
+def _empty_celebrations_payload():
+    return {
+        "birthdays": [],
+        "anniversaries": [],
+        "pending_count": 0,
+    }
+
 
 @frappe.whitelist()
 def get_dashboard_data(view='daily', custom_start_date=None, custom_end_date=None, _refresh=None):
@@ -48,6 +58,7 @@ def get_dashboard_data(view='daily', custom_start_date=None, custom_end_date=Non
                 "ticket_analytics": get_ticket_analytics(view, custom_start_date, custom_end_date),
                 "task_analytics": get_task_analytics(view, custom_start_date, custom_end_date),
                 "call_log_analytics": get_call_log_analytics(view, custom_start_date, custom_end_date),
+                "celebrations_today": get_celebrations_today(),
                 "user_performance": get_user_performance(view, custom_start_date, custom_end_date),
                 "recent_activities": get_recent_activities(view, custom_start_date, custom_end_date),
                 "trends": get_trends_data(view, custom_start_date, custom_end_date),
@@ -381,6 +392,147 @@ def get_date_range(view, custom_start_date=None, custom_end_date=None):
 def get_call_time_filter(start_date, end_date):
     """Build a filter dict that scopes call logs by actual call timestamp."""
     return {"start_time": ["between", [start_date, end_date]]}
+
+
+def get_celebrations_today():
+    """Return customers whose birthday or anniversary is today."""
+    if not frappe.has_permission("CRM Customer", ptype="read"):
+        return _empty_celebrations_payload()
+
+    today = getdate()
+    today_str = str(today)
+    month = today.month
+    day = today.day
+    contacted_map = _get_celebration_contacted_map(today_str)
+
+    birthdays = frappe.get_list(
+        "CRM Customer",
+        filters={"date_of_birth": ["is", "set"]},
+        fields=["name", "customer_name", "mobile_no", "organization", "date_of_birth", "status"],
+        order_by="customer_name asc, name asc",
+        limit_page_length=0,
+    )
+    birthdays = [
+        row for row in birthdays
+        if row.get("status") != "Inactive"
+        and getdate(row.get("date_of_birth")).month == month
+        and getdate(row.get("date_of_birth")).day == day
+    ]
+    birthdays = _serialize_celebrations(birthdays, "Birthday", contacted_map)
+
+    anniversaries = frappe.get_list(
+        "CRM Customer",
+        filters={"anniversary": ["is", "set"]},
+        fields=["name", "customer_name", "mobile_no", "organization", "anniversary", "status"],
+        order_by="customer_name asc, name asc",
+        limit_page_length=0,
+    )
+    anniversaries = [
+        row for row in anniversaries
+        if row.get("status") != "Inactive"
+        and getdate(row.get("anniversary")).month == month
+        and getdate(row.get("anniversary")).day == day
+    ]
+    anniversaries = _serialize_celebrations(anniversaries, "Anniversary", contacted_map)
+
+    pending_count = (
+        len([row for row in birthdays if not row.get("contacted")]) +
+        len([row for row in anniversaries if not row.get("contacted")])
+    )
+
+    return {
+        "birthdays": birthdays,
+        "anniversaries": anniversaries,
+        "pending_count": pending_count,
+    }
+
+
+@frappe.whitelist()
+def get_today_celebrations():
+    return get_celebrations_today()
+
+
+def _celebration_note_title(celebration_type: str, celebration_date: str) -> str:
+    return f"{CELEBRATION_NOTE_PREFIX}::{celebration_type}::{celebration_date}"
+
+
+def _get_celebration_contacted_map(celebration_date: str):
+    notes = frappe.get_all(
+        "FCRM Note",
+        filters={
+            "reference_doctype": "CRM Customer",
+            "title": ["like", f"{CELEBRATION_NOTE_PREFIX}::%::{celebration_date}"],
+        },
+        fields=["title", "reference_docname"],
+    )
+
+    contacted = {}
+    for note in notes:
+        parts = (note.get("title") or "").split("::")
+        if len(parts) != 3:
+            continue
+        contacted[(note.get("reference_docname"), parts[1])] = True
+    return contacted
+
+
+def _serialize_celebrations(rows, celebration_type, contacted_map):
+    serialized = []
+    for row in rows:
+        row.pop("status", None)
+        serialized.append(
+            {
+                **row,
+                "celebration_type": celebration_type,
+                "contacted": contacted_map.get((row.get("name"), celebration_type), False),
+            }
+        )
+    return serialized
+
+
+@frappe.whitelist()
+def mark_celebration_contacted(customer_id: str, celebration_type: str):
+    if not customer_id:
+        frappe.throw(_("Customer is required"))
+
+    if celebration_type not in {"Birthday", "Anniversary"}:
+        frappe.throw(_("Invalid celebration type"))
+
+    customer = frappe.get_doc("CRM Customer", customer_id)
+    customer.check_permission("write")
+    today = getdate()
+    today_str = str(today)
+    relevant_date = customer.date_of_birth if celebration_type == "Birthday" else customer.anniversary
+
+    if not relevant_date:
+        frappe.throw(_("No celebration date is set for this customer"))
+
+    relevant_date = getdate(relevant_date)
+    if relevant_date.month != today.month or relevant_date.day != today.day:
+        frappe.throw(_("This customer does not have that celebration today"))
+
+    title = _celebration_note_title(celebration_type, today_str)
+    existing = frappe.db.exists(
+        "FCRM Note",
+        {
+            "reference_doctype": "CRM Customer",
+            "reference_docname": customer_id,
+            "title": title,
+        },
+    )
+    if not existing:
+        frappe.get_doc(
+            {
+                "doctype": "FCRM Note",
+                "title": title,
+                "content": _(
+                    "{0} marked as contacted on {1} by {2}"
+                ).format(celebration_type, today_str, frappe.session.user),
+                "reference_doctype": "CRM Customer",
+                "reference_docname": customer_id,
+            }
+        ).insert(ignore_permissions=True)
+
+    return get_celebrations_today()
 
 
 def get_overview_stats(view='daily', custom_start_date=None, custom_end_date=None):
